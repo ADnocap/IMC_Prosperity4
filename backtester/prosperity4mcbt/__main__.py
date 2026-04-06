@@ -29,7 +29,6 @@ def cli(
         Argument(
             help="Path to the Python file containing the strategy to simulate.",
             show_default=False,
-            exists=True,
             file_okay=True,
             dir_okay=False,
             resolve_path=True,
@@ -95,6 +94,15 @@ def cli(
     elif heavy:
         sessions = 1000
         sample_sessions = 100
+
+    # Resolve algorithm: if not found, try traders/ directory
+    if not algorithm.exists():
+        traders_path = Path("traders") / algorithm.name
+        if traders_path.exists():
+            algorithm = traders_path.resolve()
+        else:
+            print(f"Error: algorithm file not found: {algorithm}")
+            raise SystemExit(1)
 
     dashboard_path = normalize_dashboard_path(out, False) or default_dashboard_path()
 

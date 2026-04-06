@@ -16,7 +16,19 @@ from prosperity3bt.open import open_monte_carlo_visualizer, open_visualizer
 from prosperity3bt.runner import run_backtest
 
 
+def resolve_algorithm_path(algorithm: Path) -> Path:
+    """If the algorithm file doesn't exist, try looking in traders/ directory."""
+    if algorithm.exists():
+        return algorithm
+    # resolve_path may have made it absolute; try traders/ with just the filename
+    traders_path = Path("traders") / algorithm.name
+    if traders_path.exists():
+        return traders_path.resolve()
+    return algorithm  # let it fail with the original path
+
+
 def parse_algorithm(algorithm: Path) -> Any:
+    algorithm = resolve_algorithm_path(algorithm)
     sys.path.append(str(algorithm.parent))
     return import_module(algorithm.stem)
 
@@ -184,7 +196,7 @@ mc_app = Typer(context_settings={"help_option_names": ["--help", "-h"]})
 
 @app.command()
 def cli(
-    algorithm: Annotated[Path, Argument(help="Path to the Python file containing the algorithm to backtest.", show_default=False, exists=True, file_okay=True, dir_okay=False, resolve_path=True)],
+    algorithm: Annotated[Path, Argument(help="Path to the Python file containing the algorithm to backtest.", show_default=False, file_okay=True, dir_okay=False, resolve_path=True)],
     days: Annotated[list[str], Argument(help="The days to backtest on. <round>-<day> for a single day, <round> for all days in a round.", show_default=False)],
     merge_pnl: Annotated[bool, Option("--merge-pnl", help="Merge profit and loss across days.")] = False,
     vis: Annotated[bool, Option("--vis", help="Open results in the local visualizer when done. Replay logs are no longer supported by the bundled frontend.")] = False,

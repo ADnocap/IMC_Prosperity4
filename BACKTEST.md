@@ -1,5 +1,62 @@
 # Backtesting Guide
 
+## Quick Start
+
+```bash
+# One-time setup
+cd backtester && pip install -e . && cd ..
+
+# Install Rust (needed for Monte Carlo)
+# Download from https://rustup.rs
+
+# Run Monte Carlo backtest with dashboard
+prosperity4mcbt trader.py --quick --vis --out tmp/results/dashboard.json
+```
+
+Both CLIs auto-resolve `trader.py` to `traders/trader.py`, so you don't need to type the full path.
+
+---
+
+## Setup
+
+### Python package
+
+```bash
+cd backtester
+pip install -e .
+```
+
+This installs two CLIs: `prosperity3bt` (CSV replay) and `prosperity4mcbt` (Monte Carlo).
+
+### Rust toolchain (for Monte Carlo only)
+
+Install from https://rustup.rs. On Windows, use the GNU toolchain:
+
+```bash
+rustup default stable-x86_64-pc-windows-gnu
+```
+
+### Windows: Application Control
+
+Windows Smart App Control blocks freshly compiled Rust binaries (error 4551). To fix:
+
+1. Open **Windows Security > App & Browser Control > Smart App Control**
+2. Set to **Off**
+
+The Rust build output is stored in `C:\tmp\rust_target` to avoid OneDrive sync interference.
+
+### Visualizer (optional)
+
+```bash
+cd visualizer
+npm install
+npm run dev
+```
+
+Dashboard runs at `http://localhost:5555/`. Use `--vis` flag with `prosperity4mcbt` to auto-open it.
+
+---
+
 ## Data
 
 All tutorial market data lives in `data/round0/` (semicolon-delimited CSVs).
@@ -12,76 +69,32 @@ data/round0/
 └── trades_round_0_day_-2.csv
 ```
 
----
-
-## Setup (one-time)
-
-```bash
-cd backtester
-pip install -e .
-```
-
-Rust/Cargo is also required for the Monte Carlo simulator. Install from https://rustup.rs if needed.
-
-### Windows: Application Control policy
-
-Windows may block execution of freshly compiled Rust binaries (error 4551). The build output directory is set to `C:\tmp\rust_target` by default to avoid OneDrive interference. If you still get blocked, you may need to add an exclusion in Windows Security > App & Browser Control > Smart App Control, or temporarily disable it.
+Trader files live in `traders/`. Both CLIs auto-resolve bare filenames (e.g. `trader.py` -> `traders/trader.py`).
 
 ---
 
-## 1. CSV Replay (`prosperity3bt`)
+## 1. Monte Carlo (`prosperity4mcbt`) -- Primary
 
-Deterministic replay against the historical order book from tutorial data.
-
-```bash
-# Basic replay
-prosperity3bt traders/trader.py 0 --data data
-
-# With print output
-prosperity3bt traders/trader.py 0 --data data --print
-
-# Fill analytics (maker vs taker breakdown)
-py -3.13 bt_stats.py traders/trader.py 0 --data data
-```
-
-**Note**: `--match-trades all` (default) is too optimistic for market making. Use for relative A/B comparison between strategies only, not absolute PnL prediction.
-
----
-
-## 2. Monte Carlo (`prosperity4mcbt`)
-
-Rust-backed Monte Carlo simulator. Generates thousands of synthetic market sessions using calibrated bot models, runs your strategy against each, and produces distributional PnL statistics.
-
-This is the primary backtesting tool.
+Rust-backed Monte Carlo simulator. Generates hundreds/thousands of synthetic market sessions using calibrated bot models, runs your strategy against each, and produces distributional PnL statistics.
 
 ```bash
 # Quick (100 sessions, ~6s) -- good for iteration
-prosperity4mcbt traders/trader.py --quick --out tmp/results/dashboard.json
-
-# Default (100 sessions, 10 sample paths)
-prosperity4mcbt traders/trader.py --out tmp/results/dashboard.json
+prosperity4mcbt trader.py --quick --out tmp/results/dashboard.json
 
 # Heavy (1000 sessions, ~55s) -- final eval before submission
-prosperity4mcbt traders/trader.py --heavy --out tmp/results/dashboard.json
+prosperity4mcbt trader.py --heavy --out tmp/results/dashboard.json
 
-# Open dashboard in browser after run
-prosperity4mcbt traders/trader.py --quick --vis --out tmp/results/dashboard.json
+# With dashboard auto-open
+prosperity4mcbt trader.py --quick --vis --out tmp/results/dashboard.json
 ```
 
 ### Advanced options
 
 ```bash
-# Reproducible seed
-prosperity4mcbt traders/trader.py --quick --seed 42 --out tmp/results/dashboard.json
-
-# Fair value mode: simulate (generative) vs replay (from CSV)
-prosperity4mcbt traders/trader.py --quick --fv-mode simulate --out tmp/results/dashboard.json
-
-# Trade arrival mode
-prosperity4mcbt traders/trader.py --quick --trade-mode simulate --out tmp/results/dashboard.json
-
-# Custom session/sample counts
-prosperity4mcbt traders/trader.py --sessions 3000 --sample-sessions 150 --out tmp/results/dashboard.json
+prosperity4mcbt trader.py --quick --seed 42 --out tmp/results/dashboard.json
+prosperity4mcbt trader.py --quick --fv-mode simulate --out tmp/results/dashboard.json
+prosperity4mcbt trader.py --quick --trade-mode simulate --out tmp/results/dashboard.json
+prosperity4mcbt trader.py --sessions 3000 --sample-sessions 150 --out tmp/results/dashboard.json
 ```
 
 ### Output bundle
@@ -95,21 +108,40 @@ tmp/results/
 └── sessions/            # Full session logs
 ```
 
-### Visualizer
+### Current results (trader.py, 100 sessions)
+
+| Metric | Value |
+|--------|-------|
+| Mean total PnL | 14,408 |
+| Std | 2,012 |
+| Median | 14,150 |
+| P5-P95 range | 11,341 - 17,964 |
+
+---
+
+## 2. CSV Replay (`prosperity3bt`)
+
+Deterministic replay against the historical order book from tutorial data.
 
 ```bash
-cd visualizer
-npm install
-npm run dev
+prosperity3bt trader.py 0 --data data
+prosperity3bt trader.py 0 --data data --print
+
+# Fill analytics (maker vs taker breakdown)
+py -3.13 bt_stats.py traders/trader.py 0 --data data
 ```
 
-Dashboard runs at `http://localhost:5173/`. When using `--vis` with `prosperity4mcbt`, the dashboard auto-opens via a CORS file server on port 8001.
+**Warning**: `--match-trades all` (default) over-reports PnL for market making (26x in our testing). Use for relative A/B comparison only.
 
-### Rust simulator directly
+### Current replay results
 
-```bash
-py -3.13 scripts/run_monte_carlo_backtest.py --strategy traders/trader.py --sessions 100
-```
+| Day | EMERALDS | TOMATOES | Total |
+|-----|----------|----------|-------|
+| -2 | 6,746 | 8,242 | 14,988 |
+| -1 | 7,523 | 6,642 | 14,165 |
+| **Total** | **14,269** | **14,884** | **29,154** |
+
+Note: replay PnL is inflated vs portal because `--match-trades all` lets you trade against bot-to-bot trades.
 
 ---
 
@@ -117,27 +149,27 @@ py -3.13 scripts/run_monte_carlo_backtest.py --strategy traders/trader.py --sess
 
 | Scenario | Tool | Command |
 |----------|------|---------|
-| Quick sanity check | `prosperity3bt` | `prosperity3bt traders/trader.py 0 --data data` |
+| Dev iteration | `prosperity4mcbt --quick` | `prosperity4mcbt trader.py --quick --vis --out tmp/r/d.json` |
+| Pre-submission eval | `prosperity4mcbt --heavy` | `prosperity4mcbt trader.py --heavy --out tmp/r/d.json` |
+| Quick sanity check | `prosperity3bt` | `prosperity3bt trader.py 0 --data data` |
 | Fill breakdown | `bt_stats.py` | `py -3.13 bt_stats.py traders/trader.py 0 --data data` |
-| Dev iteration | `prosperity4mcbt --quick` | `prosperity4mcbt traders/trader.py --quick --out tmp/r/d.json` |
-| Pre-submission eval | `prosperity4mcbt --heavy` | `prosperity4mcbt traders/trader.py --heavy --out tmp/r/d.json` |
 | Ground truth | Portal | Submit on prosperity.imc.com |
 
 ---
 
 ## Calibration
 
-The Monte Carlo simulator works because the tutorial bots have been reverse-engineered from the data. The calibration scripts and methodology live in `calibration/`.
+The Monte Carlo simulator works because the tutorial bots have been reverse-engineered from the data. Scripts and docs live in `calibration/`.
 
 ### Philosophy (`calibration/ANALYSIS_PHILOSOPHY.md`)
 
 - Never examine a variable in isolation -- always condition on every known variable.
 - A "uniform [2, 12]" marginal might actually be two processes (aggressive [5,12] + passive [2,6]) only visible when conditioned on price vs fair value.
-- Always run stat tests (chi-squared, z-test) before concluding a distribution is non-uniform. Small samples produce lopsided-looking splits by chance.
+- Always run stat tests (chi-squared, z-test) before concluding a distribution is non-uniform.
 
 ### How true fair value was extracted
 
-We submitted `trader_hold1.py` (buys 1 TOMATO at t=0, holds forever). Server PnL at each tick = `position * server_FV - buy_cost`, so `server_FV(t) = PnL(t) + buy_price`. This revealed that the server uses a continuous fair value quantized to 1/2048 (~0.0005), following a pure Gaussian random walk: N(0, 0.496^2) per step, zero autocorrelation.
+We submitted `traders/trader_hold1.py` (buys 1 TOMATO at t=0, holds forever). Server PnL at each tick = `position * server_FV - buy_cost`, so `server_FV(t) = PnL(t) + buy_price`. This revealed that the server uses a continuous fair value quantized to 1/2048 (~0.0005), following a pure Gaussian random walk: N(0, 0.496^2) per step, zero autocorrelation.
 
 ### Bot 1 -- Outer wall (`calibration/tomatoes/bot1_calibration.md`)
 
@@ -192,7 +224,7 @@ Simpler: fixed fair value at 10,000, outer wall at +/-10, inner wall at +/-8. Sa
 
 When new round data arrives:
 
-1. Submit `trader_hold1.py` (buy 1 unit, hold) to extract server fair value from PnL
+1. Submit `traders/trader_hold1.py` (buy 1 unit, hold) to extract server fair value from PnL
 2. Run `scripts/extract_fv_and_book.py` on the submission log to get `data/fv_and_book.json`
 3. Use `calibration/tomatoes/scripts/analyze_bot{1,2}.py` as templates to identify bot quote rules for new products
 4. Validate with `calibration/tomatoes/scripts/validate_bot{1,2,3}.py` -- target >95% exact match
