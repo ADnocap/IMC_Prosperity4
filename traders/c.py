@@ -1,5 +1,5 @@
 import json
-from prosperity3bt.datamodel import OrderDepth, TradingState, Order
+from datamodel import OrderDepth, TradingState, Order
 
 
 class Trader:
