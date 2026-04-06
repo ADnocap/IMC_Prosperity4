@@ -17,7 +17,6 @@ backtests/
 tmp/
 submission_results/
 submissions/
-TUTORIAL_ROUND_1/
 analysis_plots/
 probes/
 PRESENTATION_CHECKLIST.md
