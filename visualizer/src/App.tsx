@@ -7,6 +7,7 @@ import { ReactNode } from 'react';
 import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterProvider } from 'react-router-dom';
 import { BasePage } from './pages/base/BasePage.tsx';
 import { MonteCarloPage } from './pages/montecarlo/MonteCarloPage.tsx';
+import { RunnerPage } from './pages/runner/RunnerPage.tsx';
 import { useStore } from './store.ts';
 
 const theme = createTheme({
@@ -34,6 +35,7 @@ const router = createBrowserRouter(
     <>
       <Route path="/" element={<BasePage />}>
         <Route index element={<MonteCarloPage />} />
+        <Route path="run" element={<RunnerPage />} />
       </Route>
       <Route path="prosperity4mcbt/*" element={<Navigate to="/" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
