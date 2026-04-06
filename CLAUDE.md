@@ -39,7 +39,7 @@ IMC_trading_hack/
 ## Architecture & Constraints
 
 ### Submission Format
-- **Single Python file** (`traders/trader.py`) containing a `Trader` class with a `run()` method
+- **Single Python file** (`traders/a.py`) containing a `Trader` class with a `run()` method
 - No external file access, no network, no pip installs at runtime
 - Available: standard library + numpy + jsonpickle
 - Memory limit: ~100 MB (AWS Lambda)
@@ -146,16 +146,16 @@ See [BACKTEST.md](BACKTEST.md) for the full guide including calibration methodol
 ### Monte Carlo Backtester (PRIMARY -- use this)
 ```bash
 # Install (one-time): cd backtester && pip install -e .
-prosperity4mcbt traders/trader.py --quick --out tmp/results/dashboard.json    # dev iteration (~6s)
-prosperity4mcbt traders/trader.py --heavy --out tmp/results/dashboard.json    # pre-submission (~55s)
-prosperity4mcbt traders/trader.py --quick --vis --out tmp/results/dashboard.json  # with dashboard
+prosperity4mcbt traders/a.py --quick --out tmp/results/dashboard.json    # dev iteration (~6s)
+prosperity4mcbt traders/a.py --heavy --out tmp/results/dashboard.json    # pre-submission (~55s)
+prosperity4mcbt traders/a.py --quick --vis --out tmp/results/dashboard.json  # with dashboard
 ```
 Rust-backed Monte Carlo using calibrated bot models reverse-engineered from tutorial data. Produces distributional PnL stats (mean, std, percentiles) across hundreds/thousands of synthetic sessions.
 
 ### CSV Replay (sanity checks)
 ```bash
-prosperity3bt traders/trader.py 0 --data data              # historical replay
-py -3.13 bt_stats.py traders/trader.py 0 --data data       # fill analytics
+prosperity3bt traders/a.py 0 --data data              # historical replay
+py -3.13 bt_stats.py traders/a.py 0 --data data       # fill analytics
 ```
 **Warning**: `--match-trades all` (default) over-reports PnL for market making. Use for relative A/B comparison only.
 
@@ -170,7 +170,7 @@ Submission 18425 (v1 code): 979 XIRECs (EMERALDS: 0 | TOMATOES: 979)
 
 ## Coding Conventions
 
-- All trading logic in a single `traders/trader.py` (submission constraint)
+- All trading logic in a single `traders/a.py` (submission constraint)
 - Use `json.dumps()`/`json.loads()` for traderData serialization
 - Keep strategies modular within the single file using helper methods
 - Price is always `int`, quantity is `int` (positive = buy, negative = sell)

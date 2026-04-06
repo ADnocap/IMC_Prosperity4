@@ -10,10 +10,10 @@ cd backtester && pip install -e . && cd ..
 # Download from https://rustup.rs
 
 # Run Monte Carlo backtest with dashboard
-prosperity4mcbt trader.py --quick --vis --out tmp/results/dashboard.json
+prosperity4mcbt a.py --quick --vis --out tmp/results/dashboard.json
 ```
 
-Both CLIs auto-resolve `trader.py` to `traders/trader.py`, so you don't need to type the full path.
+Both CLIs auto-resolve `a.py` to `traders/a.py`, so you don't need to type the full path.
 
 ---
 
@@ -69,7 +69,14 @@ data/round0/
 └── trades_round_0_day_-2.csv
 ```
 
-Trader files live in `traders/`. Both CLIs auto-resolve bare filenames (e.g. `trader.py` -> `traders/trader.py`).
+Trader files live in `traders/`. Both CLIs auto-resolve bare filenames (e.g. `a.py` -> `traders/a.py`).
+
+| File | Strategy | Description |
+|------|----------|-------------|
+| `a.py` | Market making + penny jump + inventory skew | Main strategy (SUBMIT THIS) |
+| `b.py` | Simple opportunistic taking (fixed FV) | Basic taker |
+| `c.py` | Simple MM around mid with position skew | Basic market maker |
+| `trader_hold1.py` | Buy 1 unit, hold forever | Calibration utility (extracts server FV) |
 
 ---
 
@@ -79,22 +86,22 @@ Rust-backed Monte Carlo simulator. Generates hundreds/thousands of synthetic mar
 
 ```bash
 # Quick (100 sessions, ~6s) -- good for iteration
-prosperity4mcbt trader.py --quick --out tmp/results/dashboard.json
+prosperity4mcbt a.py --quick --out tmp/results/dashboard.json
 
 # Heavy (1000 sessions, ~55s) -- final eval before submission
-prosperity4mcbt trader.py --heavy --out tmp/results/dashboard.json
+prosperity4mcbt a.py --heavy --out tmp/results/dashboard.json
 
 # With dashboard auto-open
-prosperity4mcbt trader.py --quick --vis --out tmp/results/dashboard.json
+prosperity4mcbt a.py --quick --vis --out tmp/results/dashboard.json
 ```
 
 ### Advanced options
 
 ```bash
-prosperity4mcbt trader.py --quick --seed 42 --out tmp/results/dashboard.json
-prosperity4mcbt trader.py --quick --fv-mode simulate --out tmp/results/dashboard.json
-prosperity4mcbt trader.py --quick --trade-mode simulate --out tmp/results/dashboard.json
-prosperity4mcbt trader.py --sessions 3000 --sample-sessions 150 --out tmp/results/dashboard.json
+prosperity4mcbt a.py --quick --seed 42 --out tmp/results/dashboard.json
+prosperity4mcbt a.py --quick --fv-mode simulate --out tmp/results/dashboard.json
+prosperity4mcbt a.py --quick --trade-mode simulate --out tmp/results/dashboard.json
+prosperity4mcbt a.py --sessions 3000 --sample-sessions 150 --out tmp/results/dashboard.json
 ```
 
 ### Output bundle
@@ -108,14 +115,13 @@ tmp/results/
 └── sessions/            # Full session logs
 ```
 
-### Current results (trader.py, 100 sessions)
+### Strategy comparison (Monte Carlo, 100 sessions each)
 
-| Metric | Value |
-|--------|-------|
-| Mean total PnL | 14,408 |
-| Std | 2,012 |
-| Median | 14,150 |
-| P5-P95 range | 11,341 - 17,964 |
+| Trader | Mean PnL | Std | Median | P5-P95 |
+|--------|----------|-----|--------|--------|
+| **a.py** | **14,408** | 2,012 | 14,150 | 11,341 - 17,964 |
+| c.py | 7,884 | 934 | 7,973 | 6,402 - 9,223 |
+| b.py | -2,224 | 3,043 | -1,571 | -7,738 - 1,840 |
 
 ---
 
@@ -124,11 +130,11 @@ tmp/results/
 Deterministic replay against the historical order book from tutorial data.
 
 ```bash
-prosperity3bt trader.py 0 --data data
-prosperity3bt trader.py 0 --data data --print
+prosperity3bt a.py 0 --data data
+prosperity3bt a.py 0 --data data --print
 
 # Fill analytics (maker vs taker breakdown)
-py -3.13 bt_stats.py traders/trader.py 0 --data data
+py -3.13 bt_stats.py traders/a.py 0 --data data
 ```
 
 **Warning**: `--match-trades all` (default) over-reports PnL for market making (26x in our testing). Use for relative A/B comparison only.
@@ -149,10 +155,10 @@ Note: replay PnL is inflated vs portal because `--match-trades all` lets you tra
 
 | Scenario | Tool | Command |
 |----------|------|---------|
-| Dev iteration | `prosperity4mcbt --quick` | `prosperity4mcbt trader.py --quick --vis --out tmp/r/d.json` |
-| Pre-submission eval | `prosperity4mcbt --heavy` | `prosperity4mcbt trader.py --heavy --out tmp/r/d.json` |
-| Quick sanity check | `prosperity3bt` | `prosperity3bt trader.py 0 --data data` |
-| Fill breakdown | `bt_stats.py` | `py -3.13 bt_stats.py traders/trader.py 0 --data data` |
+| Dev iteration | `prosperity4mcbt --quick` | `prosperity4mcbt a.py --quick --vis --out tmp/r/d.json` |
+| Pre-submission eval | `prosperity4mcbt --heavy` | `prosperity4mcbt a.py --heavy --out tmp/r/d.json` |
+| Quick sanity check | `prosperity3bt` | `prosperity3bt a.py 0 --data data` |
+| Fill breakdown | `bt_stats.py` | `py -3.13 bt_stats.py traders/a.py 0 --data data` |
 | Ground truth | Portal | Submit on prosperity.imc.com |
 
 ---

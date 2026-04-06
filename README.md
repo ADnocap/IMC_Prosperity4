@@ -9,10 +9,10 @@ Algorithmic trading competition workspace with a Rust-backed Monte Carlo backtes
 cd backtester && pip install -e . && cd ..
 
 # Run Monte Carlo backtest
-prosperity4mcbt traders/trader.py --quick --out tmp/results/dashboard.json
+prosperity4mcbt traders/a.py --quick --out tmp/results/dashboard.json
 
 # Run with dashboard
-prosperity4mcbt traders/trader.py --quick --vis --out tmp/results/dashboard.json
+prosperity4mcbt traders/a.py --quick --vis --out tmp/results/dashboard.json
 ```
 
 See [BACKTEST.md](BACKTEST.md) for full backtesting guide and calibration methodology.
@@ -67,7 +67,7 @@ Parameters were extracted by submitting a hold-1-unit strategy to recover true s
 
 - **IMC Prosperity 4** (2026): April 14-30 (5 rounds)
 - **Wiki**: https://imc-prosperity.notion.site/prosperity-4-wiki
-- **Submission**: Single `traders/trader.py` file with `Trader.run(state)` method
+- **Submission**: Single `traders/a.py` file with `Trader.run(state)` method
 - **Constraints**: stdlib + numpy + jsonpickle only, ~100MB memory, no file/network access
 
 ## Attribution
