@@ -23,25 +23,25 @@ uv pip install -e .
 Quick run:
 
 ```bash
-prosperity4mcbt ../example_trader.py --quick --out ../tmp/example/dashboard.json
+prosperity4mcbt ../traders/example_trader.py --quick --out ../tmp/example/dashboard.json
 ```
 
 Default run:
 
 ```bash
-prosperity4mcbt ../example_trader.py --out ../tmp/example/dashboard.json
+prosperity4mcbt ../traders/example_trader.py --out ../tmp/example/dashboard.json
 ```
 
 Heavy run:
 
 ```bash
-prosperity4mcbt ../example_trader.py --heavy --out ../tmp/example/dashboard.json
+prosperity4mcbt ../traders/example_trader.py --heavy --out ../tmp/example/dashboard.json
 ```
 
 Open the dashboard locally:
 
 ```bash
-prosperity4mcbt ../example_trader.py --quick --vis --out ../tmp/example/dashboard.json
+prosperity4mcbt ../traders/example_trader.py --quick --vis --out ../tmp/example/dashboard.json
 ```
 
 ## Replay
@@ -49,7 +49,7 @@ prosperity4mcbt ../example_trader.py --quick --vis --out ../tmp/example/dashboar
 Replay the tutorial CSVs directly:
 
 ```bash
-prosperity3bt ../example_trader.py 0 --data ../data
+prosperity3bt ../traders/example_trader.py 0 --data ../data
 ```
 
 The bundled frontend in this repo is Monte Carlo-only, so `prosperity3bt --vis` is not supported by the shipped UI.

@@ -10,9 +10,10 @@ You are helping with the IMC Prosperity 4 algorithmic trading competition. The p
 ## Setup
 
 - **Python**: Use `py -3.13` (Python 3.13)
-- **Backtester**: `prosperity4btx` package (run via `py -3.13 -m prosperity4bt`)
-- **Main algo file**: `trader.py` (single-file submission with `Trader` class)
-- **Data**: `TUTORIAL_ROUND_1/` and subsequent `round_N/` folders
+- **Monte Carlo backtester**: `prosperity4mcbt` CLI (install: `cd backtester && pip install -e .`)
+- **CSV replay**: `prosperity3bt` CLI (same package)
+- **Main algo file**: `traders/trader.py` (single-file submission with `Trader` class)
+- **Data**: `data/round0/` and subsequent `round_N/` folders
 - **Analysis**: `analysis/tutorial_eda.py`
 - **Unicode output**: Prefix commands with `PYTHONIOENCODING=utf-8` when needed
 
@@ -26,38 +27,41 @@ Parse the user's input to determine which subcommand to run. If no subcommand is
 
 Show a status overview:
 
-1. Read `trader.py` and extract the `PARAMS` dict to list all products, their strategies, and key parameters
-2. Find the most recent `.log` file in `backtests/` directory (sorted by filename which is a timestamp)
-3. If a recent backtest exists, report the PnL breakdown from it. If not, suggest running a backtest.
-4. List all available data directories (TUTORIAL_ROUND_1, round_N, etc.)
+1. Read `traders/trader.py` and extract the `PARAMS` dict to list all products, their strategies, and key parameters
+2. Find the most recent results in `tmp/` directory
+3. If recent backtest results exist, report the PnL breakdown. If not, suggest running a backtest.
+4. List all available data directories (data/round0, round_N, etc.)
 
 Format output as a concise dashboard:
 
 ```
 ## Prosperity Status
 **Products**: EMERALDS (fixed_mm, fair=10000), TOMATOES (adaptive_mm, ema=0.15)
-**Last Backtest**: 2026-03-24 - Total: 11,726 XIRECs
-  Day -2: 6,458 (EMERALDS: 1,919 | TOMATOES: 4,540)
-  Day -1: 5,267 (EMERALDS: 2,104 | TOMATOES: 3,163)
-**Available Data**: TUTORIAL_ROUND_1
+**Last Backtest**: Monte Carlo heavy -- Mean: 1,200 XIRECs (std: 450, P05: 300, P95: 2,100)
+**Available Data**: data/round0
 ```
 
 ---
 
 ### `/prosperity backtest` or `/prosperity backtest [round]`
 
-Run the backtester and report results:
+Run the Monte Carlo backtester and report results:
 
-1. Default round is `0` (tutorial). If the user specifies a round number, use that.
-2. Run: `cd "C:/Users/alexa/OneDrive/Documents/IMC_trading_hack" && py -3.13 -m prosperity4bt trader.py <round>`
-3. Parse the output for per-product PnL and total profit
-4. Compare against previous backtest results if available (check `backtests/` for the previous log)
-5. Report results with a clear comparison showing improvement or regression per product
+1. Default round is `0` (tutorial). Use `--quick` for fast iteration, `--heavy` for final eval.
+2. Run: `cd "C:/Users/alexa/OneDrive/Documents/IMC_trading_hack" && prosperity4mcbt traders/trader.py --quick --out tmp/results/dashboard.json`
+3. Parse the output for per-product PnL statistics (mean, std, percentiles)
+4. Compare against previous backtest results if available
+5. Report results with clear comparison showing improvement or regression
+
+For a quick sanity check, use CSV replay instead:
+```bash
+prosperity3bt traders/trader.py 0 --data data
+```
 
 If the backtest fails, read the error carefully and diagnose it. Common issues:
 - Import errors (missing modules)
 - Position limit violations
-- Syntax errors in trader.py
+- Syntax errors in traders/trader.py
 
 ---
 
@@ -79,9 +83,9 @@ If analyzing a new round's data, check if the EDA script needs updating first (i
 
 ### `/prosperity submit`
 
-Validate `trader.py` for submission readiness:
+Validate `traders/trader.py` for submission readiness:
 
-1. **Read `trader.py`** and check:
+1. **Read `traders/trader.py`** and check:
    - Has a `Trader` class
    - Has a `run(self, state: TradingState)` method
    - Returns a 3-tuple `(result, conversions, traderData)`
@@ -93,14 +97,14 @@ Validate `trader.py` for submission readiness:
    - No environment variable reads that won't exist in the sandbox
    - Position limits are respected (check that worst-case fills don't exceed limits)
 
-2. **Run a backtest** to confirm no runtime errors:
-   `cd "C:/Users/alexa/OneDrive/Documents/IMC_trading_hack" && py -3.13 -m prosperity4bt trader.py 0`
+2. **Run a quick backtest** to confirm no runtime errors:
+   `cd "C:/Users/alexa/OneDrive/Documents/IMC_trading_hack" && prosperity3bt traders/trader.py 0 --data data`
 
 3. **Report**:
    - Green/pass for each check
    - Warnings for any issues
    - Final verdict: "Ready to submit" or "Fix issues before submitting"
-   - Remind the user to upload the single `trader.py` file on the Prosperity platform
+   - Remind the user to upload the single `traders/trader.py` file on the Prosperity platform
 
 ---
 
@@ -108,7 +112,7 @@ Validate `trader.py` for submission readiness:
 
 Analyze and suggest parameter improvements for a specific product:
 
-1. **Read `trader.py`** to get current parameters for the product
+1. **Read `traders/trader.py`** to get current parameters for the product
 2. **Read the relevant price/trade CSVs** for that product
 3. **Analyze**:
    - Is the fair value correct? Compare against actual mid-price distribution
@@ -117,7 +121,7 @@ Analyze and suggest parameter improvements for a specific product:
    - Are take_width thresholds capturing enough edge?
    - Is the soft_limit/hard_limit balance right for inventory management?
 4. **Suggest specific parameter changes** with reasoning
-5. **Optionally run a backtest** with the suggested changes to show projected improvement
+5. **Optionally run a Monte Carlo backtest** with the suggested changes to show projected improvement
 
 If no product is specified, analyze all products.
 
@@ -129,5 +133,5 @@ If no product is specified, analyze all products.
 - Use `py -3.13` for all Python execution
 - Set `PYTHONIOENCODING=utf-8` when output may contain unicode
 - When showing PnL changes, use clear +/- formatting and highlight improvements
-- Reference the CLAUDE.md for project context when needed
-- The competition adds new products each round - check what products exist in trader.py's PARAMS before making assumptions
+- Reference the CLAUDE.md and BACKTEST.md for project context when needed
+- The competition adds new products each round - check what products exist in traders/trader.py's PARAMS before making assumptions

@@ -13,28 +13,33 @@ This is our workspace for **IMC Prosperity 4** (2026), a multi-round algorithmic
 
 ```
 IMC_trading_hack/
-├── CLAUDE.md                          # This file - project context
-├── PROSPERITY_4_WIKI_COMPLETE.md      # Full game reference
+├── traders/                           # All trader algorithms
+│   ├── trader.py                      #   Main trading algorithm (SUBMIT THIS)
+│   ├── trader_hold1.py                #   Hold-1-unit strategy for FV extraction
+│   ├── example_trader.py              #   IMC official starter template
+│   ├── test_algo.py                   #   Simple test market maker
+│   └── starter.py                     #   Alternate starter
 ├── datamodel.py                       # Official Prosperity 4 data model
-├── trader.py                          # Main trading algorithm (SUBMIT THIS)
+├── CLAUDE.md                          # This file - project context
+├── BACKTEST.md                        # Backtesting & calibration guide
+├── PROSPERITY_4_WIKI_COMPLETE.md      # Full game reference
+├── backtester/                        # Backtester package (install with pip install -e .)
+│   ├── prosperity4mcbt/               #   Monte Carlo CLI (primary backtester)
+│   └── prosperity3bt/                 #   Historical CSV replay CLI
+├── rust_simulator/                    # Rust Monte Carlo simulation engine
+├── visualizer/                        # Local dashboard frontend (Vite/React)
+├── data/round0/                       # Tutorial round market data (CSVs)
+├── calibration/                       # Bot reverse-engineering scripts & methodology
+├── scripts/                           # Helper scripts (MC runner, analysis)
 ├── analysis/                          # Data analysis notebooks and scripts
-│   └── tutorial_eda.py                # Exploratory data analysis
-├── strategies/                        # Strategy modules (imported by trader.py inline)
-│   ├── market_making.py               # Market making for stationary products
-│   └── adaptive_mm.py                 # Adaptive market making for drifting products
-├── backtesting/                       # Backtesting scripts and results
-├── TUTORIAL_ROUND_1/                  # Tutorial round data (CSV files)
-│   ├── prices_round_0_day_-1.csv      # Order book snapshots
-│   ├── prices_round_0_day_-2.csv
-│   ├── trades_round_0_day_-1.csv      # Executed trades
-│   └── trades_round_0_day_-2.csv
+├── bt_stats.py                        # Fill analytics wrapper
 └── round_N/                           # Data for each competition round (added as released)
 ```
 
 ## Architecture & Constraints
 
 ### Submission Format
-- **Single Python file** (`trader.py`) containing a `Trader` class with a `run()` method
+- **Single Python file** (`traders/trader.py`) containing a `Trader` class with a `run()` method
 - No external file access, no network, no pip installs at runtime
 - Available: standard library + numpy + jsonpickle
 - Memory limit: ~100 MB (AWS Lambda)
@@ -136,30 +141,23 @@ Use **Python 3.13** via `py -3.13`. For console output with unicode, set `PYTHON
 
 ## Backtesting
 
-### CRITICAL: Community Backtester Is Misleading for Market Making
-The community backtester (`prosperity4bt`) default mode (`--match-trades all`) **massively over-reports PnL** for passive market-making strategies (26x in our case). It double-counts fills by letting you trade against bot-to-bot trades that happened BEFORE your algo ran.
+See [BACKTEST.md](BACKTEST.md) for the full guide including calibration methodology.
 
-| Mode | PnL | Reality |
-|------|-----|---------|
-| `prosperity4bt --match-trades all` | 25,420 | 26x too high |
-| `prosperity4bt --match-trades none` | 0 | Too conservative |
-| `backtesting/backtest.py` (realistic) | ~1,000 | Close to portal |
-| **Portal submission** | **979** | Ground truth |
-
-### Realistic Backtester (USE THIS)
+### Monte Carlo Backtester (PRIMARY -- use this)
 ```bash
-py -3.13 backtesting/backtest.py                    # default (fill_rate=0.05)
-py -3.13 backtesting/backtest.py --fill-rate 0.07   # optimistic
-py -3.13 backtesting/backtest.py --no-passive        # conservative (book-cross only)
+# Install (one-time): cd backtester && pip install -e .
+prosperity4mcbt traders/trader.py --quick --out tmp/results/dashboard.json    # dev iteration (~6s)
+prosperity4mcbt traders/trader.py --heavy --out tmp/results/dashboard.json    # pre-submission (~55s)
+prosperity4mcbt traders/trader.py --quick --vis --out tmp/results/dashboard.json  # with dashboard
 ```
-Simulates step-5 passive fills with calibrated probability. Tune `--fill-rate` after each portal submission to match results.
+Rust-backed Monte Carlo using calibrated bot models reverse-engineered from tutorial data. Produces distributional PnL stats (mean, std, percentiles) across hundreds/thousands of synthetic sessions.
 
-### Community Backtester (use for error checking only)
+### CSV Replay (sanity checks)
 ```bash
-py -3.13 -m prosperity4bt trader.py 0 --match-trades none   # safe sanity check
-py -3.13 -m prosperity4bt trader.py 0                        # optimistic upper bound ONLY
+prosperity3bt traders/trader.py 0 --data data              # historical replay
+py -3.13 bt_stats.py traders/trader.py 0 --data data       # fill analytics
 ```
-Use `--match-trades none` for sanity checks. Use default `all` mode ONLY for relative A/B comparison between strategies (not absolute PnL prediction).
+**Warning**: `--match-trades all` (default) over-reports PnL for market making. Use for relative A/B comparison only.
 
 ### Portal Submission Results
 ```
@@ -167,11 +165,12 @@ Submission 18425 (v1 code): 979 XIRECs (EMERALDS: 0 | TOMATOES: 979)
 ```
 
 ### Visualization
+- Local MC dashboard: `cd visualizer && npm install && npm run dev` then use `--vis` flag
 - IMC Prosperity Visualizer: https://jmerle.github.io/imc-prosperity-visualizer/
 
 ## Coding Conventions
 
-- All trading logic in a single `trader.py` (submission constraint)
+- All trading logic in a single `traders/trader.py` (submission constraint)
 - Use `json.dumps()`/`json.loads()` for traderData serialization
 - Keep strategies modular within the single file using helper methods
 - Price is always `int`, quantity is `int` (positive = buy, negative = sell)
@@ -185,7 +184,7 @@ Submission 18425 (v1 code): 979 XIRECs (EMERALDS: 0 | TOMATOES: 979)
 - **Position limit bug**: When computing passive order sizes after taking, use STARTING position (from state.position), not the locally-tracked post-take position. The exchange checks all orders against the starting position. Using post-take position over-allocates the opposite side → ALL orders cancelled.
 - Not accounting for worst-case position limit check (ALL orders, not individual)
 - **EMA-based taking loses money on drifting assets**: For trending products like TOMATOES, EMA lag causes wrong-way trades (buys falling markets, sells rising). Use pure passive quoting instead.
-- **Community backtester fills are unrealistic**: Don't trust absolute PnL from prosperity4bt for market-making. Use our realistic backtester or the portal.
+- **CSV replay fills are unrealistic**: Don't trust absolute PnL from `prosperity3bt --match-trades all` for market-making. Use `prosperity4mcbt` Monte Carlo or the portal.
 - Hardcoding values that change between rounds
 - Not persisting state properly in traderData (init called once, run called per tick)
 - Placing orders that cross your own orders (unnecessary self-trade)

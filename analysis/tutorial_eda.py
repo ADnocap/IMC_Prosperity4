@@ -101,7 +101,7 @@ if __name__ == "__main__":
     import os
 
     base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    data_dir = os.path.join(base, "TUTORIAL_ROUND_1")
+    data_dir = os.path.join(base, "data", "round0")
 
     # Analyze both days
     for day in [-2, -1]:
