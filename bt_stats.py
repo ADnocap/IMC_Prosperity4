@@ -12,7 +12,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-# ── Bootstrap: add backtester to path ──────────────────────────────
+# -- Bootstrap: add backtester to path ------------------------------
 bt_dir = Path(__file__).parent / "backtester"
 sys.path.insert(0, str(bt_dir))
 
@@ -20,7 +20,7 @@ from prosperity3bt import runner
 from prosperity3bt.datamodel import Order, Symbol, Trade, TradingState
 from prosperity3bt.models import BacktestResult, MarketTrade, TradeMatchingMode, TradeRow
 
-# ── Stats accumulator ──────────────────────────────────────────────
+# -- Stats accumulator ----------------------------------------------
 
 stats = defaultdict(lambda: {
     "maker_buys": 0, "maker_sells": 0,
@@ -36,7 +36,7 @@ stats = defaultdict(lambda: {
 })
 
 
-# ── Patched matching functions ─────────────────────────────────────
+# -- Patched matching functions -------------------------------------
 
 _orig_match_buy = runner.match_buy_order
 _orig_match_sell = runner.match_sell_order
@@ -207,14 +207,14 @@ def _tagged_match_orders(state, data, orders, result, mode):
         result.trades.extend([TradeRow(trade) for trade in remaining])
 
 
-# ── Install patches ────────────────────────────────────────────────
+# -- Install patches ------------------------------------------------
 
 runner.match_buy_order = _tagged_match_buy
 runner.match_sell_order = _tagged_match_sell
 runner.match_orders = _tagged_match_orders
 
 
-# ── Report printer ─────────────────────────────────────────────────
+# -- Report printer -------------------------------------------------
 
 def print_fill_report():
     if not stats:
@@ -241,52 +241,52 @@ def print_fill_report():
         taker_cost = s["taker_buy_cost"] + s["taker_sell_cost"]
 
         print(f"\n  {product}")
-        print(f"  {'─' * 60}")
+        print(f"  {'-' * 60}")
 
         # Fill counts
         pct_m = maker_fills / total_fills * 100 if total_fills else 0
         pct_t = taker_fills / total_fills * 100 if total_fills else 0
-        print(f"  Fills:   {total_fills:>6}  │  maker {maker_fills:>5} ({pct_m:5.1f}%)  │  taker {taker_fills:>5} ({pct_t:5.1f}%)")
+        print(f"  Fills:   {total_fills:>6}  |  maker {maker_fills:>5} ({pct_m:5.1f}%)  |  taker {taker_fills:>5} ({pct_t:5.1f}%)")
 
         # Volume
         vpct_m = maker_vol / total_vol * 100 if total_vol else 0
         vpct_t = taker_vol / total_vol * 100 if total_vol else 0
-        print(f"  Volume:  {total_vol:>6}  │  maker {maker_vol:>5} ({vpct_m:5.1f}%)  │  taker {taker_vol:>5} ({vpct_t:5.1f}%)")
+        print(f"  Volume:  {total_vol:>6}  |  maker {maker_vol:>5} ({vpct_m:5.1f}%)  |  taker {taker_vol:>5} ({vpct_t:5.1f}%)")
 
         # Avg fill size
         avg_maker = maker_vol / maker_fills if maker_fills else 0
         avg_taker = taker_vol / taker_fills if taker_fills else 0
         avg_all = total_vol / total_fills if total_fills else 0
-        print(f"  Avg qty: {avg_all:>6.1f}  │  maker {avg_maker:>5.1f}       │  taker {avg_taker:>5.1f}")
+        print(f"  Avg qty: {avg_all:>6.1f}  |  maker {avg_maker:>5.1f}       |  taker {avg_taker:>5.1f}")
 
         # Avg price
         avg_maker_px = maker_cost / maker_vol if maker_vol else 0
         avg_taker_px = taker_cost / taker_vol if taker_vol else 0
         avg_all_px = (maker_cost + taker_cost) / total_vol if total_vol else 0
-        print(f"  Avg px:  {avg_all_px:>8.1f}│  maker {avg_maker_px:>8.1f}   │  taker {avg_taker_px:>8.1f}")
+        print(f"  Avg px:  {avg_all_px:>8.1f}|  maker {avg_maker_px:>8.1f}   |  taker {avg_taker_px:>8.1f}")
 
         # Buy/sell breakdown
-        print(f"  ┌─ Buys:  maker {s['maker_buys']:>4} ({s['maker_buy_vol']:>5} vol)  │  taker {s['taker_buys']:>4} ({s['taker_buy_vol']:>5} vol)")
-        print(f"  └─ Sells: maker {s['maker_sells']:>4} ({s['maker_sell_vol']:>5} vol)  │  taker {s['taker_sells']:>4} ({s['taker_sell_vol']:>5} vol)")
+        print(f"  +- Buys:  maker {s['maker_buys']:>4} ({s['maker_buy_vol']:>5} vol)  |  taker {s['taker_buys']:>4} ({s['taker_buy_vol']:>5} vol)")
+        print(f"  +- Sells: maker {s['maker_sells']:>4} ({s['maker_sell_vol']:>5} vol)  |  taker {s['taker_sells']:>4} ({s['taker_sell_vol']:>5} vol)")
 
         # Step-level stats
         fills_per_step = total_fills / total_steps if total_steps else 0
         vol_per_step = total_vol / total_steps if total_steps else 0
         fill_rate = s["steps_with_fills"] / total_steps * 100 if total_steps else 0
-        print(f"  Steps:   {total_steps:>6}  │  with fills {s['steps_with_fills']:>5} ({fill_rate:5.1f}%)")
-        print(f"  Per step: {fills_per_step:>5.2f} fills  │  {vol_per_step:>5.1f} vol")
+        print(f"  Steps:   {total_steps:>6}  |  with fills {s['steps_with_fills']:>5} ({fill_rate:5.1f}%)")
+        print(f"  Per step: {fills_per_step:>5.2f} fills  |  {vol_per_step:>5.1f} vol")
 
         # Order efficiency
         submitted = s["orders_submitted"]
         unfilled = s["orders_unfilled"]
         fully_filled = submitted - unfilled
         fill_pct = fully_filled / submitted * 100 if submitted else 0
-        print(f"  Orders:  {submitted:>6} submitted  │  {fully_filled:>5} fully filled ({fill_pct:5.1f}%)")
+        print(f"  Orders:  {submitted:>6} submitted  |  {fully_filled:>5} fully filled ({fill_pct:5.1f}%)")
 
     print("\n" + "=" * 72)
 
 
-# ── Main: delegate to backtester CLI, then print report ────────────
+# -- Main: delegate to backtester CLI, then print report ------------
 
 if __name__ == "__main__":
     from prosperity3bt.__main__ import app

@@ -23,6 +23,10 @@ pip install -e .
 
 Rust/Cargo is also required for the Monte Carlo simulator. Install from https://rustup.rs if needed.
 
+### Windows: Application Control policy
+
+Windows may block execution of freshly compiled Rust binaries (error 4551). The build output directory is set to `C:\tmp\rust_target` by default to avoid OneDrive interference. If you still get blocked, you may need to add an exclusion in Windows Security > App & Browser Control > Smart App Control, or temporarily disable it.
+
 ---
 
 ## 1. CSV Replay (`prosperity3bt`)
@@ -99,7 +103,7 @@ npm install
 npm run dev
 ```
 
-Then run backtests with `--vis` to auto-open the Monte Carlo dashboard at `http://127.0.0.1:5555/`.
+Dashboard runs at `http://localhost:5173/`. When using `--vis` with `prosperity4mcbt`, the dashboard auto-opens via a CORS file server on port 8001.
 
 ### Rust simulator directly
 

@@ -921,7 +921,7 @@ def run_rust_monte_carlo(
         "--ticks-per-day",
         str(ticks_per_day),
     ]
-    env = {**os.environ, "PROSPERITY4MCBT_ROOT": str(project_root().resolve())}
+    env = {**os.environ, "PROSPERITY4MCBT_ROOT": str(project_root().resolve()), "CARGO_TARGET_DIR": os.environ.get("CARGO_TARGET_DIR", "C:\\tmp\\rust_target")}
     subprocess.run(cmd, cwd=simulator_dir, env=env, check=True)
 
 
