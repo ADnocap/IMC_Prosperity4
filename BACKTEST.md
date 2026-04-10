@@ -4,7 +4,7 @@
 
 ```bash
 # One-time setup
-cd backtester && pip install -e . && cd ..
+pip install -e .
 
 # Install Rust (needed for Monte Carlo)
 # Download from https://rustup.rs
@@ -22,7 +22,6 @@ Both CLIs auto-resolve `a.py` to `traders/a.py`, so you don't need to type the f
 ### Python package
 
 ```bash
-cd backtester
 pip install -e .
 ```
 
@@ -54,16 +53,13 @@ npm install
 
 #### One-command launch (recommended)
 
-From the repo root, run the PowerShell script:
+From the repo root, run the PowerShell script, or just run the first one and you can run a backtest in the app:
 
 ```powershell
-.\run_viz.ps1                        # backtest traders/a.py (quick) + open dashboard
-.\run_viz.ps1 traders/b.py           # different trader
-.\run_viz.ps1 -Heavy                 # heavy backtest (1000 sessions)
-.\run_viz.ps1 traders/b.py -Heavy    # both
+.\run.ps1
 ```
 
-This starts the Vite frontend, runs the Monte Carlo backtester, launches the data server, and opens the dashboard in your browser. Each run is saved to a timestamped directory (e.g. `tmp/a_2026-04-10_16-30-00/`) so all past runs appear in the Run dropdown.
+This starts the Vite frontend + data server and opens the dashboard in your browser. Run backtests from the **Run** tab -- pick a trader, set sessions, and click Simulate. Results are saved to `backtests/` and appear in the Run dropdown.
 
 #### Manual launch (two terminals)
 
@@ -81,24 +77,26 @@ Dashboard runs at `http://localhost:5555/`. The `--vis` flag starts the data ser
 
 ## Data
 
-All tutorial market data lives in `data/round0/` (semicolon-delimited CSVs).
+All tutorial market data lives in `data/prosperity4/round0/` (semicolon-delimited CSVs). Prosperity 3 historical data is in `data/prosperity3/`.
 
 ```
-data/round0/
-├── prices_round_0_day_-1.csv   # Order book snapshots
-├── prices_round_0_day_-2.csv
-├── trades_round_0_day_-1.csv   # Market trades
-└── trades_round_0_day_-2.csv
+data/
+├── prosperity4/round0/            # P4 tutorial round
+│   ├── prices_round_0_day_-1.csv  # Order book snapshots
+│   ├── prices_round_0_day_-2.csv
+│   ├── trades_round_0_day_-1.csv  # Market trades
+│   └── trades_round_0_day_-2.csv
+└── prosperity3/round1-8/          # P3 historical data (reference)
 ```
 
 Trader files live in `traders/`. Both CLIs auto-resolve bare filenames (e.g. `a.py` -> `traders/a.py`).
 
-| File | Strategy | Description |
-|------|----------|-------------|
-| `a.py` | Market making + penny jump + inventory skew | Main strategy (SUBMIT THIS) |
-| `b.py` | Simple opportunistic taking (fixed FV) | Basic taker |
-| `c.py` | Simple MM around mid with position skew | Basic market maker |
-| `trader_hold1.py` | Buy 1 unit, hold forever | Calibration utility (extracts server FV) |
+| File              | Strategy                                    | Description                              |
+| ----------------- | ------------------------------------------- | ---------------------------------------- |
+| `a.py`            | Market making + penny jump + inventory skew | Main strategy (SUBMIT THIS)              |
+| `b.py`            | Simple opportunistic taking (fixed FV)      | Basic taker                              |
+| `c.py`            | Simple MM around mid with position skew     | Basic market maker                       |
+| `trader_hold1.py` | Buy 1 unit, hold forever                    | Calibration utility (extracts server FV) |
 
 ---
 
@@ -139,11 +137,11 @@ tmp/results/
 
 ### Strategy comparison (Monte Carlo, 100 sessions each)
 
-| Trader | Mean PnL | Std | Median | P5-P95 |
-|--------|----------|-----|--------|--------|
-| **a.py** | **14,408** | 2,012 | 14,150 | 11,341 - 17,964 |
-| c.py | 7,884 | 934 | 7,973 | 6,402 - 9,223 |
-| b.py | -2,224 | 3,043 | -1,571 | -7,738 - 1,840 |
+| Trader   | Mean PnL  | Std | Median | P5-P95          |
+| -------- | --------- | --- | ------ | --------------- |
+| **a.py** | **2,939** | 614 | 2,936  | 1,859 - 3,836   |
+
+*(2,000 ticks/day matching portal server; portal submission 70344: ~2,518)*
 
 ---
 
@@ -152,21 +150,21 @@ tmp/results/
 Deterministic replay against the historical order book from tutorial data.
 
 ```bash
-prosperity3bt a.py 0 --data data
-prosperity3bt a.py 0 --data data --print
+prosperity3bt a.py 0
+prosperity3bt a.py 0 --print
 
 # Fill analytics (maker vs taker breakdown)
-py -3.13 bt_stats.py traders/a.py 0 --data data
+py -3.13 scripts/bt_stats.py traders/a.py 0
 ```
 
 **Warning**: `--match-trades all` (default) over-reports PnL for market making (26x in our testing). Use for relative A/B comparison only.
 
 ### Current replay results
 
-| Day | EMERALDS | TOMATOES | Total |
-|-----|----------|----------|-------|
-| -2 | 6,746 | 8,242 | 14,988 |
-| -1 | 7,523 | 6,642 | 14,165 |
+| Day       | EMERALDS   | TOMATOES   | Total      |
+| --------- | ---------- | ---------- | ---------- |
+| -2        | 6,746      | 8,242      | 14,988     |
+| -1        | 7,523      | 6,642      | 14,165     |
 | **Total** | **14,269** | **14,884** | **29,154** |
 
 Note: replay PnL is inflated vs portal because `--match-trades all` lets you trade against bot-to-bot trades.
@@ -175,13 +173,13 @@ Note: replay PnL is inflated vs portal because `--match-trades all` lets you tra
 
 ## When to use which
 
-| Scenario | Tool | Command |
-|----------|------|---------|
-| Dev iteration | `prosperity4mcbt --quick` | `prosperity4mcbt a.py --quick --vis --out tmp/r/d.json` |
-| Pre-submission eval | `prosperity4mcbt --heavy` | `prosperity4mcbt a.py --heavy --out tmp/r/d.json` |
-| Quick sanity check | `prosperity3bt` | `prosperity3bt a.py 0 --data data` |
-| Fill breakdown | `bt_stats.py` | `py -3.13 bt_stats.py traders/a.py 0 --data data` |
-| Ground truth | Portal | Submit on prosperity.imc.com |
+| Scenario            | Tool                      | Command                                                 |
+| ------------------- | ------------------------- | ------------------------------------------------------- |
+| Dev iteration       | `prosperity4mcbt --quick` | `prosperity4mcbt a.py --quick --vis --out tmp/r/d.json` |
+| Pre-submission eval | `prosperity4mcbt --heavy` | `prosperity4mcbt a.py --heavy --out tmp/r/d.json`       |
+| Quick sanity check  | `prosperity3bt`           | `prosperity3bt a.py 0`                                   |
+| Fill breakdown      | `bt_stats.py`             | `py -3.13 scripts/bt_stats.py traders/a.py 0`            |
+| Ground truth        | Portal                    | Submit on prosperity.imc.com                            |
 
 ---
 

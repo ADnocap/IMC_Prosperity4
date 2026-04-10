@@ -79,7 +79,7 @@ export function MonteCarloPage(): ReactNode {
   const localFallbackOpenUrl = localMode ? selectedRun?.dashboardUrl ?? '/dashboard.json' : null;
   const localStatusUrl = localMode ? '/__prosperity4mcbt__/status.json' : null;
   const openUrl = explicitOpenUrl ?? localFallbackOpenUrl;
-  const effectiveOpenUrl = openUrl === null ? null : withVersion(openUrl, explicitOpenUrl === null ? dashboardVersion : null);
+  const effectiveOpenUrl = openUrl;
   const dashboard = effectiveOpenUrl === null ? storedDashboard : loadedUrl === effectiveOpenUrl ? localDashboard : null;
 
   useEffect(() => {
@@ -118,9 +118,6 @@ export function MonteCarloPage(): ReactNode {
         }
 
         if (!response.data.dashboardExists || response.data.dashboardMtimeMs === null) {
-          setLocalDashboard(null);
-          setLoadedUrl(null);
-          setDashboardVersion(null);
           return;
         }
 

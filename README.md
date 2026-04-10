@@ -22,26 +22,19 @@ See [BACKTEST.md](BACKTEST.md) for full backtesting guide and calibration method
 ```
 IMC_trading_hack/
 ├── traders/                   # All trader algorithms
-│   ├── trader.py              #   Main trading algorithm (SUBMIT THIS)
-│   ├── trader_hold1.py        #   Hold-1-unit strategy for FV extraction
-│   ├── example_trader.py      #   IMC official starter template
-│   ├── test_algo.py           #   Simple test market maker
-│   └── starter.py             #   Alternate starter
-├── datamodel.py               # Official Prosperity 4 data model
-├── BACKTEST.md                # Backtesting & calibration guide
-├── CLAUDE.md                  # Project context for Claude
-├── PROSPERITY_4_WIKI_COMPLETE.md
-│
+│   ├── a.py                   #   Main trading algorithm (SUBMIT THIS)
+│   ├── datamodel.py           #   Official Prosperity 4 data model
+│   └── trader_hold1.py        #   Hold-1-unit strategy for FV extraction
+├── data/                      # Market data
+│   ├── prosperity4/round0/    #   P4 tutorial round (EMERALDS, TOMATOES)
+│   └── prosperity3/round1-8/  #   P3 historical data (reference)
 ├── backtester/                # Backtester package (prosperity3bt + prosperity4mcbt CLIs)
 ├── rust_simulator/            # Rust Monte Carlo simulation engine
 ├── visualizer/                # Local dashboard frontend (Vite/React)
-│
-├── data/round0/               # Tutorial round market data (CSVs)
 ├── calibration/               # Bot reverse-engineering scripts & docs
-├── scripts/                   # Helper scripts (MC runner, analysis, calibration)
-├── analysis/                  # EDA notebooks and scripts
-│
-└── bt_stats.py                # Fill analytics wrapper
+├── scripts/                   # Helper scripts (strategy worker, fill analytics)
+├── BACKTEST.md                # Backtesting & calibration guide
+└── CLAUDE.md                  # Project context for Claude
 ```
 
 ## Backtesting Tools
@@ -50,7 +43,7 @@ IMC_trading_hack/
 |------|---------|-------|
 | `prosperity4mcbt` | Monte Carlo simulation (primary) | ~6s quick, ~55s heavy |
 | `prosperity3bt` | Historical CSV replay | ~1s |
-| `bt_stats.py` | Fill analytics (maker vs taker) | ~1s |
+| `scripts/bt_stats.py` | Fill analytics (maker vs taker) | ~1s |
 
 ## How the Monte Carlo Works
 

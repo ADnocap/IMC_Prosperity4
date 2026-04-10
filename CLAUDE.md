@@ -14,26 +14,25 @@ This is our workspace for **IMC Prosperity 4** (2026), a multi-round algorithmic
 ```
 IMC_trading_hack/
 ├── traders/                           # All trader algorithms
-│   ├── trader.py                      #   Main trading algorithm (SUBMIT THIS)
+│   ├── a.py                           #   Main trading algorithm (SUBMIT THIS)
+│   ├── datamodel.py                   #   Official Prosperity 4 data model
 │   ├── trader_hold1.py                #   Hold-1-unit strategy for FV extraction
-│   ├── example_trader.py              #   IMC official starter template
-│   ├── test_algo.py                   #   Simple test market maker
-│   └── starter.py                     #   Alternate starter
-├── datamodel.py                       # Official Prosperity 4 data model
-├── CLAUDE.md                          # This file - project context
-├── BACKTEST.md                        # Backtesting & calibration guide
-├── PROSPERITY_4_WIKI_COMPLETE.md      # Full game reference
+│   └── b.py, c.py, d.py, 22898.py    #   Alternative/experimental traders
+├── data/                              # Market data
+│   ├── prosperity4/round0/            #   P4 tutorial round (EMERALDS, TOMATOES)
+│   └── prosperity3/round1-8/          #   P3 historical data (reference)
 ├── backtester/                        # Backtester package (install with pip install -e .)
 │   ├── prosperity4mcbt/               #   Monte Carlo CLI (primary backtester)
 │   └── prosperity3bt/                 #   Historical CSV replay CLI
 ├── rust_simulator/                    # Rust Monte Carlo simulation engine
 ├── visualizer/                        # Local dashboard frontend (Vite/React)
-├── data/round0/                       # Tutorial round market data (CSVs)
 ├── calibration/                       # Bot reverse-engineering scripts & methodology
-├── scripts/                           # Helper scripts (MC runner, analysis)
-├── analysis/                          # Data analysis notebooks and scripts
-├── bt_stats.py                        # Fill analytics wrapper
-└── round_N/                           # Data for each competition round (added as released)
+├── scripts/                           # Helper scripts
+│   ├── python_strategy_worker.py      #   Rust sim ↔ Python bridge
+│   └── bt_stats.py                    #   Fill analytics wrapper
+├── CLAUDE.md                          # This file - project context
+├── BACKTEST.md                        # Backtesting & calibration guide
+└── PROSPERITY_4_WIKI_COMPLETE.md      # Full game reference
 ```
 
 ## Architecture & Constraints
@@ -78,7 +77,7 @@ If the sum of ALL your outstanding orders for a product could push your position
 - **trades**: timestamp;buyer;seller;symbol;currency;price;quantity
 - Currency: XIRECs
 - Timestamps: increment by 100 (0, 100, 200, ...)
-- ~10,000 timesteps per day
+- 2,000 timesteps per day (portal server)
 
 ## Key Observations from Tutorial Data
 
@@ -145,7 +144,7 @@ See [BACKTEST.md](BACKTEST.md) for the full guide including calibration methodol
 
 ### Monte Carlo Backtester (PRIMARY -- use this)
 ```bash
-# Install (one-time): cd backtester && pip install -e .
+# Install (one-time): pip install -e .
 prosperity4mcbt traders/a.py --quick --out tmp/results/dashboard.json    # dev iteration (~6s)
 prosperity4mcbt traders/a.py --heavy --out tmp/results/dashboard.json    # pre-submission (~55s)
 prosperity4mcbt traders/a.py --quick --vis --out tmp/results/dashboard.json  # with dashboard
@@ -154,8 +153,8 @@ Rust-backed Monte Carlo using calibrated bot models reverse-engineered from tuto
 
 ### CSV Replay (sanity checks)
 ```bash
-prosperity3bt traders/a.py 0 --data data              # historical replay
-py -3.13 bt_stats.py traders/a.py 0 --data data       # fill analytics
+prosperity3bt traders/a.py 0                           # historical replay
+py -3.13 scripts/bt_stats.py traders/a.py 0            # fill analytics
 ```
 **Warning**: `--match-trades all` (default) over-reports PnL for market making. Use for relative A/B comparison only.
 
