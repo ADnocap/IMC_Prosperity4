@@ -45,15 +45,37 @@ Windows Smart App Control blocks freshly compiled Rust binaries (error 4551). To
 
 The Rust build output is stored in `C:\tmp\rust_target` to avoid OneDrive sync interference.
 
-### Visualizer (optional)
+### Visualizer
 
 ```bash
 cd visualizer
 npm install
-npm run dev
 ```
 
-Dashboard runs at `http://localhost:5555/`. Use `--vis` flag with `prosperity4mcbt` to auto-open it.
+#### One-command launch (recommended)
+
+From the repo root, run the PowerShell script:
+
+```powershell
+.\run_viz.ps1                        # backtest traders/a.py (quick) + open dashboard
+.\run_viz.ps1 traders/b.py           # different trader
+.\run_viz.ps1 -Heavy                 # heavy backtest (1000 sessions)
+.\run_viz.ps1 traders/b.py -Heavy    # both
+```
+
+This starts the Vite frontend, runs the Monte Carlo backtester, launches the data server, and opens the dashboard in your browser. Each run is saved to a timestamped directory (e.g. `tmp/a_2026-04-10_16-30-00/`) so all past runs appear in the Run dropdown.
+
+#### Manual launch (two terminals)
+
+```bash
+# Terminal 1: frontend
+cd visualizer && npm run dev
+
+# Terminal 2: backtester
+prosperity4mcbt a.py --quick --vis --out tmp/results/dashboard.json
+```
+
+Dashboard runs at `http://localhost:5555/`. The `--vis` flag starts the data server on port 8001 and opens the browser.
 
 ---
 
