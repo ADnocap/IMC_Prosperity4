@@ -40,6 +40,7 @@ rust_simulator/target/
 trader_v1.py
 trader_v2.py
 grab_token.py
+traders/
 submit.py
 DATA_GENERATING_DISTRIBUTIONS.md
 bot_summary.md
