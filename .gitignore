@@ -3,8 +3,6 @@
 .prosperity_token
 .prosperity_refresh
 .env.local
-CLAUDE.md
-AGENTS.md
 
 __pycache__/
 *.pyc
@@ -38,8 +36,6 @@ prosperity4mcbt.egg-info/
 *.log
 
 # Keep private local strategy/research tooling out of the public repo
-trader_v1.py
-trader_v2.py
 grab_token.py
 traders/
 submit.py
@@ -47,4 +43,3 @@ DATA_GENERATING_DISTRIBUTIONS.md
 bot_summary.md
 bot_3_maybe_informed.md
 .git_backup_*
-calibration/tomatoes/data/
