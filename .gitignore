@@ -33,6 +33,7 @@ visualizer/node_modules/
 visualizer/dist/
 
 rust_simulator/target/
+prosperity4mcbt.egg-info/
 
 *.log
 

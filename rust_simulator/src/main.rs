@@ -14,7 +14,7 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 
 const DAYS: [i32; 2] = [-2, -1];
 const PRODUCTS: [&str; 2] = ["EMERALDS", "TOMATOES"];
-const DEFAULT_TICKS_PER_DAY: usize = 10_000;
+const DEFAULT_TICKS_PER_DAY: usize = 2_000;
 const TIMESTAMP_STEP: i32 = 100;
 const TOMATO_HALF_TIE_FLIP_PROB: f64 = 0.0005;
 const POSITION_LIMIT: i32 = 80;

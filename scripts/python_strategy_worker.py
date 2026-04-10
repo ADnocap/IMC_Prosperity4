@@ -14,8 +14,6 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
-BACKTESTER_ROOT = ROOT / "backtester"
-sys.path.insert(0, str(BACKTESTER_ROOT))
 sys.path.insert(0, str(ROOT))
 
 try:
@@ -28,11 +26,12 @@ except ModuleNotFoundError:
     )
     sys.modules["jsonpickle"] = jsonpickle_stub
 
-from prosperity4mcbt import datamodel as datamodel_module  # noqa: E402
+from backtester import datamodel as datamodel_module  # noqa: E402
 
 sys.modules.setdefault("datamodel", datamodel_module)
 sys.modules.setdefault("prosperity3bt.datamodel", datamodel_module)
 sys.modules.setdefault("prosperity4mcbt.datamodel", datamodel_module)
+sys.modules.setdefault("backtester.datamodel", datamodel_module)
 
 
 def load_trader(strategy_path: Path):
