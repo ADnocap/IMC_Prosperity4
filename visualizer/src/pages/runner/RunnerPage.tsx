@@ -71,6 +71,7 @@ export function RunnerPage(): ReactNode {
   const [fvMode, setFvMode] = useState('simulate');
   const [tradeMode, setTradeMode] = useState('simulate');
   const [seed, setSeed] = useState('20260401');
+  const [ticksPerDay, setTicksPerDay] = useState<number>(2000);
 
   // Runner state
   const [runState, setRunState] = useState<RunState | null>(null);
@@ -126,6 +127,7 @@ export function RunnerPage(): ReactNode {
         fvMode,
         tradeMode,
         seed: parseInt(seed) || 20260401,
+        ticksPerDay,
       });
     } catch (err: any) {
       // handled by polling
@@ -206,7 +208,7 @@ export function RunnerPage(): ReactNode {
                     value={customSampleSessions}
                     onChange={v => setCustomSampleSessions(Number(v) || 10)}
                     min={1}
-                    max={1000}
+                    max={10000}
                     disabled={isRunning}
                   />
                 </Group>
@@ -240,7 +242,7 @@ export function RunnerPage(): ReactNode {
                 disabled={isRunning}
               />
             </Grid.Col>
-            <Grid.Col span={3}>
+            <Grid.Col span={2}>
               <TextInput
                 label="Seed"
                 value={seed}
@@ -248,7 +250,18 @@ export function RunnerPage(): ReactNode {
                 disabled={isRunning}
               />
             </Grid.Col>
-            <Grid.Col span={3} style={{ display: 'flex', alignItems: 'flex-end' }}>
+            <Grid.Col span={2}>
+              <NumberInput
+                label="Ticks/day"
+                value={ticksPerDay}
+                onChange={v => setTicksPerDay(Number(v) || 2000)}
+                min={100}
+                max={100000}
+                step={100}
+                disabled={isRunning}
+              />
+            </Grid.Col>
+            <Grid.Col span={2} style={{ display: 'flex', alignItems: 'flex-end' }}>
               {!isRunning ? (
                 <Button
                   fullWidth
