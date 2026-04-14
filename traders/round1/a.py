@@ -20,7 +20,6 @@ class Trader:
         "ASH_COATED_OSMIUM": {
             "limit": 80,
             "soft_limit": 50,
-            "take_free_zone": 20,
         },
         "INTARIAN_PEPPER_ROOT": {
             "limit": 80,
@@ -64,7 +63,6 @@ class Trader:
         p = self.PARAMS["ASH_COATED_OSMIUM"]
         limit = p["limit"]
         soft = p["soft_limit"]
-        free_zone = p["take_free_zone"]
 
         # ── Estimate FV from Bot 2 levels ──
         # Bot 2: round(FV) - 8 / round(FV) + 8, spread = 16
@@ -83,8 +81,12 @@ class Trader:
         buy_ordered = 0
         sell_ordered = 0
 
-        # ── Phase 1: Take mispriced levels ──
-        # Take any ask at or below FV (positive edge)
+        # Bot 3 detection: 3 levels on one side
+        bot3_on_bid = len(bids_sorted) >= 3
+        bot3_on_ask = len(asks_sorted) >= 3
+
+        # ── Phase 1: Take mispriced levels (unconditional — no position restriction) ──
+        # Take any ask at or below FV
         for ask_price in asks_sorted:
             if ask_price > mid_int:
                 break
@@ -96,7 +98,7 @@ class Trader:
             orders.append(Order("ASH_COATED_OSMIUM", ask_price, qty))
             buy_ordered += qty
 
-        # Take any bid at or above FV (positive edge)
+        # Take any bid at or above FV
         for bid_price in bids_sorted:
             if bid_price < mid_int:
                 break
@@ -108,44 +110,15 @@ class Trader:
             orders.append(Order("ASH_COATED_OSMIUM", bid_price, -qty))
             sell_ordered += qty
 
-        # ── Phase 1b: Smart Bot 3 taking (when 3 levels visible) ──
-        bot3_on_bid = len(bids_sorted) >= 3
-        bot3_on_ask = len(asks_sorted) >= 3
-
-        if bot3_on_ask and asks_sorted[0] <= mid_int:
-            bot3_price = asks_sorted[0]
-            bot3_vol = -od.sell_orders[bot3_price]
-            if position < 0:
-                can = min(bot3_vol, limit - starting_pos - buy_ordered, -position)
-            elif abs(position) < free_zone:
-                can = min(bot3_vol, limit - starting_pos - buy_ordered, free_zone - position)
-            else:
-                can = 0
-            if can > 0:
-                orders.append(Order("ASH_COATED_OSMIUM", bot3_price, can))
-                buy_ordered += can
-
-        if bot3_on_bid and bids_sorted[0] >= mid_int:
-            bot3_price = bids_sorted[0]
-            bot3_vol = od.buy_orders[bot3_price]
-            if position > 0:
-                can = min(bot3_vol, limit + starting_pos - sell_ordered, position)
-            elif abs(position) < free_zone:
-                can = min(bot3_vol, limit + starting_pos - sell_ordered, free_zone + position)
-            else:
-                can = 0
-            if can > 0:
-                orders.append(Order("ASH_COATED_OSMIUM", bot3_price, -can))
-                sell_ordered += can
-
         # ── Phase 2: Passive penny-jump quoting ──
-        # Reference Bot 2 levels (skip Bot 3 if present)
+        # Reference levels: skip Bot 3 (1st of 3), use Bot 2 or Bot 1
         ref_bid = bids_sorted[1] if bot3_on_bid and len(bids_sorted) >= 2 else (bids_sorted[0] if bids_sorted else mid_int - 8)
         ref_ask = asks_sorted[1] if bot3_on_ask and len(asks_sorted) >= 2 else (asks_sorted[0] if asks_sorted else mid_int + 8)
 
         effective_pos = starting_pos + buy_ordered - sell_ordered
         skew = self._inventory_skew(effective_pos, soft, limit)
 
+        # Penny-jump: +1 inside the reference level (Bot 2 or Bot 1)
         our_bid = min(ref_bid + 1, mid_int - 1) + skew
         our_ask = max(ref_ask - 1, mid_int + 1) + skew
 
