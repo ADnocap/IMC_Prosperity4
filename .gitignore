@@ -37,7 +37,6 @@ prosperity4mcbt.egg-info/
 
 # Keep private local strategy/research tooling out of the public repo
 grab_token.py
-traders/
 submit.py
 DATA_GENERATING_DISTRIBUTIONS.md
 bot_summary.md
