@@ -17,12 +17,19 @@ const PRODUCTS: [&str; 2] = ["ASH_COATED_OSMIUM", "INTARIAN_PEPPER_ROOT"];
 const DEFAULT_TICKS_PER_DAY: usize = 2_000;
 const TIMESTAMP_STEP: i32 = 100;
 const POSITION_LIMIT: i32 = 80;
-const ASH_TRADE_ACTIVE_PROB: f64 = 1200.0 / 30_000.0;     // ~4.0% of ticks
-const IPR_TRADE_ACTIVE_PROB: f64 = 972.0 / 30_000.0;       // ~3.2% of ticks
+const ASH_TRADE_ACTIVE_PROB: f64 = 1200.0 / 30_000.0;     // ~4.0% base takers (from CSV)
+const IPR_TRADE_ACTIVE_PROB: f64 = 972.0 / 30_000.0;       // ~3.2% base takers (from CSV)
 const ASH_SECOND_TRADE_PROB: f64 = 13.0 / 1200.0;          // rare 2nd trade
 const IPR_SECOND_TRADE_PROB: f64 = 4.0 / 972.0;            // very rare 2nd trade
 const ASH_TRADE_BUY_PROB: f64 = 0.5;                        // approximate
 const IPR_TRADE_BUY_PROB: f64 = 0.5;                        // approximate
+// Elastic taker demand: additional takers that appear when player quotes
+// tighten the spread. Calibrated from portal submission 107406:
+// total_rate - base_rate = elastic_rate.
+// OSMIUM: 8.2% total - 4.0% base = 4.2% elastic
+// PEPPER: 6.7% total - 3.2% base = 3.5% elastic
+const ASH_ELASTIC_TRADE_PROB: f64 = 0.042;
+const IPR_ELASTIC_TRADE_PROB: f64 = 0.035;
 const STRATEGY_RUN_TIMEOUT_MS: u64 = 900;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -797,6 +804,35 @@ fn run_backtest_session(
                     .context("missing live book for taker execution")?;
                 let ledger = ledgers.get_mut(&product_key).context("missing ledger for taker execution")?;
                 for _ in 0..count {
+                    let market_buy = sample_trade_side(product, &mut rng);
+                    let fills = execute_taker_trade(product, timestamp, book, ledger, market_buy, &mut rng);
+                    for fill in fills {
+                        let row = fill_to_trade_row(&fill);
+                        if fill_involves_strategy(&fill) {
+                            own_trades_this_tick.entry(product_key.clone()).or_default().push(fill);
+                        } else {
+                            market_trades_this_tick.entry(product_key.clone()).or_default().push(fill);
+                        }
+                        if capture_outputs {
+                            trade_rows.push(row);
+                        }
+                    }
+                }
+            }
+
+            // Elastic taker demand: additional takers attracted by tighter spreads
+            // when the player's orders improve the best bid/ask.
+            // Only fires when the strategy has resting orders in the book.
+            for (product, elastic_prob) in [("ASH_COATED_OSMIUM", ASH_ELASTIC_TRADE_PROB), ("INTARIAN_PEPPER_ROOT", IPR_ELASTIC_TRADE_PROB)] {
+                let product_key = product.to_string();
+                let book = live_books
+                    .get_mut(&product_key)
+                    .context("missing live book for elastic taker")?;
+                // Check if strategy has any resting orders in the book
+                let strategy_quoting = book.bids.iter().any(|l| l.owner == LevelOwner::Strategy)
+                    || book.asks.iter().any(|l| l.owner == LevelOwner::Strategy);
+                if strategy_quoting && rng.gen_bool(elastic_prob) {
+                    let ledger = ledgers.get_mut(&product_key).context("missing ledger for elastic taker")?;
                     let market_buy = sample_trade_side(product, &mut rng);
                     let fills = execute_taker_trade(product, timestamp, book, ledger, market_buy, &mut rng);
                     for fill in fills {
