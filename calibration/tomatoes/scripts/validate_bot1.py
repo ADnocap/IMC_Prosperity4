@@ -1,15 +1,22 @@
 """
 Validate bot1.py against actual server data.
 Compares simulated Bot 1 quotes to real Bot 1 quotes at every timestamp.
+
+Usage:
+    py -3.13 validate_bot1.py [path/to/fv_and_book.json]
 """
 
-import json, math, random
+import json, math, random, sys
 from pathlib import Path
 from collections import Counter
 
 from bot1 import bot1_quote, bot1_quote_with_noise
 
-DATA = Path(__file__).parent.parent / "data" / "fv_and_book.json"
+DATA = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent.parent / "data" / "fv_and_book.json"
+if not DATA.exists():
+    print(f"ERROR: {DATA} not found. Run extract_fv_and_book.py first.")
+    sys.exit(1)
+print(f"Loading data from: {DATA}")
 with open(DATA) as f:
     data = json.load(f)
 

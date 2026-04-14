@@ -56,10 +56,14 @@ def normalize_dashboard_path(out: Optional[Path], no_out: bool) -> Optional[Path
 
 def resolve_actual_dir(data_root: Optional[Path]) -> Path:
     if data_root is None:
-        return project_root() / "data" / "prosperity4" / "round0"
+        return project_root() / "data" / "prosperity4" / "round1"
 
-    if data_root.name == "round0":
+    if data_root.name in ("round0", "round1"):
         return data_root
+
+    round1 = data_root / "round1"
+    if round1.is_dir():
+        return round1
 
     round0 = data_root / "round0"
     if round0.is_dir():
@@ -328,18 +332,18 @@ def load_session_summaries(output_dir: Path) -> list[dict[str, Any]]:
             {
                 "sessionId": int(row["session_id"]),
                 "totalPnl": float(row["total_pnl"]),
-                "emeraldPnl": float(row["emerald_pnl"]),
-                "tomatoPnl": float(row["tomato_pnl"]),
-                "emeraldPosition": int(row["emerald_position"]),
-                "tomatoPosition": int(row["tomato_position"]),
-                "emeraldCash": float(row["emerald_cash"]),
-                "tomatoCash": float(row["tomato_cash"]),
+                "ashPnl": float(row["ash_pnl"]),
+                "iprPnl": float(row["ipr_pnl"]),
+                "ashPosition": int(row["ash_position"]),
+                "iprPosition": int(row["ipr_position"]),
+                "ashCash": float(row["ash_cash"]),
+                "iprCash": float(row["ipr_cash"]),
                 "totalSlopePerStep": float(row.get("total_slope_per_step", 0.0) or 0.0),
                 "totalR2": float(row.get("total_r2", 0.0) or 0.0),
-                "emeraldSlopePerStep": float(row.get("emerald_slope_per_step", 0.0) or 0.0),
-                "emeraldR2": float(row.get("emerald_r2", 0.0) or 0.0),
-                "tomatoSlopePerStep": float(row.get("tomato_slope_per_step", 0.0) or 0.0),
-                "tomatoR2": float(row.get("tomato_r2", 0.0) or 0.0),
+                "ashSlopePerStep": float(row.get("ash_slope_per_step", 0.0) or 0.0),
+                "ashR2": float(row.get("ash_r2", 0.0) or 0.0),
+                "iprSlopePerStep": float(row.get("ipr_slope_per_step", 0.0) or 0.0),
+                "iprR2": float(row.get("ipr_r2", 0.0) or 0.0),
             }
         )
     return parsed
@@ -354,31 +358,33 @@ def load_run_summaries(output_dir: Path) -> list[dict[str, Any]]:
                 "sessionId": int(row["session_id"]),
                 "day": int(row["day"]),
                 "totalPnl": float(row["total_pnl"]),
-                "emeraldPnl": float(row["emerald_pnl"]),
-                "tomatoPnl": float(row["tomato_pnl"]),
+                "ashPnl": float(row["ash_pnl"]),
+                "iprPnl": float(row["ipr_pnl"]),
                 "totalSlopePerStep": float(row.get("total_slope_per_step", 0.0) or 0.0),
                 "totalR2": float(row.get("total_r2", 0.0) or 0.0),
-                "emeraldSlopePerStep": float(row.get("emerald_slope_per_step", 0.0) or 0.0),
-                "emeraldR2": float(row.get("emerald_r2", 0.0) or 0.0),
-                "tomatoSlopePerStep": float(row.get("tomato_slope_per_step", 0.0) or 0.0),
-                "tomatoR2": float(row.get("tomato_r2", 0.0) or 0.0),
+                "ashSlopePerStep": float(row.get("ash_slope_per_step", 0.0) or 0.0),
+                "ashR2": float(row.get("ash_r2", 0.0) or 0.0),
+                "iprSlopePerStep": float(row.get("ipr_slope_per_step", 0.0) or 0.0),
+                "iprR2": float(row.get("ipr_r2", 0.0) or 0.0),
             }
         )
     return parsed
 
 
 def load_sample_session(session_dir: Path) -> dict[str, Any]:
-    round_dir = session_dir / "round0"
+    round_dir = session_dir / "round1"
+    if not round_dir.is_dir():
+        round_dir = session_dir / "round0"
     traces_by_product: dict[str, dict[str, list[float]]] = {}
     prices_by_product: dict[str, dict[str, list[float]]] = {}
     day_files = sorted(
         int(path.stem.split("_")[-1])
-        for path in round_dir.glob("trace_round_0_day_*.csv")
+        for path in round_dir.glob("trace_round_1_day_*.csv")
     )
 
     for day_index, day in enumerate(day_files):
-        trace_rows = read_csv_dicts(round_dir / f"trace_round_0_day_{day}.csv", ";")
-        price_rows = read_csv_dicts(round_dir / f"prices_round_0_day_{day}.csv", ";")
+        trace_rows = read_csv_dicts(round_dir / f"trace_round_1_day_{day}.csv", ";")
+        price_rows = read_csv_dicts(round_dir / f"prices_round_1_day_{day}.csv", ";")
 
         for row in trace_rows:
             product = row["product"]
@@ -430,7 +436,7 @@ def load_sample_session(session_dir: Path) -> dict[str, Any]:
             "mtmPnl": trace["mtmPnl"],
         }
 
-    timestamps = products["EMERALDS"]["timestamps"]
+    timestamps = products["ASH_COATED_OSMIUM"]["timestamps"]
     total_pnl = []
     for idx in range(len(timestamps)):
         total_pnl.append(sum(products[product]["mtmPnl"][idx] for product in products))
@@ -672,15 +678,15 @@ def write_static_chart_svgs(output_dir: Path, sampled_paths: list[dict[str, Any]
     charts_dir.mkdir(parents=True, exist_ok=True)
 
     chart_specs = {
-        "EMERALDS": [
-            ("fair_bands", "Fair Price Bands", lambda path: path["products"]["EMERALDS"]["fair"]),
-            ("mtm_bands", "MTM PnL Bands", lambda path: path["products"]["EMERALDS"]["mtmPnl"]),
-            ("position_bands", "Position Bands", lambda path: path["products"]["EMERALDS"]["position"]),
+        "ASH_COATED_OSMIUM": [
+            ("fair_bands", "Fair Price Bands", lambda path: path["products"]["ASH_COATED_OSMIUM"]["fair"]),
+            ("mtm_bands", "MTM PnL Bands", lambda path: path["products"]["ASH_COATED_OSMIUM"]["mtmPnl"]),
+            ("position_bands", "Position Bands", lambda path: path["products"]["ASH_COATED_OSMIUM"]["position"]),
         ],
-        "TOMATOES": [
-            ("fair_bands", "Fair Price Bands", lambda path: path["products"]["TOMATOES"]["fair"]),
-            ("mtm_bands", "MTM PnL Bands", lambda path: path["products"]["TOMATOES"]["mtmPnl"]),
-            ("position_bands", "Position Bands", lambda path: path["products"]["TOMATOES"]["position"]),
+        "INTARIAN_PEPPER_ROOT": [
+            ("fair_bands", "Fair Price Bands", lambda path: path["products"]["INTARIAN_PEPPER_ROOT"]["fair"]),
+            ("mtm_bands", "MTM PnL Bands", lambda path: path["products"]["INTARIAN_PEPPER_ROOT"]["mtmPnl"]),
+            ("position_bands", "Position Bands", lambda path: path["products"]["INTARIAN_PEPPER_ROOT"]["position"]),
         ],
     }
 
@@ -713,15 +719,15 @@ def build_band_series(sampled_paths: list[dict[str, Any]]) -> dict[str, dict[str
         return {}
 
     return {
-        "EMERALDS": {
-            "fair": mean_std_band_series(sampled_paths, lambda path: path["products"]["EMERALDS"]["fair"]),
-            "mtmPnl": mean_std_band_series(sampled_paths, lambda path: path["products"]["EMERALDS"]["mtmPnl"]),
-            "position": mean_std_band_series(sampled_paths, lambda path: path["products"]["EMERALDS"]["position"]),
+        "ASH_COATED_OSMIUM": {
+            "fair": mean_std_band_series(sampled_paths, lambda path: path["products"]["ASH_COATED_OSMIUM"]["fair"]),
+            "mtmPnl": mean_std_band_series(sampled_paths, lambda path: path["products"]["ASH_COATED_OSMIUM"]["mtmPnl"]),
+            "position": mean_std_band_series(sampled_paths, lambda path: path["products"]["ASH_COATED_OSMIUM"]["position"]),
         },
-        "TOMATOES": {
-            "fair": mean_std_band_series(sampled_paths, lambda path: path["products"]["TOMATOES"]["fair"]),
-            "mtmPnl": mean_std_band_series(sampled_paths, lambda path: path["products"]["TOMATOES"]["mtmPnl"]),
-            "position": mean_std_band_series(sampled_paths, lambda path: path["products"]["TOMATOES"]["position"]),
+        "INTARIAN_PEPPER_ROOT": {
+            "fair": mean_std_band_series(sampled_paths, lambda path: path["products"]["INTARIAN_PEPPER_ROOT"]["fair"]),
+            "mtmPnl": mean_std_band_series(sampled_paths, lambda path: path["products"]["INTARIAN_PEPPER_ROOT"]["mtmPnl"]),
+            "position": mean_std_band_series(sampled_paths, lambda path: path["products"]["INTARIAN_PEPPER_ROOT"]["position"]),
         },
     }
 
@@ -730,24 +736,24 @@ def build_dashboard(output_dir: Path, algorithm: Path, sessions: int, config: di
     session_rows = load_session_summaries(output_dir)
     run_rows = load_run_summaries(output_dir)
     total = [row["totalPnl"] for row in session_rows]
-    emerald = [row["emeraldPnl"] for row in session_rows]
-    tomato = [row["tomatoPnl"] for row in session_rows]
-    emerald_pos = [row["emeraldPosition"] for row in session_rows]
-    tomato_pos = [row["tomatoPosition"] for row in session_rows]
-    emerald_cash = [row["emeraldCash"] for row in session_rows]
-    tomato_cash = [row["tomatoCash"] for row in session_rows]
+    emerald = [row["ashPnl"] for row in session_rows]
+    tomato = [row["iprPnl"] for row in session_rows]
+    emerald_pos = [row["ashPosition"] for row in session_rows]
+    tomato_pos = [row["iprPosition"] for row in session_rows]
+    ash_cash = [row["ashCash"] for row in session_rows]
+    ipr_cash = [row["iprCash"] for row in session_rows]
     total_profitability = [row["totalSlopePerStep"] for row in run_rows]
     total_stability = [row["totalR2"] for row in run_rows]
-    emerald_profitability = [row["emeraldSlopePerStep"] for row in run_rows]
-    emerald_stability = [row["emeraldR2"] for row in run_rows]
-    tomato_profitability = [row["tomatoSlopePerStep"] for row in run_rows]
-    tomato_stability = [row["tomatoR2"] for row in run_rows]
+    emerald_profitability = [row["ashSlopePerStep"] for row in run_rows]
+    emerald_stability = [row["ashR2"] for row in run_rows]
+    tomato_profitability = [row["iprSlopePerStep"] for row in run_rows]
+    tomato_stability = [row["iprR2"] for row in run_rows]
     session_total_profitability = [row["totalSlopePerStep"] for row in session_rows]
     session_total_stability = [row["totalR2"] for row in session_rows]
-    session_emerald_profitability = [row["emeraldSlopePerStep"] for row in session_rows]
-    session_emerald_stability = [row["emeraldR2"] for row in session_rows]
-    session_tomato_profitability = [row["tomatoSlopePerStep"] for row in session_rows]
-    session_tomato_stability = [row["tomatoR2"] for row in session_rows]
+    session_emerald_profitability = [row["ashSlopePerStep"] for row in session_rows]
+    session_emerald_stability = [row["ashR2"] for row in session_rows]
+    session_tomato_profitability = [row["iprSlopePerStep"] for row in session_rows]
+    session_tomato_stability = [row["iprR2"] for row in session_rows]
 
     sample_session_dirs = sorted((output_dir / "sessions").glob("session_*")) if (output_dir / "sessions").exists() else []
     sample_path_refs, sampled_paths = write_sample_path_sidecars(output_dir, sample_session_dirs) if sample_session_dirs else ([], [])
@@ -783,8 +789,8 @@ def build_dashboard(output_dir: Path, algorithm: Path, sessions: int, config: di
         },
         "overall": {
             "totalPnl": summarize_distribution(total),
-            "emeraldPnl": summarize_distribution(emerald),
-            "tomatoPnl": summarize_distribution(tomato),
+            "ashPnl": summarize_distribution(emerald),
+            "iprPnl": summarize_distribution(tomato),
             "emeraldTomatoCorrelation": correlation(emerald, tomato),
         },
         "trendFits": {
@@ -792,11 +798,11 @@ def build_dashboard(output_dir: Path, algorithm: Path, sessions: int, config: di
                 "profitability": summarize_distribution(total_profitability),
                 "stability": summarize_distribution(total_stability),
             },
-            "EMERALDS": {
+            "ASH_COATED_OSMIUM": {
                 "profitability": summarize_distribution(emerald_profitability),
                 "stability": summarize_distribution(emerald_stability),
             },
-            "TOMATOES": {
+            "INTARIAN_PEPPER_ROOT": {
                 "profitability": summarize_distribution(tomato_profitability),
                 "stability": summarize_distribution(tomato_stability),
             },
@@ -806,23 +812,23 @@ def build_dashboard(output_dir: Path, algorithm: Path, sessions: int, config: di
                 "profitability": summarize_distribution(session_total_profitability),
                 "stability": summarize_distribution(session_total_stability),
             },
-            "EMERALDS": {
+            "ASH_COATED_OSMIUM": {
                 "profitability": summarize_distribution(session_emerald_profitability),
                 "stability": summarize_distribution(session_emerald_stability),
             },
-            "TOMATOES": {
+            "INTARIAN_PEPPER_ROOT": {
                 "profitability": summarize_distribution(session_tomato_profitability),
                 "stability": summarize_distribution(session_tomato_stability),
             },
         },
         "normalFits": {
             "totalPnl": total_normal_fit,
-            "emeraldPnl": emerald_normal_fit,
-            "tomatoPnl": tomato_normal_fit,
+            "ashPnl": emerald_normal_fit,
+            "iprPnl": tomato_normal_fit,
         },
         "scatterFit": scatter_fit,
         "generatorModel": {
-            "EMERALDS": {
+            "ASH_COATED_OSMIUM": {
                 "name": "Fixed Fair Value",
                 "formula": "F_t = 10000",
                 "notes": [
@@ -830,7 +836,7 @@ def build_dashboard(output_dir: Path, algorithm: Path, sessions: int, config: di
                     "Bots quote directly around the fixed fair value",
                 ],
             },
-            "TOMATOES": {
+            "INTARIAN_PEPPER_ROOT": {
                 "name": "Latent Fair Random Walk",
                 "formula": "x_{t+1} = x_t + ε_t",
                 "notes": [
@@ -840,21 +846,21 @@ def build_dashboard(output_dir: Path, algorithm: Path, sessions: int, config: di
             },
         },
         "products": {
-            "EMERALDS": {
+            "ASH_COATED_OSMIUM": {
                 "pnl": summarize_distribution(emerald),
                 "finalPosition": summarize_distribution([float(value) for value in emerald_pos]),
-                "cash": summarize_distribution(emerald_cash),
+                "cash": summarize_distribution(ash_cash),
             },
-            "TOMATOES": {
+            "INTARIAN_PEPPER_ROOT": {
                 "pnl": summarize_distribution(tomato),
                 "finalPosition": summarize_distribution([float(value) for value in tomato_pos]),
-                "cash": summarize_distribution(tomato_cash),
+                "cash": summarize_distribution(ipr_cash),
             },
         },
         "histograms": {
             "totalPnl": histogram(total),
-            "emeraldPnl": histogram(emerald),
-            "tomatoPnl": histogram(tomato),
+            "ashPnl": histogram(emerald),
+            "iprPnl": histogram(tomato),
             "totalProfitability": histogram(total_profitability),
             "totalStability": histogram(total_stability),
             "emeraldProfitability": histogram(emerald_profitability),
@@ -880,7 +886,7 @@ def run_rust_monte_carlo(
     sessions: int,
     fv_mode: str,
     trade_mode: str,
-    tomato_support: str,
+    ipr_support: str,
     seed: int,
     python_bin: str,
     sample_sessions: int,
@@ -908,8 +914,8 @@ def run_rust_monte_carlo(
         fv_mode,
         "--trade-mode",
         trade_mode,
-        "--tomato-support",
-        tomato_support,
+        "--ipr-support",
+        ipr_support,
         "--seed",
         str(seed),
         "--python-bin",
@@ -921,7 +927,7 @@ def run_rust_monte_carlo(
         "--ticks-per-day",
         str(ticks_per_day),
     ]
-    env = {**os.environ, "PROSPERITY4MCBT_ROOT": str(project_root().resolve()), "CARGO_TARGET_DIR": os.environ.get("CARGO_TARGET_DIR", "C:\\tmp\\rust_target")}
+    env = {**os.environ, "PROSPERITY4MCBT_ROOT": str(project_root().resolve())}
     subprocess.run(cmd, cwd=simulator_dir, env=env, check=True)
 
 
@@ -932,7 +938,7 @@ def run_monte_carlo_mode(
     sessions: int,
     fv_mode: str,
     trade_mode: str,
-    tomato_support: str,
+    ipr_support: str,
     seed: int,
     python_bin: str,
     sample_sessions: int,
@@ -957,7 +963,7 @@ def run_monte_carlo_mode(
         sessions=sessions,
         fv_mode=fv_mode,
         trade_mode=trade_mode,
-        tomato_support=tomato_support,
+        ipr_support=ipr_support,
         seed=seed,
         python_bin=python_bin,
         sample_sessions=sample_sessions,
@@ -971,7 +977,7 @@ def run_monte_carlo_mode(
         {
             "fvMode": fv_mode,
             "tradeMode": trade_mode,
-            "tomatoSupport": tomato_support,
+            "iprSupport": ipr_support,
             "seed": seed,
             "sampleSessions": sample_sessions,
         },

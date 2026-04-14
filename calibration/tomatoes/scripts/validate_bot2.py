@@ -1,14 +1,21 @@
 """
 Validate bot2.py against actual server data.
+
+Usage:
+    py -3.13 validate_bot2.py [path/to/fv_and_book.json]
 """
 
-import json, math, random
+import json, math, random, sys
 from pathlib import Path
 from collections import Counter
 
 from bot2 import bot2_quote
 
-DATA = Path(__file__).parent.parent / "data" / "fv_and_book.json"
+DATA = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent.parent / "data" / "fv_and_book.json"
+if not DATA.exists():
+    print(f"ERROR: {DATA} not found. Run extract_fv_and_book.py first.")
+    sys.exit(1)
+print(f"Loading data from: {DATA}")
 with open(DATA) as f:
     data = json.load(f)
 

@@ -3,15 +3,26 @@ Analyze Bot 1 (WALL bot) quoting behavior relative to true FV.
 
 Bot 1 is the deepest level — always present, spread 15-16.
 Goal: find the simplest deterministic rule that maps FV → (bid, ask, bid_vol, ask_vol).
+
+Usage:
+    py -3.13 analyze_bot1.py [path/to/fv_and_book.json]
+
+Default: calibration/tomatoes/data/fv_and_book.json (relative to this script)
 """
 
-import json, math
+import json, math, sys
 from pathlib import Path
 from collections import Counter
 
-DATA = Path(__file__).parent.parent / "data" / "fv_and_book.json"
+DATA = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent.parent / "data" / "fv_and_book.json"
+if not DATA.exists():
+    print(f"ERROR: {DATA} not found. Run extract_fv_and_book.py first.")
+    sys.exit(1)
+print(f"Loading data from: {DATA}")
 with open(DATA) as f:
     data = json.load(f)
+product = data.get("product", "UNKNOWN")
+print(f"Product: {product}")
 
 rows = [r for r in data["rows"] if r["fv"] is not None]
 print(f"Rows with FV: {len(rows)}")
@@ -22,7 +33,11 @@ print(f"Rows with FV: {len(rows)}")
 # ═══════════════════════════════════════════════════════════════
 
 records = []
+skipped = 0
 for r in rows:
+    if not r["bids"] or not r["asks"]:
+        skipped += 1
+        continue
     fv = r["fv"]
     worst_bid = min(r["bids"])
     worst_ask = max(r["asks"])

@@ -63,7 +63,7 @@ def cli(
     sessions: Annotated[int, Option("--sessions", help="Number of Monte Carlo sessions to run.")] = 100,
     fv_mode: Annotated[str, Option("--fv-mode", help="Fair-value mode for the Rust simulator.")] = "simulate",
     trade_mode: Annotated[str, Option("--trade-mode", help="Trade-arrival mode for the Rust simulator.")] = "simulate",
-    tomato_support: Annotated[str, Option("--tomato-support", help="Latent fair support for tomatoes in simulate mode.")] = "quarter",
+    ipr_support: Annotated[str, Option("--ipr-support", help="Latent fair support for IPR in simulate mode.")] = "quarter",
     seed: Annotated[int, Option("--seed", help="RNG seed for the Rust simulator.")] = 20260401,
     python_bin: Annotated[
         str,
@@ -110,7 +110,7 @@ def cli(
         sessions=sessions,
         fv_mode=fv_mode,
         trade_mode=trade_mode,
-        tomato_support=tomato_support,
+        ipr_support=ipr_support,
         seed=seed,
         python_bin=python_bin,
         sample_sessions=sample_sessions,

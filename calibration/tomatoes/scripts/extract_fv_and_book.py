@@ -1,40 +1,67 @@
 """
 Extract true FV and full order book from a hold-1-unit submission log.
 
-Input:  ~/Downloads/{submission_id}/  containing {id}.json
-Output: calibration/tomatoes/data/fv_and_book.json
+Usage:
+    py -3.13 extract_fv_and_book.py <submission_id> <product> [--download-dir DIR]
 
-Requires a submission where we buy exactly 1 TOMATO at t=0 and hold.
+Input:  ~/Downloads/{submission_id}/  containing {id}.json
+Output: calibration/<product_lower>/data/fv_and_book.json
+
+Requires a submission where we buy exactly 1 unit of <product> at t=0 and hold.
 PnL(t) = -buy_price + 1 * server_fv(t), so server_fv = pnl + buy_price.
 """
 
-import json, sys
+import json, sys, argparse
 from pathlib import Path
 
-SUBMISSION_DIR = Path.home() / "Downloads" / "43285"
-OUTPUT_DIR = Path(__file__).parent.parent / "data"
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+parser = argparse.ArgumentParser(description="Extract FV and order book from hold-1-unit submission")
+parser.add_argument("submission_id", help="Submission ID (folder and JSON name)")
+parser.add_argument("product", help="Product symbol (e.g. TOMATOES, ROSES)")
+parser.add_argument("--download-dir", default=None,
+                    help="Directory containing submission folder (default: ~/Downloads)")
+args = parser.parse_args()
 
-with open(SUBMISSION_DIR / "43285.json") as f:
+download_dir = Path(args.download_dir) if args.download_dir else Path.home() / "Downloads"
+submission_dir = download_dir / args.submission_id
+json_path = submission_dir / f"{args.submission_id}.json"
+
+product = args.product.upper()
+output_dir = Path(__file__).parent.parent.parent / product.lower() / "data"
+output_dir.mkdir(parents=True, exist_ok=True)
+
+if not json_path.exists():
+    print(f"ERROR: {json_path} not found")
+    print(f"  Expected submission log at: {json_path}")
+    print(f"  Download it from the portal and place it in {submission_dir}/")
+    sys.exit(1)
+
+with open(json_path) as f:
     data = json.load(f)
 
 act_lines = data["activitiesLog"].strip().split("\n")
 
 # Find the ask price at t=0 (our buy price)
+buy_price = None
 for line in act_lines[1:]:
     cols = line.split(";")
-    if len(cols) < 17 or cols[2] != "TOMATOES":
+    if len(cols) < 17 or cols[2] != product:
         continue
     if int(cols[1]) == 0:
         buy_price = int(cols[9])  # ask_price_1
         break
 
+if buy_price is None:
+    print(f"ERROR: Could not find {product} at t=0 in submission log")
+    print("  Make sure trader_hold1.py bought 1 unit of this product")
+    sys.exit(1)
+
+print(f"Product: {product}")
 print(f"Buy price: {buy_price}")
 
 rows = []
 for line in act_lines[1:]:
     cols = line.split(";")
-    if len(cols) < 17 or cols[2] != "TOMATOES":
+    if len(cols) < 17 or cols[2] != product:
         continue
     ts = int(cols[1])
     pnl = float(cols[16])
@@ -65,10 +92,12 @@ for line in act_lines[1:]:
         "mid_price": float(cols[15]),
     })
 
-out = {"buy_price": buy_price, "rows": rows}
-outpath = OUTPUT_DIR / "fv_and_book.json"
+out = {"product": product, "buy_price": buy_price, "rows": rows}
+outpath = output_dir / "fv_and_book.json"
 with open(outpath, "w") as f:
     json.dump(out, f)
 
 print(f"Wrote {len(rows)} rows to {outpath}")
-print(f"FV range: {min(r['fv'] for r in rows if r['fv']):.4f} to {max(r['fv'] for r in rows if r['fv']):.4f}")
+fv_rows = [r for r in rows if r["fv"] is not None]
+if fv_rows:
+    print(f"FV range: {min(r['fv'] for r in fv_rows):.4f} to {max(r['fv'] for r in fv_rows):.4f}")
