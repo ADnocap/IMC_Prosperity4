@@ -2,15 +2,24 @@
 Analyze Bot 2 (INNER bot) quoting behavior relative to true FV.
 
 Bot 2 is the second level — present ~54% of the time, spread ~13.
+
+Usage:
+    py -3.13 analyze_bot2.py [path/to/fv_and_book.json]
 """
 
-import json, math
+import json, math, sys
 from pathlib import Path
 from collections import Counter, defaultdict
 
-DATA = Path(__file__).parent.parent / "data" / "fv_and_book.json"
+DATA = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent.parent / "data" / "fv_and_book.json"
+if not DATA.exists():
+    print(f"ERROR: {DATA} not found. Run extract_fv_and_book.py first.")
+    sys.exit(1)
+print(f"Loading data from: {DATA}")
 with open(DATA) as f:
     data = json.load(f)
+product = data.get("product", "UNKNOWN")
+print(f"Product: {product}")
 
 rows = [r for r in data["rows"] if r["fv"] is not None]
 

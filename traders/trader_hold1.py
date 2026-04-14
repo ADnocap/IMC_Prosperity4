@@ -37,19 +37,26 @@ class Logger:
 logger = Logger()
 
 class Trader:
+    # Products to skip (already calibrated / not needed)
+    SKIP = {"EMERALDS", "TOMATOES"}
+
     def run(self, state: TradingState):
         orders = {}
         for product in state.order_depths:
             orders[product] = []
 
-        pos = state.position.get("TOMATOES", 0)
-
-        # Buy 1 tomato on the first tick, then do nothing forever
-        if pos == 0 and state.timestamp == 0:
-            ob = state.order_depths.get("TOMATOES")
-            if ob and ob.sell_orders:
-                best_ask = min(ob.sell_orders.keys())
-                orders["TOMATOES"] = [Order("TOMATOES", best_ask, 1)]
+        # Buy 1 unit of every NEW product at t=0, then hold forever.
+        # server_FV(t) = PnL(t) + buy_price for each held product.
+        if state.timestamp == 0:
+            for product in state.order_depths:
+                if product in self.SKIP:
+                    continue
+                pos = state.position.get(product, 0)
+                if pos == 0:
+                    ob = state.order_depths.get(product)
+                    if ob and ob.sell_orders:
+                        best_ask = min(ob.sell_orders.keys())
+                        orders[product] = [Order(product, best_ask, 1)]
 
         trader_data = ""
         logger.flush(state, orders, 0, trader_data)
