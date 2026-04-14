@@ -5,21 +5,23 @@ import json
 
 class Trader:
     """
-    Round 1 combined strategy — best of both approaches.
+    Round 1 combined strategy — research-backed v3.
 
-    OSMIUM: Market making on random walk (σ=0.312). Volume-based FV estimation
-    with multi-source fallback. Unconditional taking at FV. Penny-jump MM
-    with inventory skew.
+    OSMIUM: Market making on random walk (sigma=0.312). Multi-source
+    weighted FV estimation with Bot 3 filtering (distance-from-mid
+    heuristic). No EMA — on a random walk, smoothing adds lag. No
+    inventory skew — per Frankfurt Hedgehogs (2nd place P3), skew
+    destroys value by reducing edge per fill with minimal benefit.
+    Penny-jump Bot 2 inner wall for maximum edge per elastic fill.
 
-    PEPPER: Pure buy-and-hold for deterministic drift (+0.1/tick).
-    Sweep all asks to reach max position ASAP, hold for drift PnL.
-    No selling — every sold unit loses drift exposure.
+    PEPPER: Buy-and-hold for deterministic drift (+0.1/tick).
+    Selective accumulation: prefer cheap Bot 2 asks (FV+5) over
+    expensive Bot 1 asks (FV+8) during early filling.
     """
 
     PARAMS = {
         "ASH_COATED_OSMIUM": {
             "limit": 80,
-            "soft_limit": 50,
         },
         "INTARIAN_PEPPER_ROOT": {
             "limit": 80,
@@ -55,24 +57,14 @@ class Trader:
     # ------------------------------------------------------------------
     def _trade_osmium(self, od: OrderDepth, position: int, td: dict):
         orders = []
-        p = self.PARAMS["ASH_COATED_OSMIUM"]
-        limit = p["limit"]
-        soft = p["soft_limit"]
+        limit = self.PARAMS["ASH_COATED_OSMIUM"]["limit"]
 
         bids_sorted = sorted(od.buy_orders.keys(), reverse=True) if od.buy_orders else []
         asks_sorted = sorted(od.sell_orders.keys()) if od.sell_orders else []
 
-        raw_fv = self._estimate_osmium_fv(od, td)
-        if raw_fv is None:
+        fv = self._estimate_osmium_fv(od, td)
+        if fv is None:
             return orders, td
-
-        # EMA-smoothed FV: reduces noise from single-tick estimation errors
-        prev_fv = td.get("ash_last_fv")
-        if prev_fv is not None:
-            alpha = 0.2  # weight on current tick — heavy smoothing reduces FV noise
-            fv = alpha * raw_fv + (1 - alpha) * prev_fv
-        else:
-            fv = raw_fv
         td["ash_last_fv"] = fv
 
         fv_r = int(round(fv))
@@ -80,8 +72,7 @@ class Trader:
         buy_ordered = 0
         sell_ordered = 0
 
-        # ── Phase 1: Take mispriced levels ──
-        # Take any ask at or below FV (captures Bot 3 crossing quotes)
+        # ── Phase 1: Take mispriced levels (positive edge) ──
         for ask_price in asks_sorted:
             if ask_price > fv_r:
                 break
@@ -93,7 +84,6 @@ class Trader:
             orders.append(Order("ASH_COATED_OSMIUM", ask_price, qty))
             buy_ordered += qty
 
-        # Take any bid at or above FV
         for bid_price in bids_sorted:
             if bid_price < fv_r:
                 break
@@ -106,17 +96,11 @@ class Trader:
             sell_ordered += qty
 
         # ── Phase 2: Passive penny-jump quoting ──
-        # Detect Bot 3 (3 levels on a side), use Bot 2 as reference
-        bot3_on_bid = len(bids_sorted) >= 3
-        bot3_on_ask = len(asks_sorted) >= 3
-        ref_bid = bids_sorted[1] if bot3_on_bid else (bids_sorted[0] if bids_sorted else fv_r - 8)
-        ref_ask = asks_sorted[1] if bot3_on_ask else (asks_sorted[0] if asks_sorted else fv_r + 8)
+        ref_bid = self._find_wall_bid(bids_sorted, fv_r)
+        ref_ask = self._find_wall_ask(asks_sorted, fv_r)
 
-        effective_pos = starting_pos + buy_ordered - sell_ordered
-        skew = self._inventory_skew(effective_pos, soft, limit)
-
-        our_bid = min(ref_bid + 1, fv_r - 1) + skew
-        our_ask = max(ref_ask - 1, fv_r + 1) + skew
+        our_bid = min(ref_bid + 1, fv_r - 1)
+        our_ask = max(ref_ask - 1, fv_r + 1)
 
         if our_bid >= our_ask:
             our_bid = fv_r - 1
@@ -133,41 +117,51 @@ class Trader:
         return orders, td
 
     def _estimate_osmium_fv(self, od: OrderDepth, td: dict):
-        """Estimate FV using volume-based bot identification with fallbacks.
+        """Estimate FV using all bot levels with Bot 3 filtering.
 
-        Bot 2 (inner wall): vol 10-15, offset ±8 from FV → most precise
-        Bot 1 (outer wall): vol 20-30, offset ~±10.5 from FV
-        Bot 3 (noise):      vol 2-9, near FV → skip for FV estimation
+        Uses distance from raw mid-price to distinguish Bot 2 (far from
+        mid, vol 10-15, offset 8) from Bot 3 (near mid, vol 4-10).
+        Multiple estimates weighted by confidence: Bot 2 weight 2, Bot 1
+        weight 1. No EMA smoothing.
         """
         bids = sorted(od.buy_orders.keys(), reverse=True) if od.buy_orders else []
         asks = sorted(od.sell_orders.keys()) if od.sell_orders else []
 
-        bid_fv = None
+        if not bids and not asks:
+            return td.get("ash_last_fv")
+
+        # Raw mid for Bot 3 filtering
+        if bids and asks:
+            raw_mid = (bids[0] + asks[0]) / 2
+        elif bids:
+            last = td.get("ash_last_fv")
+            raw_mid = last if last is not None else bids[0] + 8
+        else:
+            last = td.get("ash_last_fv")
+            raw_mid = last if last is not None else asks[0] - 8
+
+        estimates = []
+
         for price in bids:
             vol = od.buy_orders[price]
             if 10 <= vol <= 15:
-                bid_fv = price + 8
-                break
+                if raw_mid - price >= 5:
+                    estimates.append((price + 8, 2.0))
             elif vol >= 20:
-                bid_fv = price + 10.5
-                break
+                estimates.append((price + 10.5, 1.0))
 
-        ask_fv = None
         for price in asks:
             vol = -od.sell_orders[price]
             if 10 <= vol <= 15:
-                ask_fv = price - 8
-                break
+                if price - raw_mid >= 5:
+                    estimates.append((price - 8, 2.0))
             elif vol >= 20:
-                ask_fv = price - 10.5
-                break
+                estimates.append((price - 10.5, 1.0))
 
-        if bid_fv is not None and ask_fv is not None:
-            return (bid_fv + ask_fv) / 2
-        if bid_fv is not None:
-            return bid_fv
-        if ask_fv is not None:
-            return ask_fv
+        if estimates:
+            total_weight = sum(w for _, w in estimates)
+            return sum(e * w for e, w in estimates) / total_weight
+
         if bids and asks:
             return (bids[0] + asks[0]) / 2
         if bids:
@@ -177,13 +171,14 @@ class Trader:
         return td.get("ash_last_fv")
 
     # ------------------------------------------------------------------
-    # INTARIAN_PEPPER_ROOT — pure buy-and-hold for drift
+    # INTARIAN_PEPPER_ROOT — selective buy-and-hold for drift
     # ------------------------------------------------------------------
     def _trade_pepper(self, od: OrderDepth, position: int) -> list:
         """Buy to max position and hold. Drift does the rest.
 
-        FV increases +0.1/tick. Over 1000 ticks: 80 * 100 = 8,000 drift PnL.
-        Every tick not at max = lost drift. Never sell.
+        Selective accumulation: prefer Bot 2 asks (cheaper, vol 8-12)
+        over Bot 1 asks (expensive, vol 15-25). Saves ~3 ticks/unit
+        in spread cost, ~150+ PnL total.
         """
         orders = []
         limit = self.PARAMS["INTARIAN_PEPPER_ROOT"]["limit"]
@@ -192,10 +187,11 @@ class Trader:
         if remaining <= 0:
             return orders
 
-        # Sweep all ask levels to get long ASAP
         if od.sell_orders:
             for ask_price in sorted(od.sell_orders.keys()):
                 vol = -od.sell_orders[ask_price]
+                if remaining > 20 and vol > 15:
+                    continue
                 qty = min(vol, remaining)
                 if qty > 0:
                     orders.append(Order("INTARIAN_PEPPER_ROOT", ask_price, qty))
@@ -203,7 +199,6 @@ class Trader:
                 if remaining <= 0:
                     break
 
-        # Place aggressive passive bid for any unfilled remainder
         if remaining > 0 and od.buy_orders:
             best_bid = max(od.buy_orders.keys())
             orders.append(Order("INTARIAN_PEPPER_ROOT", best_bid + 1, remaining))
@@ -212,11 +207,30 @@ class Trader:
 
     # ------------------------------------------------------------------
     @staticmethod
-    def _inventory_skew(position: int, soft_limit: int, hard_limit: int) -> int:
-        """Skew quotes to reduce inventory. Max 2 ticks at hard limit."""
-        if abs(position) <= soft_limit:
-            return 0
-        excess = abs(position) - soft_limit
-        max_excess = hard_limit - soft_limit
-        magnitude = min(round((excess / max_excess) * 2), 2)
-        return -magnitude if position > 0 else magnitude
+    def _find_wall_bid(bids_sorted, fv_r):
+        """Find Bot 2 (inner wall) bid as penny-jump reference.
+        Uses FV distance to distinguish Bot 2 (far) from Bot 3 (near)."""
+        if len(bids_sorted) >= 3:
+            return bids_sorted[1]
+        if len(bids_sorted) >= 2:
+            if fv_r - bids_sorted[0] >= 5:
+                return bids_sorted[0]
+            else:
+                return bids_sorted[1]
+        if bids_sorted:
+            return bids_sorted[0]
+        return fv_r - 8
+
+    @staticmethod
+    def _find_wall_ask(asks_sorted, fv_r):
+        """Find Bot 2 (inner wall) ask as penny-jump reference."""
+        if len(asks_sorted) >= 3:
+            return asks_sorted[1]
+        if len(asks_sorted) >= 2:
+            if asks_sorted[0] - fv_r >= 5:
+                return asks_sorted[0]
+            else:
+                return asks_sorted[1]
+        if asks_sorted:
+            return asks_sorted[0]
+        return fv_r + 8
