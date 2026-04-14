@@ -92,11 +92,13 @@ def cli(
         sessions = 1000
         sample_sessions = 100
 
-    # Resolve algorithm: if not found, try traders/ directory
+    # Resolve algorithm: if not found, try traders/round1/, traders/round0/, traders/
     if not algorithm.exists():
-        traders_path = Path("traders") / algorithm.name
-        if traders_path.exists():
-            algorithm = traders_path.resolve()
+        for subdir in ["traders/round1", "traders/round0", "traders"]:
+            candidate = Path(subdir) / algorithm.name
+            if candidate.exists():
+                algorithm = candidate.resolve()
+                break
         else:
             print(f"Error: algorithm file not found: {algorithm}")
             raise SystemExit(1)

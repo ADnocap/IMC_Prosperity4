@@ -16,12 +16,13 @@ from backtester.runner import run_backtest
 
 
 def resolve_algorithm_path(algorithm: Path) -> Path:
-    """If the algorithm file doesn't exist, try looking in traders/ directory."""
+    """If the algorithm file doesn't exist, try traders/round1/, round0/, traders/."""
     if algorithm.exists():
         return algorithm
-    traders_path = Path("traders") / algorithm.name
-    if traders_path.exists():
-        return traders_path.resolve()
+    for subdir in ["traders/round1", "traders/round0", "traders"]:
+        candidate = Path(subdir) / algorithm.name
+        if candidate.exists():
+            return candidate.resolve()
     return algorithm
 
 

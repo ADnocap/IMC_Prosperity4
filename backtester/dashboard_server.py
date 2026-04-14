@@ -46,15 +46,23 @@ def _list_traders() -> list[dict[str, object]]:
     if not traders_dir.is_dir():
         return []
     result = []
-    for f in sorted(traders_dir.glob("*.py")):
-        if f.name in ("datamodel.py", "__init__.py"):
-            continue
-        result.append({
-            "name": f.name,
-            "path": f"traders/{f.name}",
-            "sizeBytes": f.stat().st_size,
-            "mtimeMs": int(f.stat().st_mtime_ns // 1_000_000),
-        })
+    # Scan round subdirectories (round1 first, then round0) and top-level
+    scan_dirs = []
+    for rd in sorted(traders_dir.iterdir(), reverse=True):
+        if rd.is_dir() and rd.name.startswith("round"):
+            scan_dirs.append(rd)
+    scan_dirs.append(traders_dir)
+    for d in scan_dirs:
+        for f in sorted(d.glob("*.py")):
+            if f.name in ("datamodel.py", "__init__.py"):
+                continue
+            rel = f.relative_to(_project_root())
+            result.append({
+                "name": f"{d.name}/{f.name}" if d != traders_dir else f.name,
+                "path": str(rel).replace("\\", "/"),
+                "sizeBytes": f.stat().st_size,
+                "mtimeMs": int(f.stat().st_mtime_ns // 1_000_000),
+            })
     return result
 
 

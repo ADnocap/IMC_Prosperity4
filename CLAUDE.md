@@ -14,12 +14,15 @@ This is our workspace for **IMC Prosperity 4** (2026), a multi-round algorithmic
 ```
 IMC_trading_hack/
 ├── traders/                           # All trader algorithms
-│   ├── a.py                           #   Main trading algorithm (SUBMIT THIS)
+│   ├── round1/                        #   Round 1 traders (SUBMIT FROM HERE)
+│   │   └── a.py                       #     Main R1 trading algorithm
+│   ├── round0/                        #   Round 0 / tutorial traders (archived)
+│   │   └── a.py, b.py, c.py, ...     #     Previous strategies
 │   ├── datamodel.py                   #   Official Prosperity 4 data model
-│   ├── trader_hold1.py                #   Hold-1-unit strategy for FV extraction
-│   └── b.py, c.py, d.py, 22898.py    #   Alternative/experimental traders
+│   └── trader_hold1.py                #   Hold-1-unit strategy for FV extraction
 ├── data/                              # Market data
 │   ├── prosperity4/round0/            #   P4 tutorial round (EMERALDS, TOMATOES)
+│   ├── prosperity4/round1/            #   P4 round 1 (OSMIUM, PEPPER_ROOT)
 │   └── prosperity3/round1-8/          #   P3 historical data (reference)
 ├── backtester/                        # Backtester package (install with pip install -e .)
 │   ├── prosperity4mcbt/               #   Monte Carlo CLI (primary backtester)
@@ -38,7 +41,7 @@ IMC_trading_hack/
 ## Architecture & Constraints
 
 ### Submission Format
-- **Single Python file** (`traders/a.py`) containing a `Trader` class with a `run()` method
+- **Single Python file** (`traders/round1/a.py`) containing a `Trader` class with a `run()` method
 - No external file access, no network, no pip installs at runtime
 - Available: standard library + numpy + jsonpickle
 - Memory limit: ~100 MB (AWS Lambda)
@@ -145,16 +148,16 @@ See [BACKTEST.md](BACKTEST.md) for the full guide including calibration methodol
 ### Monte Carlo Backtester (PRIMARY -- use this)
 ```bash
 # Install (one-time): pip install -e .
-prosperity4mcbt traders/a.py --quick --out tmp/results/dashboard.json    # dev iteration (~6s)
-prosperity4mcbt traders/a.py --heavy --out tmp/results/dashboard.json    # pre-submission (~55s)
-prosperity4mcbt traders/a.py --quick --vis --out tmp/results/dashboard.json  # with dashboard
+prosperity4mcbt a.py --quick --out tmp/results/dashboard.json    # dev iteration (~6s)
+prosperity4mcbt a.py --heavy --out tmp/results/dashboard.json    # pre-submission (~55s)
+prosperity4mcbt a.py --quick --vis --out tmp/results/dashboard.json  # with dashboard
 ```
 Rust-backed Monte Carlo using calibrated bot models reverse-engineered from tutorial data. Produces distributional PnL stats (mean, std, percentiles) across hundreds/thousands of synthetic sessions.
 
 ### CSV Replay (sanity checks)
 ```bash
-prosperity3bt traders/a.py 0                           # historical replay
-py -3.13 scripts/bt_stats.py traders/a.py 0            # fill analytics
+prosperity3bt a.py 0                                   # historical replay
+py -3.13 scripts/bt_stats.py traders/round1/a.py 0     # fill analytics
 ```
 **Warning**: `--match-trades all` (default) over-reports PnL for market making. Use for relative A/B comparison only.
 
@@ -169,7 +172,7 @@ Submission 18425 (v1 code): 979 XIRECs (EMERALDS: 0 | TOMATOES: 979)
 
 ## Coding Conventions
 
-- All trading logic in a single `traders/a.py` (submission constraint)
+- All trading logic in a single `traders/round1/a.py` (submission constraint)
 - Use `json.dumps()`/`json.loads()` for traderData serialization
 - Keep strategies modular within the single file using helper methods
 - Price is always `int`, quantity is `int` (positive = buy, negative = sell)
