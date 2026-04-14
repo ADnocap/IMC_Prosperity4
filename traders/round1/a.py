@@ -62,10 +62,18 @@ class Trader:
         bids_sorted = sorted(od.buy_orders.keys(), reverse=True) if od.buy_orders else []
         asks_sorted = sorted(od.sell_orders.keys()) if od.sell_orders else []
 
-        fv = self._estimate_osmium_fv(od, td)
-        td["ash_last_fv"] = fv
-        if fv is None:
+        raw_fv = self._estimate_osmium_fv(od, td)
+        if raw_fv is None:
             return orders, td
+
+        # EMA-smoothed FV: reduces noise from single-tick estimation errors
+        prev_fv = td.get("ash_last_fv")
+        if prev_fv is not None:
+            alpha = 0.2  # weight on current tick — heavy smoothing reduces FV noise
+            fv = alpha * raw_fv + (1 - alpha) * prev_fv
+        else:
+            fv = raw_fv
+        td["ash_last_fv"] = fv
 
         fv_r = int(round(fv))
         starting_pos = position
