@@ -1,289 +1,191 @@
-from datamodel import OrderDepth, TradingState, Order
-from typing import Dict, List
 import json
+from datamodel import Order, OrderDepth, TradingState
+
+OSMIUM = "ASH_COATED_OSMIUM"
+PEPPER = "INTARIAN_PEPPER_ROOT"
+LIMITS = {OSMIUM: 80, PEPPER: 80}
 
 
 class Trader:
-    """
-    Round 1 strategy — MM + Bot2 volume imbalance signal.
 
-    OSMIUM hidden pattern: When Bot2 bid vol != ask vol, a ~5-tick
-    FV jump is imminent in the direction of the heavier side.
-    Verified across all 3 data days with near 100% accuracy.
-
-    Strategy:
-    - Normal ticks: standard penny-jump MM (take at FV, quote at FV±7)
-    - Signal ticks (Bot2 vol imbalance): aggressively take in the
-      predicted direction to build position BEFORE the jump. Then
-      profit from the ~5-tick FV move.
-
-    PEPPER: Buy-and-hold for drift.
-    """
-
-    PARAMS = {
-        "ASH_COATED_OSMIUM": {"limit": 80},
-        "INTARIAN_PEPPER_ROOT": {"limit": 80},
-    }
-
-    def run(self, state: TradingState):
-        result: Dict[str, List[Order]] = {}
-        conversions = 0
-
+    def run(self, state: TradingState) -> tuple[dict[str, list[Order]], int, str]:
+        result: dict[str, list[Order]] = {}
         td = {}
         if state.traderData:
             try:
                 td = json.loads(state.traderData)
-            except json.JSONDecodeError:
+            except Exception:
                 td = {}
 
         for product in state.order_depths:
-            od: OrderDepth = state.order_depths[product]
+            od = state.order_depths[product]
             pos = state.position.get(product, 0)
-
-            if product == "ASH_COATED_OSMIUM":
+            if product == OSMIUM:
                 result[product], td = self._trade_osmium(od, pos, td)
-            elif product == "INTARIAN_PEPPER_ROOT":
+            elif product == PEPPER:
                 result[product] = self._trade_pepper(od, pos)
             else:
                 result[product] = []
 
-        return result, conversions, json.dumps(td)
+        return result, 0, json.dumps(td)
 
-    # ------------------------------------------------------------------
-    # ASH_COATED_OSMIUM
-    # ------------------------------------------------------------------
+    # ==================================================================
+    #  OSMIUM: FV±3 tight MM
+    #
+    #  Hypothesis: real server has price-sensitive taker bots.
+    #  Top teams trade at avg fill 2.32 and make 8,924 on OSMIUM.
+    #  Tighter spreads get more fills, compensating for lower spread.
+    #
+    #  Also uses run-length signal for PRICE SKEW (not sizing):
+    #  - Both sides always have full capacity (no lost counter-fills)
+    #  - Signal shifts quotes 1 tick toward expected reversal
+    # ==================================================================
     def _trade_osmium(self, od: OrderDepth, position: int, td: dict):
         orders = []
-        limit = 80
+        limit = LIMITS[OSMIUM]
+        starting_pos = position
 
         bids_sorted = sorted(od.buy_orders.keys(), reverse=True) if od.buy_orders else []
         asks_sorted = sorted(od.sell_orders.keys()) if od.sell_orders else []
 
-        fv = self._estimate_osmium_fv(od, td)
+        fv = self._extract_fv(od, bids_sorted, asks_sorted, td)
         if fv is None:
             return orders, td
-        td["ash_last_fv"] = fv
 
         fv_r = int(round(fv))
-        starting_pos = position
+
+        # --- Run-length tracking ---
+        prev_fv_r = td.get("osm_fv_r")
+        run_dir = td.get("osm_run_dir", 0)
+        run_len = td.get("osm_run_len", 0)
+
+        if prev_fv_r is not None and fv_r != prev_fv_r:
+            step = 1 if fv_r > prev_fv_r else -1
+            if step == run_dir:
+                run_len += 1
+            else:
+                run_dir = step
+                run_len = 1
+
+        td["osm_fv_r"] = fv_r
+        td["osm_fv"] = fv
+        td["osm_run_dir"] = run_dir
+        td["osm_run_len"] = run_len
+
+        exp_dir = -run_dir if run_dir != 0 else 0
+
         buy_ordered = 0
         sell_ordered = 0
 
-        # ── Detect Bot2 volume imbalance signal ──
-        # Bot2 normally posts SAME volume on both sides.
-        # When bid_vol != ask_vol, a ~5 tick FV jump is coming.
-        # Direction: heavier side = direction of jump.
-        signal = 0  # +1 = jump up expected, -1 = jump down
-        bot2_bid_vol = 0
-        bot2_ask_vol = 0
+        # --- Phase 1: Take mispriced orders ---
+        for ask_price in asks_sorted:
+            if ask_price > fv_r:
+                break
+            vol = -od.sell_orders[ask_price]
+            can_buy = limit - starting_pos - buy_ordered
+            if can_buy <= 0:
+                break
+            qty = min(vol, can_buy)
+            orders.append(Order(OSMIUM, ask_price, qty))
+            buy_ordered += qty
 
-        for price in bids_sorted:
-            vol = od.buy_orders[price]
-            if 10 <= vol <= 15:
-                ref = td.get("ash_last_fv", fv)
-                if abs(price - (ref - 8)) <= 3:
-                    bot2_bid_vol = vol
-                    break
+        for bid_price in bids_sorted:
+            if bid_price < fv_r:
+                break
+            vol = od.buy_orders[bid_price]
+            can_sell = limit + starting_pos - sell_ordered
+            if can_sell <= 0:
+                break
+            qty = min(vol, can_sell)
+            orders.append(Order(OSMIUM, bid_price, -qty))
+            sell_ordered += qty
 
-        for price in asks_sorted:
-            vol = -od.sell_orders[price]
-            if 10 <= vol <= 15:
-                ref = td.get("ash_last_fv", fv)
-                if abs(price - (ref + 8)) <= 3:
-                    bot2_ask_vol = vol
-                    break
+        # --- Phase 2: Passive quoting at FV±3 ---
+        buy_room = limit - starting_pos - buy_ordered
+        sell_room = limit + starting_pos - sell_ordered
 
-        if bot2_bid_vol > 0 and bot2_ask_vol > 0:
-            if bot2_bid_vol > bot2_ask_vol + 1:
-                signal = +1  # FV about to jump UP ~5
-            elif bot2_ask_vol > bot2_bid_vol + 1:
-                signal = -1  # FV about to jump DOWN ~5
+        inv_ratio = starting_pos / limit
 
-        # ── Phase 1: Taking ──
-        if signal != 0:
-            # SIGNAL ACTIVE: aggressively take in predicted direction
-            # FV is about to move ~5 ticks, so taking at up to FV±3
-            # still has positive expected value after the jump
-            if signal > 0:
-                # Jump UP expected → BUY aggressively
-                aggressive_buy_thresh = fv_r + 3
-                for ask_price in asks_sorted:
-                    if ask_price > aggressive_buy_thresh:
-                        break
-                    vol = -od.sell_orders[ask_price]
-                    can_buy = limit - starting_pos - buy_ordered
-                    if can_buy <= 0:
-                        break
-                    qty = min(vol, can_buy)
-                    orders.append(Order("ASH_COATED_OSMIUM", ask_price, qty))
-                    buy_ordered += qty
-            else:
-                # Jump DOWN expected → SELL aggressively
-                aggressive_sell_thresh = fv_r - 3
-                for bid_price in bids_sorted:
-                    if bid_price < aggressive_sell_thresh:
-                        break
-                    vol = od.buy_orders[bid_price]
-                    can_sell = limit + starting_pos - sell_ordered
-                    if can_sell <= 0:
-                        break
-                    qty = min(vol, can_sell)
-                    orders.append(Order("ASH_COATED_OSMIUM", bid_price, -qty))
-                    sell_ordered += qty
-        else:
-            # NO SIGNAL: standard taking at FV with 1+ edge
-            for ask_price in asks_sorted:
-                if ask_price > fv_r - 1:
-                    break
-                vol = -od.sell_orders[ask_price]
-                can_buy = limit - starting_pos - buy_ordered
-                if can_buy <= 0:
-                    break
-                qty = min(vol, can_buy)
-                orders.append(Order("ASH_COATED_OSMIUM", ask_price, qty))
-                buy_ordered += qty
+        # Price skew: shift toward expected reversal (1 tick when signal exists)
+        signal_skew = 0
+        if exp_dir > 0 and run_len >= 2:
+            signal_skew = 1   # shift up: tighter bid, wider ask
+        elif exp_dir < 0 and run_len >= 2:
+            signal_skew = -1  # shift down: wider bid, tighter ask
 
-            for bid_price in bids_sorted:
-                if bid_price < fv_r + 1:
-                    break
-                vol = od.buy_orders[bid_price]
-                can_sell = limit + starting_pos - sell_ordered
-                if can_sell <= 0:
-                    break
-                qty = min(vol, can_sell)
-                orders.append(Order("ASH_COATED_OSMIUM", bid_price, -qty))
-                sell_ordered += qty
+        # Inventory skew
+        inv_skew = round(-inv_ratio * 2)
 
-        # ── Phase 2: Passive quoting ──
-        # When signal active: skew quotes toward predicted direction
-        ref_bid = self._find_wall_bid(bids_sorted, fv_r)
-        ref_ask = self._find_wall_ask(asks_sorted, fv_r)
+        total_skew = signal_skew + inv_skew
 
-        our_bid = min(ref_bid + 1, fv_r - 1)
-        our_ask = max(ref_ask - 1, fv_r + 1)
+        our_bid = fv_r - 3 + total_skew
+        our_ask = fv_r + 3 + total_skew
 
         if our_bid >= our_ask:
             our_bid = fv_r - 1
             our_ask = fv_r + 1
 
-        if our_bid >= our_ask:
-            our_bid = fv_r - 1
-            our_ask = fv_r + 1
+        # Full capacity both sides (no asymmetric sizing)
+        pb = min(buy_room, buy_room)  # max available
+        ps = min(sell_room, sell_room)
 
-        passive_buy = limit - starting_pos - buy_ordered
-        passive_sell = limit + starting_pos - sell_ordered
-
-        if signal > 0:
-            # Expect UP: only place bid (no ask) to force long position
-            # Any elastic fill = buy → profits from +5 jump next tick
-            if passive_buy > 0:
-                orders.append(Order("ASH_COATED_OSMIUM", our_bid, passive_buy))
-            # Also place a bid closer to FV to catch market trade matching
-            extra_buy = limit - starting_pos - buy_ordered - passive_buy
-            if extra_buy > 0 and passive_buy > 0:
-                pass  # already used full capacity
-        elif signal < 0:
-            # Expect DOWN: only place ask (no bid) to force short position
-            if passive_sell > 0:
-                orders.append(Order("ASH_COATED_OSMIUM", our_ask, -passive_sell))
-        else:
-            # Normal: place both sides
-            if passive_buy > 0:
-                orders.append(Order("ASH_COATED_OSMIUM", our_bid, passive_buy))
-            if passive_sell > 0:
-                orders.append(Order("ASH_COATED_OSMIUM", our_ask, -passive_sell))
+        if pb > 0:
+            orders.append(Order(OSMIUM, our_bid, pb))
+        if ps > 0:
+            orders.append(Order(OSMIUM, our_ask, -ps))
 
         return orders, td
 
-    # ------------------------------------------------------------------
-    def _estimate_osmium_fv(self, od: OrderDepth, td: dict):
-        """Bot1-anchored FV estimation to avoid Bot3 contamination."""
-        bids = sorted(od.buy_orders.keys(), reverse=True) if od.buy_orders else []
-        asks = sorted(od.sell_orders.keys()) if od.sell_orders else []
-
+    def _extract_fv(self, od, bids, asks, td):
         if not bids and not asks:
-            return td.get("ash_last_fv")
-
-        bot1_estimates = []
-        for price in bids:
-            vol = od.buy_orders[price]
-            if vol >= 20:
-                bot1_estimates.append(price + 10.5)
-        for price in asks:
-            vol = -od.sell_orders[price]
-            if vol >= 20:
-                bot1_estimates.append(price - 10.5)
-        bot1_fv = sum(bot1_estimates) / len(bot1_estimates) if bot1_estimates else None
-
-        ref_fv = bot1_fv or td.get("ash_last_fv")
-        if ref_fv is None:
-            if bids and asks:
-                ref_fv = (bids[0] + asks[0]) / 2
-            elif bids:
-                ref_fv = bids[0] + 8
-            else:
-                ref_fv = asks[0] - 8
-
-        estimates = []
-        for price in bids:
-            vol = od.buy_orders[price]
-            if 10 <= vol <= 15:
-                if abs(price - (ref_fv - 8)) <= 3:
-                    estimates.append((price + 8, 2.0))
-            elif vol >= 20:
-                estimates.append((price + 10.5, 1.0))
-
-        for price in asks:
-            vol = -od.sell_orders[price]
-            if 10 <= vol <= 15:
-                if abs(price - (ref_fv + 8)) <= 3:
-                    estimates.append((price - 8, 2.0))
-            elif vol >= 20:
-                estimates.append((price - 10.5, 1.0))
-
-        if estimates:
-            tw = sum(w for _, w in estimates)
-            return sum(e * w for e, w in estimates) / tw
+            return td.get("osm_fv")
 
         if bids and asks:
-            return (bids[0] + asks[0]) / 2
+            spread = asks[0] - bids[0]
+            mid = (bids[0] + asks[0]) / 2.0
+
+            if spread == 16:
+                return int(mid)
+
+            if 17 <= spread <= 19:
+                bv1 = od.buy_orders.get(bids[0], 0)
+                av1 = abs(od.sell_orders.get(asks[0], 0))
+                if av1 > bv1 and bv1 > 0:
+                    return bids[0] + 8
+                elif bv1 > av1 and av1 > 0:
+                    return asks[0] - 8
+                prev = td.get("osm_fv")
+                return prev if prev is not None else round(mid)
+
+            prev = td.get("osm_fv")
+            return prev if prev is not None else round(mid)
+
         if bids:
-            return bids[0] + 10.5
+            for p in bids:
+                vol = od.buy_orders[p]
+                if 10 <= vol <= 15:
+                    return p + 8
+                elif vol >= 20:
+                    return p + 10.5
+            return td.get("osm_fv", bids[0] + 8)
+
         if asks:
-            return asks[0] - 10.5
-        return td.get("ash_last_fv")
+            for p in asks:
+                vol = abs(od.sell_orders[p])
+                if 10 <= vol <= 15:
+                    return p - 8
+                elif vol >= 20:
+                    return p - 10.5
+            return td.get("osm_fv", asks[0] - 8)
 
-    # ------------------------------------------------------------------
-    @staticmethod
-    def _find_wall_bid(bids_sorted, fv_r):
-        if len(bids_sorted) >= 3:
-            return bids_sorted[1]
-        if len(bids_sorted) >= 2:
-            if fv_r - bids_sorted[0] >= 5:
-                return bids_sorted[0]
-            else:
-                return bids_sorted[1]
-        if bids_sorted:
-            return bids_sorted[0]
-        return fv_r - 8
+        return td.get("osm_fv")
 
-    @staticmethod
-    def _find_wall_ask(asks_sorted, fv_r):
-        if len(asks_sorted) >= 3:
-            return asks_sorted[1]
-        if len(asks_sorted) >= 2:
-            if asks_sorted[0] - fv_r >= 5:
-                return asks_sorted[0]
-            else:
-                return asks_sorted[1]
-        if asks_sorted:
-            return asks_sorted[0]
-        return fv_r + 8
-
-    # ------------------------------------------------------------------
+    # ==================================================================
+    #  PEPPER: Buy-and-hold for deterministic drift (+0.1/tick)
+    # ==================================================================
     def _trade_pepper(self, od: OrderDepth, position: int) -> list:
         orders = []
-        limit = 80
+        limit = LIMITS[PEPPER]
         remaining = limit - position
 
         if remaining <= 0:
@@ -296,13 +198,13 @@ class Trader:
                     continue
                 qty = min(vol, remaining)
                 if qty > 0:
-                    orders.append(Order("INTARIAN_PEPPER_ROOT", ask_price, qty))
+                    orders.append(Order(PEPPER, ask_price, qty))
                     remaining -= qty
                 if remaining <= 0:
                     break
 
         if remaining > 0 and od.buy_orders:
             best_bid = max(od.buy_orders.keys())
-            orders.append(Order("INTARIAN_PEPPER_ROOT", best_bid + 1, remaining))
+            orders.append(Order(PEPPER, best_bid + 1, remaining))
 
         return orders
