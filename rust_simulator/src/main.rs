@@ -1483,13 +1483,24 @@ fn simulate_trade_counts(product: &str, ticks: usize, rng: &mut ChaCha8Rng) -> V
 }
 
 fn simulate_ash_fair(ticks: usize, rng: &mut ChaCha8Rng) -> Vec<f64> {
+    // Calibrated from data/prosperity4/round1 (3 days, see OSMIUM_ANALYSIS.md):
+    //   - AR(1) on steps: coef = -0.32 (65% reversal after each move)
+    //   - OU pullback toward 10000 with theta ≈ 0.008 (half-life ~90 ticks)
+    //   - Innovation sigma preserved from prior calibration
     let start = 10_000.0;
-    let sigma = 0.312;
+    let mu = 10_000.0;
+    let theta = 0.008;
+    let ar_coef = -0.32;
+    let sigma = 0.38;
     let mut values = vec![0.0; ticks];
     values[0] = quantize_1024(start);
+    let mut prev_step = 0.0;
     for index in 1..ticks {
-        let step = sigma * sample_standard_normal(rng);
+        let ou_pull = -theta * (values[index - 1] - mu);
+        let noise = sigma * sample_standard_normal(rng);
+        let step = ou_pull + ar_coef * prev_step + noise;
         values[index] = quantize_1024(values[index - 1] + step);
+        prev_step = values[index] - values[index - 1];
     }
     values
 }
