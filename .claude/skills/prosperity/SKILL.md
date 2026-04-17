@@ -12,10 +12,19 @@ You are helping with the IMC Prosperity 4 algorithmic trading competition. The p
 - **Python**: Use `py -3.13` (Python 3.13)
 - **Monte Carlo backtester**: `prosperity4mcbt` CLI (install: `cd backtester && pip install -e .`)
 - **CSV replay**: `prosperity3bt` CLI (same package)
-- **Main algo file**: `traders/a.py` (single-file submission with `Trader` class)
-- **Data**: `data/round0/` and subsequent `round_N/` folders
-- **Analysis**: `analysis/tutorial_eda.py`
+- **Active trader file**: lives under `traders/round<N>/a.py` where N is the current round. Determine N by listing `traders/` — the highest-numbered `roundN/` directory is the active round. Round 2 is active as of 2026-04-17.
+- **Data**: per-round CSVs in `data/prosperity4/round<N>/` (semicolon-delimited). R0 (tutorial) and R1 data are present; R2 lands when IMC publishes.
 - **Unicode output**: Prefix commands with `PYTHONIOENCODING=utf-8` when needed
+
+## Determining the active round
+
+Before running any subcommand, resolve the active trader path:
+
+1. List `traders/` — pick the highest `roundN/` that contains an `a.py`
+2. Active trader = `traders/round<N>/a.py`
+3. Active data dir = `data/prosperity4/round<N>/` (may be empty if IMC hasn't published yet — fall back to round N-1 for replay)
+
+Use this path everywhere instead of the old `traders/a.py`.
 
 ## Subcommands
 
@@ -27,18 +36,20 @@ Parse the user's input to determine which subcommand to run. If no subcommand is
 
 Show a status overview:
 
-1. Read `traders/a.py` and extract the `PARAMS` dict to list all products, their strategies, and key parameters
-2. Find the most recent results in `tmp/` directory
-3. If recent backtest results exist, report the PnL breakdown. If not, suggest running a backtest.
-4. List all available data directories (data/round0, round_N, etc.)
+1. Resolve the active round and read `traders/round<N>/a.py`. Extract class-level constants / `PARAMS` dict to list all products and their key parameters.
+2. List the most recent results in `tmp/results/` and `backtests/` directories. Report the best-available PnL stats if present.
+3. List all available data directories (`data/prosperity4/round*/`). Flag any round whose directory exists but is empty — that means we're waiting on IMC to publish.
+4. Peek at `submission_results/` for the most recent portal submission IDs.
 
 Format output as a concise dashboard:
 
 ```
 ## Prosperity Status
-**Products**: EMERALDS (fixed_mm, fair=10000), TOMATOES (adaptive_mm, ema=0.15)
-**Last Backtest**: Monte Carlo heavy -- Mean: 1,200 XIRECs (std: 450, P05: 300, P95: 2,100)
-**Available Data**: data/round0
+**Active round**: 2 (traders/round2/a.py)
+**Products**: ASH_COATED_OSMIUM, INTARIAN_PEPPER_ROOT  (R2 products pending data)
+**Last Backtest**: MC heavy -- Mean: 10,600 XIRECs (std: 820, P05: 9,200, P95: 12,000)
+**Data available**: round0, round1   |   round2 EMPTY (waiting on IMC)
+**Recent submissions**: 71060, 70344 (see submission_results/)
 ```
 
 ---
@@ -47,45 +58,45 @@ Format output as a concise dashboard:
 
 Run the Monte Carlo backtester and report results:
 
-1. Default round is `0` (tutorial). Use `--quick` for fast iteration, `--heavy` for final eval.
-2. Run: `cd "C:/Users/alexa/OneDrive/Documents/IMC_trading_hack" && prosperity4mcbt traders/a.py --quick --out tmp/results/dashboard.json`
-3. Parse the output for per-product PnL statistics (mean, std, percentiles)
-4. Compare against previous backtest results if available
-5. Report results with clear comparison showing improvement or regression
+1. Default to the **active round's trader**. If the user passes a round number, target that round's trader instead.
+2. Run: `cd "C:/Users/alexa/OneDrive/Documents/IMC_trading_hack" && prosperity4mcbt traders/round<N>/a.py --quick --out tmp/results/dashboard.json` — use `--quick` for iteration, `--heavy` for final eval.
+3. Parse the output for per-product PnL statistics (mean, std, percentiles).
+4. Compare against previous backtest results in `tmp/results/` or `backtests/` if available.
+5. Report results with clear comparison showing improvement or regression.
 
-For a quick sanity check, use CSV replay instead:
+For a quick sanity check, use CSV replay instead (pass a round number whose data exists):
 ```bash
-prosperity3bt traders/a.py 0 --data data
+prosperity3bt traders/round<N>/a.py <data_round>
 ```
 
 If the backtest fails, read the error carefully and diagnose it. Common issues:
 - Import errors (missing modules)
 - Position limit violations
-- Syntax errors in traders/a.py
+- Syntax errors in the trader file
+- Rust binary not built (see BACKTEST.md "Windows: Application Control")
 
 ---
 
 ### `/prosperity analyze` or `/prosperity analyze [round]`
 
-Run exploratory data analysis:
+Run exploratory data analysis on the specified round (defaults to active round):
 
-1. Run: `cd "C:/Users/alexa/OneDrive/Documents/IMC_trading_hack" && PYTHONIOENCODING=utf-8 py -3.13 analysis/tutorial_eda.py`
-2. Parse the output and present key findings in a structured summary
-3. Highlight actionable insights:
-   - Is the fair value estimate correct for each product?
+1. Look under `data/prosperity4/round<N>/` for `prices_round_<N>_day_{-2,-1,0}.csv` and `trades_*.csv`.
+2. Use pandas (`py -3.13`) for the analysis. There's no fixed EDA script — write inline or in a scratch file under `tmp/` as needed.
+3. Highlight actionable insights per product:
+   - Is the fair value estimate correct? (compare vs calibrated FV if available)
    - Are spreads tight enough to capture edge?
-   - What's the trade frequency and typical volume?
-   - Any drift patterns that need attention?
-
-If analyzing a new round's data, check if the EDA script needs updating first (it may only handle tutorial data).
+   - Trade frequency and typical volume?
+   - Drift patterns / autocorrelation / regime changes?
+4. If analyzing a brand-new round right after IMC publishes, FIRST check whether calibration exists. If not, point the user at `calibration/round1/scripts/` as templates.
 
 ---
 
 ### `/prosperity submit`
 
-Validate `traders/a.py` for submission readiness:
+Validate the active trader for submission readiness:
 
-1. **Read `traders/a.py`** and check:
+1. **Read `traders/round<N>/a.py`** and check:
    - Has a `Trader` class
    - Has a `run(self, state: TradingState)` method
    - Returns a 3-tuple `(result, conversions, traderData)`
@@ -95,16 +106,19 @@ Validate `traders/a.py` for submission readiness:
    - All imports are from allowed modules (standard library, numpy, jsonpickle, datamodel)
    - No file I/O, no network calls, no subprocess usage
    - No environment variable reads that won't exist in the sandbox
-   - Position limits are respected (check that worst-case fills don't exceed limits)
+   - Worst-case order sizing respects position limits (the exchange cancels **ALL** orders on a product if any fill combo could breach the limit — see CLAUDE.md pitfalls)
+   - Handlers still exist for all prior-round products (they remain tradeable)
 
 2. **Run a quick backtest** to confirm no runtime errors:
-   `cd "C:/Users/alexa/OneDrive/Documents/IMC_trading_hack" && prosperity3bt traders/a.py 0 --data data`
+   ```
+   cd "C:/Users/alexa/OneDrive/Documents/IMC_trading_hack" && prosperity4mcbt traders/round<N>/a.py --quick --out tmp/results/dashboard.json
+   ```
 
 3. **Report**:
-   - Green/pass for each check
+   - Pass/fail for each check
    - Warnings for any issues
    - Final verdict: "Ready to submit" or "Fix issues before submitting"
-   - Remind the user to upload the single `traders/a.py` file on the Prosperity platform
+   - Remind the user to upload the single active-round `a.py` file on the Prosperity platform
 
 ---
 
@@ -112,16 +126,16 @@ Validate `traders/a.py` for submission readiness:
 
 Analyze and suggest parameter improvements for a specific product:
 
-1. **Read `traders/a.py`** to get current parameters for the product
-2. **Read the relevant price/trade CSVs** for that product
+1. **Read `traders/round<N>/a.py`** to get current parameters (class constants or `PARAMS` dict) for the product.
+2. **Read the relevant price/trade CSVs** from `data/prosperity4/round<N>/` (or the round where the product was introduced).
 3. **Analyze**:
-   - Is the fair value correct? Compare against actual mid-price distribution
-   - Is the spread optimal? Too wide = missing fills, too narrow = adverse selection
-   - Is the EMA alpha tuned well? Compare different alpha values against the price series
-   - Are take_width thresholds capturing enough edge?
-   - Is the soft_limit/hard_limit balance right for inventory management?
-4. **Suggest specific parameter changes** with reasoning
-5. **Optionally run a Monte Carlo backtest** with the suggested changes to show projected improvement
+   - Is the fair-value estimator correct? Compare against calibrated FV (see `calibration/round<N>_calibration.md`).
+   - Spread optimality: too wide = missing fills, too narrow = adverse selection.
+   - For drifting/trending products, check whether the smoothing alpha is tuned.
+   - Are take thresholds capturing enough edge?
+   - Is inventory management (soft/hard limits, skew) appropriate?
+4. **Suggest specific parameter changes** with reasoning.
+5. **Optionally run a Monte Carlo backtest** with the suggested changes to show projected improvement.
 
 If no product is specified, analyze all products.
 
@@ -133,5 +147,6 @@ If no product is specified, analyze all products.
 - Use `py -3.13` for all Python execution
 - Set `PYTHONIOENCODING=utf-8` when output may contain unicode
 - When showing PnL changes, use clear +/- formatting and highlight improvements
-- Reference the CLAUDE.md and BACKTEST.md for project context when needed
-- The competition adds new products each round - check what products exist in traders/a.py's PARAMS before making assumptions
+- Reference CLAUDE.md and BACKTEST.md for project context when needed
+- The competition adds new products each round — always inspect `traders/round<N>/a.py` for the current set of handled products before making assumptions
+- Prior-round products remain tradeable — never delete handlers when starting a new round, extend them

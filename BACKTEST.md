@@ -9,11 +9,11 @@ pip install -e .
 # Install Rust (needed for Monte Carlo)
 # Download from https://rustup.rs
 
-# Run Monte Carlo backtest with dashboard
-prosperity4mcbt a.py --quick --vis --out tmp/results/dashboard.json
+# Run Monte Carlo backtest with dashboard (points at the active round's trader)
+prosperity4mcbt traders/round2/a.py --quick --vis --out tmp/results/dashboard.json
 ```
 
-Both CLIs auto-resolve `a.py` to `traders/a.py`, so you don't need to type the full path.
+Both CLIs auto-resolve bare filenames — e.g. `a.py` → `traders/round2/a.py` (active round). Pass a full path like `traders/round1/final_obi_v4.py` to backtest a historical submission.
 
 ---
 
@@ -77,26 +77,29 @@ Dashboard runs at `http://localhost:5555/`. The `--vis` flag starts the data ser
 
 ## Data
 
-All tutorial market data lives in `data/prosperity4/round0/` (semicolon-delimited CSVs). Prosperity 3 historical data is in `data/prosperity3/`.
+Prosperity 4 market data lives under `data/prosperity4/round<N>/` (semicolon-delimited CSVs). Prosperity 3 historical data is in `data/prosperity3/` for reference.
 
 ```
 data/
-├── prosperity4/round0/            # P4 tutorial round
+├── prosperity4/round0/            # P4 tutorial round (EMERALDS, TOMATOES)
 │   ├── prices_round_0_day_-1.csv  # Order book snapshots
 │   ├── prices_round_0_day_-2.csv
 │   ├── trades_round_0_day_-1.csv  # Market trades
 │   └── trades_round_0_day_-2.csv
-└── prosperity3/round1-8/          # P3 historical data (reference)
+├── prosperity4/round1/            # P4 round 1 (ASH_COATED_OSMIUM, INTARIAN_PEPPER_ROOT)
+│   └── prices_round_1_day_{-2,-1,0}.csv + trades_round_1_day_{-2,-1,0}.csv
+├── prosperity4/round2/            # placeholder — CSVs drop here when IMC publishes
+└── prosperity3/round1-8/          # P3 historical data (reference only)
 ```
 
-Trader files live in `traders/`. Both CLIs auto-resolve bare filenames (e.g. `a.py` -> `traders/a.py`).
+Active-round traders live in `traders/round<N>/`. Both CLIs auto-resolve bare filenames to the active round's trader.
 
-| File              | Strategy                                    | Description                              |
-| ----------------- | ------------------------------------------- | ---------------------------------------- |
-| `a.py`            | Market making + penny jump + inventory skew | Main strategy (SUBMIT THIS)              |
-| `b.py`            | Simple opportunistic taking (fixed FV)      | Basic taker                              |
-| `c.py`            | Simple MM around mid with position skew     | Basic market maker                       |
-| `trader_hold1.py` | Buy 1 unit, hold forever                    | Calibration utility (extracts server FV) |
+| File                              | Purpose                                                  |
+| --------------------------------- | -------------------------------------------------------- |
+| `traders/round2/a.py`             | Active R2 submission (seeded from R1 final)              |
+| `traders/round1/final_obi_v4.py`  | Best R1 submission (OSMIUM MM + PEPPER long-bias)        |
+| `traders/round0/a.py` … `d.py`    | Tutorial-round strategy variants (archived)              |
+| `traders/trader_hold1.py`         | Buy 1 unit, hold forever — used to extract server FV     |
 
 ---
 
@@ -106,22 +109,22 @@ Rust-backed Monte Carlo simulator. Generates hundreds/thousands of synthetic mar
 
 ```bash
 # Quick (100 sessions, ~6s) -- good for iteration
-prosperity4mcbt a.py --quick --out tmp/results/dashboard.json
+prosperity4mcbt traders/round2/a.py --quick --out tmp/results/dashboard.json
 
 # Heavy (1000 sessions, ~55s) -- final eval before submission
-prosperity4mcbt a.py --heavy --out tmp/results/dashboard.json
+prosperity4mcbt traders/round2/a.py --heavy --out tmp/results/dashboard.json
 
 # With dashboard auto-open
-prosperity4mcbt a.py --quick --vis --out tmp/results/dashboard.json
+prosperity4mcbt traders/round2/a.py --quick --vis --out tmp/results/dashboard.json
 ```
 
 ### Advanced options
 
 ```bash
-prosperity4mcbt a.py --quick --seed 42 --out tmp/results/dashboard.json
-prosperity4mcbt a.py --quick --fv-mode simulate --out tmp/results/dashboard.json
-prosperity4mcbt a.py --quick --trade-mode simulate --out tmp/results/dashboard.json
-prosperity4mcbt a.py --sessions 3000 --sample-sessions 150 --out tmp/results/dashboard.json
+prosperity4mcbt traders/round2/a.py --quick --seed 42 --out tmp/results/dashboard.json
+prosperity4mcbt traders/round2/a.py --quick --fv-mode simulate --out tmp/results/dashboard.json
+prosperity4mcbt traders/round2/a.py --quick --trade-mode simulate --out tmp/results/dashboard.json
+prosperity4mcbt traders/round2/a.py --sessions 3000 --sample-sessions 150 --out tmp/results/dashboard.json
 ```
 
 ### Output bundle
@@ -135,51 +138,43 @@ tmp/results/
 └── sessions/            # Full session logs
 ```
 
-### Strategy comparison (Monte Carlo, 100 sessions each)
+### Regenerating the MC baseline for Round 2
 
-| Trader   | Mean PnL  | Std | Median | P5-P95          |
-| -------- | --------- | --- | ------ | --------------- |
-| **a.py** | **2,939** | 614 | 2,936  | 1,859 - 3,836   |
+The previous strategy-comparison table was R1-specific and has been removed. When R2 data arrives, re-baseline with:
 
-*(2,000 ticks/day matching portal server; portal submission 70344: ~2,518)*
+```bash
+prosperity4mcbt traders/round2/a.py --heavy --out tmp/results/r2_baseline.json
+```
+
+Record the mean / std / P5–P95 in your PR description to track regressions as you iterate.
 
 ---
 
 ## 2. CSV Replay (`prosperity3bt`)
 
-Deterministic replay against the historical order book from tutorial data.
+Deterministic replay against a historical order book from prior rounds. The CLI takes a round number and replays all days for that round from `data/prosperity4/round<N>/`.
 
 ```bash
-prosperity3bt a.py 0
-prosperity3bt a.py 0 --print
+prosperity3bt traders/round2/a.py 1           # replay R1 data
+prosperity3bt traders/round2/a.py 1 --print
 
 # Fill analytics (maker vs taker breakdown)
-py -3.13 scripts/bt_stats.py traders/a.py 0
+py -3.13 scripts/bt_stats.py traders/round2/a.py 1
 ```
 
-**Warning**: `--match-trades all` (default) over-reports PnL for market making (26x in our testing). Use for relative A/B comparison only.
-
-### Current replay results
-
-| Day       | EMERALDS   | TOMATOES   | Total      |
-| --------- | ---------- | ---------- | ---------- |
-| -2        | 6,746      | 8,242      | 14,988     |
-| -1        | 7,523      | 6,642      | 14,165     |
-| **Total** | **14,269** | **14,884** | **29,154** |
-
-Note: replay PnL is inflated vs portal because `--match-trades all` lets you trade against bot-to-bot trades.
+**Warning**: `--match-trades all` (default) over-reports PnL for market making (26× in our testing on tutorial data). Use for relative A/B comparison only — Monte Carlo + portal submissions are the ground truth.
 
 ---
 
 ## When to use which
 
-| Scenario            | Tool                      | Command                                                 |
-| ------------------- | ------------------------- | ------------------------------------------------------- |
-| Dev iteration       | `prosperity4mcbt --quick` | `prosperity4mcbt a.py --quick --vis --out tmp/r/d.json` |
-| Pre-submission eval | `prosperity4mcbt --heavy` | `prosperity4mcbt a.py --heavy --out tmp/r/d.json`       |
-| Quick sanity check  | `prosperity3bt`           | `prosperity3bt a.py 0`                                   |
-| Fill breakdown      | `bt_stats.py`             | `py -3.13 scripts/bt_stats.py traders/a.py 0`            |
-| Ground truth        | Portal                    | Submit on prosperity.imc.com                            |
+| Scenario            | Tool                      | Command                                                                  |
+| ------------------- | ------------------------- | ------------------------------------------------------------------------ |
+| Dev iteration       | `prosperity4mcbt --quick` | `prosperity4mcbt traders/round2/a.py --quick --vis --out tmp/r/d.json`   |
+| Pre-submission eval | `prosperity4mcbt --heavy` | `prosperity4mcbt traders/round2/a.py --heavy --out tmp/r/d.json`         |
+| Quick sanity check  | `prosperity3bt`           | `prosperity3bt traders/round2/a.py 1`                                     |
+| Fill breakdown      | `bt_stats.py`             | `py -3.13 scripts/bt_stats.py traders/round2/a.py 1`                      |
+| Ground truth        | Portal                    | Submit on prosperity.imc.com                                             |
 
 ---
 
@@ -248,10 +243,13 @@ Simpler: fixed fair value at 10,000, outer wall at +/-10, inner wall at +/-8. Sa
 
 ### Recalibrating for new rounds
 
-When new round data arrives:
+When new round data arrives (e.g. Round 2):
 
-1. Submit `traders/trader_hold1.py` (buy 1 unit, hold) to extract server fair value from PnL
-2. Run `scripts/extract_fv_and_book.py` on the submission log to get `data/fv_and_book.json`
-3. Use `calibration/tomatoes/scripts/analyze_bot{1,2}.py` as templates to identify bot quote rules for new products
-4. Validate with `calibration/tomatoes/scripts/validate_bot{1,2,3}.py` -- target >95% exact match
-5. Update the Rust simulator parameters in `rust_simulator/src/main.rs`
+1. Submit `traders/trader_hold1.py` (buy 1 unit, hold forever) on each new product to extract server fair value from PnL
+2. Run `calibration/round1/scripts/extract_fv_and_book.py` on the submission log to get the FV + book JSON
+3. Copy `calibration/round1/scripts/analyze_*` and `calibrate_*` into `calibration/round2/scripts/` as templates and adapt them
+4. Validate the derived bot rules with a `validate_*.py` script — target >95% exact match before trusting the sim
+5. Update the Rust simulator parameters in `rust_simulator/src/main.rs` with the new products + bot rules
+6. Extend `traders/round2/a.py` with the new product handlers (keep R1 handlers intact — prior products remain tradeable)
+
+Round 1 already went through this pipeline — see `calibration/round1_calibration.md` for the output format to aim for.

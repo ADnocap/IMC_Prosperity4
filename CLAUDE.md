@@ -9,20 +9,29 @@ This is our workspace for **IMC Prosperity 4** (2026), a multi-round algorithmic
 - **Wiki**: https://imc-prosperity.notion.site/prosperity-4-wiki
 - **Prize Pool**: $50,000 USD
 
+## Current Round
+
+**Round 2** (April 17–20, 2026). Round 1 shipped; best R1 submission lives at `traders/round1/final_obi_v4.py`. The **active submission file** for R2 is `traders/round2/a.py` (seeded from the R1 final). Round 2 data will land in `data/prosperity4/round2/` once IMC publishes it.
+
 ## Directory Structure
 
 ```
 IMC_trading_hack/
 ├── traders/                           # All trader algorithms
-│   ├── round1/                        #   Round 1 traders (SUBMIT FROM HERE)
-│   │   └── a.py                       #     Main R1 trading algorithm
+│   ├── round2/                        #   Round 2 traders (ACTIVE — SUBMIT FROM HERE)
+│   │   └── a.py                       #     Main R2 trading algorithm
+│   ├── round1/                        #   Round 1 traders (shipped)
+│   │   ├── final_obi_v4.py            #     Best R1 submission
+│   │   ├── final_obi.py
+│   │   └── FINAL_SOLUTION_FR.py
 │   ├── round0/                        #   Round 0 / tutorial traders (archived)
-│   │   └── a.py, b.py, c.py, ...     #     Previous strategies
+│   │   └── a.py, b.py, c.py, d.py, 22898.py
 │   ├── datamodel.py                   #   Official Prosperity 4 data model
 │   └── trader_hold1.py                #   Hold-1-unit strategy for FV extraction
 ├── data/                              # Market data
 │   ├── prosperity4/round0/            #   P4 tutorial round (EMERALDS, TOMATOES)
-│   ├── prosperity4/round1/            #   P4 round 1 (OSMIUM, PEPPER_ROOT)
+│   ├── prosperity4/round1/            #   P4 round 1 (ASH_COATED_OSMIUM, INTARIAN_PEPPER_ROOT)
+│   ├── prosperity4/round2/            #   P4 round 2 (placeholder — CSVs drop here)
 │   └── prosperity3/round1-8/          #   P3 historical data (reference)
 ├── backtester/                        # Backtester package (install with pip install -e .)
 │   ├── prosperity4mcbt/               #   Monte Carlo CLI (primary backtester)
@@ -30,9 +39,19 @@ IMC_trading_hack/
 ├── rust_simulator/                    # Rust Monte Carlo simulation engine
 ├── visualizer/                        # Local dashboard frontend (Vite/React)
 ├── calibration/                       # Bot reverse-engineering scripts & methodology
+│   ├── tomatoes/                      #   Tutorial calibration (reference)
+│   ├── ash_coated_osmium/             #   R1 OSMIUM calibration
+│   ├── intarian_pepper_root/          #   R1 PEPPER_ROOT calibration
+│   ├── round1/                        #   R1 aggregate scripts + report
+│   └── round2/                        #   R2 calibration (placeholder)
+├── manual/                            # Manual trading challenges
+│   ├── round1/                        #   R1 manual (Dryland Flax + Ember Mushroom)
+│   └── round2/                        #   R2 manual (placeholder)
+├── submission_results/                # Raw logs from portal submissions (by sub ID)
 ├── scripts/                           # Helper scripts
 │   ├── python_strategy_worker.py      #   Rust sim ↔ Python bridge
-│   └── bt_stats.py                    #   Fill analytics wrapper
+│   ├── bt_stats.py                    #   Fill analytics wrapper
+│   └── grid_search.py                 #   Parameter grid search
 ├── CLAUDE.md                          # This file - project context
 ├── BACKTEST.md                        # Backtesting & calibration guide
 └── PROSPERITY_4_WIKI_COMPLETE.md      # Full game reference
@@ -41,7 +60,7 @@ IMC_trading_hack/
 ## Architecture & Constraints
 
 ### Submission Format
-- **Single Python file** (`traders/round1/a.py`) containing a `Trader` class with a `run()` method
+- **Single Python file** (currently `traders/round2/a.py`) containing a `Trader` class with a `run()` method
 - No external file access, no network, no pip installs at runtime
 - Available: standard library + numpy + jsonpickle
 - Memory limit: ~100 MB (AWS Lambda)
@@ -68,12 +87,30 @@ If the sum of ALL your outstanding orders for a product could push your position
 5. Remaining bots may trade on your quotes
 6. All unfilled orders expire
 
-## Tutorial Products (Round 0)
+## Products by Round
 
+### Round 0 — Tutorial (shipped)
 | Product | Position Limit | Behavior | Strategy |
 |---------|---------------|----------|----------|
 | EMERALDS | 80 | Stationary ~10,000 | Fixed fair-value market making |
-| TOMATOES | 80 | Drifting (non-stationary) | Adaptive market making with EMA/VWAP |
+| TOMATOES | 80 | Drifting (Gaussian random walk, σ=0.496/tick) | Adaptive market making |
+
+### Round 1 — shipped (Apr 14–17)
+| Product | Position Limit | Behavior | Strategy (what worked in R1) |
+|---------|---------------|----------|------------------------------|
+| ASH_COATED_OSMIUM | 80 | Gaussian random walk, σ=0.312/tick, starts ~10,000 | MM + OBI quote-skew + Bot1-asym adaptive signal |
+| INTARIAN_PEPPER_ROOT | 80 | Deterministic drift +0.1/tick, starts ~10,000 → ~13,000 | Long-biased: aggressive take, tiered asks to unload at high inventory |
+
+Bot calibration for R1 is fully solved — see `calibration/round1_calibration.md`. Key finding: **PEPPER bots use proportional offsets** (`bid = floor(FV*(1 - K))`, `ask = ceil(FV*(1 + K))`) with Bot1 K=3/4000 and Bot2 K=1/2000.
+
+### Round 2 — starts Apr 17, 2026 (ACTIVE)
+Products unknown until IMC publishes. Historically (P3 pattern) Round 2 introduces a **basket ETF + constituents** for statistical-arb trading. Prep checklist when data drops:
+1. Drop CSVs into `data/prosperity4/round2/`
+2. Submit `traders/trader_hold1.py` on each new product to extract server FV via PnL
+3. Copy template scripts from `calibration/round1/scripts/` into `calibration/round2/scripts/`
+4. Identify new bot quote rules — target ≥95% exact-match validation
+5. Update `rust_simulator/src/main.rs` with new products/bot params
+6. Extend `traders/round2/a.py` with the new product handlers
 
 ### Data Format (CSV, semicolon-delimited)
 - **prices**: day;timestamp;product;bid_price_1-3;bid_volume_1-3;ask_price_1-3;ask_volume_1-3;mid_price;profit_and_loss
@@ -82,30 +119,17 @@ If the sum of ALL your outstanding orders for a product could push your position
 - Timestamps: increment by 100 (0, 100, 200, ...)
 - 2,000 timesteps per day (portal server)
 
-## Key Observations from Tutorial Data
-
-### EMERALDS
-- Mid-price locked at ~10,000 every timestep
-- Spread: best bid ~9992, best ask ~10008 (spread = 16)
-- 2 price levels typically visible
-- Extremely stable - pure market making opportunity
-
-### TOMATOES
-- Mid-price drifts over time (starts ~5000-5006, varies day to day)
-- More volatile than EMERALDS
-- Occasionally shows 3 levels of depth
-- Spread varies: typically ~13-15 but tightens/widens
-- Shows directional trends within a day
-
 ## Expected Round Types (Based on Prosperity 3 Pattern)
 
 | Round | Type | Products Expected | Core Strategy |
 |-------|------|-------------------|---------------|
-| 1 | Market Making | Stationary + drifting assets | MM + adaptive MM |
+| 1 | Market Making | Stationary + drifting assets (confirmed: OSMIUM + PEPPER_ROOT) | MM + adaptive MM |
 | 2 | Basket Arbitrage | Basket ETF + constituents | Statistical arb, z-score |
 | 3 | Options | Underlying + vouchers/options | Black-Scholes, IV trading |
 | 4 | Cross-Market | Product tradeable across exchanges | Conversion arb with fees |
 | 5 | Information | All products + trader IDs revealed | Copy-trading informed bots |
+
+All prior-round products remain tradeable in later rounds, so OSMIUM and PEPPER_ROOT handlers must stay live in `traders/round2/a.py`.
 
 ## Strategy Framework
 
@@ -156,15 +180,13 @@ Rust-backed Monte Carlo using calibrated bot models reverse-engineered from tuto
 
 ### CSV Replay (sanity checks)
 ```bash
-prosperity3bt a.py 0                                   # historical replay
-py -3.13 scripts/bt_stats.py traders/round1/a.py 0     # fill analytics
+prosperity3bt traders/round2/a.py 1                    # historical replay on R1 data
+py -3.13 scripts/bt_stats.py traders/round2/a.py 1     # fill analytics
 ```
 **Warning**: `--match-trades all` (default) over-reports PnL for market making. Use for relative A/B comparison only.
 
 ### Portal Submission Results
-```
-Submission 18425 (v1 code): 979 XIRECs (EMERALDS: 0 | TOMATOES: 979)
-```
+Raw logs live in `submission_results/<sub_id>/` — see the directory for the full history. The best Round 1 submission used `traders/round1/final_obi_v4.py`.
 
 ### Visualization
 - Local MC dashboard: `cd visualizer && npm install && npm run dev` then use `--vis` flag
@@ -172,7 +194,7 @@ Submission 18425 (v1 code): 979 XIRECs (EMERALDS: 0 | TOMATOES: 979)
 
 ## Coding Conventions
 
-- All trading logic in a single `traders/round1/a.py` (submission constraint)
+- All trading logic in a single file (currently `traders/round2/a.py`) — submission constraint
 - Use `json.dumps()`/`json.loads()` for traderData serialization
 - Keep strategies modular within the single file using helper methods
 - Price is always `int`, quantity is `int` (positive = buy, negative = sell)
