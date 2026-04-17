@@ -78,7 +78,7 @@ def _run_backtest_worker(
     fv_mode: str,
     trade_mode: str,
     seed: int,
-    ticks_per_day: int = 2000,
+    ticks_per_day: int = 10000,
 ) -> None:
     global _runner_state, _runner_process
     try:
@@ -327,7 +327,7 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
         fv_mode = body.get("fvMode", "simulate")
         trade_mode = body.get("tradeMode", "simulate")
         seed = body.get("seed", 20260401)
-        ticks_per_day = body.get("ticksPerDay", 2000)
+        ticks_per_day = body.get("ticksPerDay", 10000)
 
         trader_path = _project_root() / "traders" / trader_name
         if not trader_path.exists():

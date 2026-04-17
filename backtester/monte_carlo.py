@@ -890,7 +890,11 @@ def run_rust_monte_carlo(
     seed: int,
     python_bin: str,
     sample_sessions: int,
-    ticks_per_day: int = 2000,
+    ticks_per_day: int = 10000,
+    quote_fraction: float = 1.0,
+    maf_bid: int = 0,
+    ipr_start_fv: float = 10000.0,
+    replay_fv_json: Optional[Path] = None,
 ) -> None:
     actual_dir = resolve_actual_dir(data_root)
     simulator_dir = rust_dir()
@@ -926,7 +930,15 @@ def run_rust_monte_carlo(
         str(actual_dir.resolve()),
         "--ticks-per-day",
         str(ticks_per_day),
+        "--quote-fraction",
+        str(quote_fraction),
+        "--maf-bid",
+        str(maf_bid),
+        "--ipr-start-fv",
+        str(ipr_start_fv),
     ]
+    if replay_fv_json is not None:
+        cmd.extend(["--replay-fv-json", str(Path(replay_fv_json).resolve())])
     env = {**os.environ, "PROSPERITY4MCBT_ROOT": str(project_root().resolve())}
     subprocess.run(cmd, cwd=simulator_dir, env=env, check=True)
 
@@ -942,7 +954,11 @@ def run_monte_carlo_mode(
     seed: int,
     python_bin: str,
     sample_sessions: int,
-    ticks_per_day: int = 2000,
+    ticks_per_day: int = 10000,
+    quote_fraction: float = 1.0,
+    maf_bid: int = 0,
+    ipr_start_fv: float = 10000.0,
+    replay_fv_json: Optional[Path] = None,
 ) -> dict[str, Any]:
     output_dir = dashboard_path.parent
     if output_dir.exists():
@@ -968,6 +984,10 @@ def run_monte_carlo_mode(
         python_bin=python_bin,
         sample_sessions=sample_sessions,
         ticks_per_day=ticks_per_day,
+        quote_fraction=quote_fraction,
+        maf_bid=maf_bid,
+        ipr_start_fv=ipr_start_fv,
+        replay_fv_json=replay_fv_json,
     )
 
     dashboard = build_dashboard(

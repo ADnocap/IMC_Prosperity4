@@ -75,8 +75,24 @@ def cli(
     ] = 10,
     ticks_per_day: Annotated[
         int,
-        Option("--ticks-per-day", help="Number of timesteps per trading day (portal uses 2000)."),
-    ] = 2000,
+        Option("--ticks-per-day", help="Number of timesteps per trading day. Default 10000 matches the portal final-round eval. Use 1000 to match the portal UI backtest."),
+    ] = 10000,
+    quote_fraction: Annotated[
+        float,
+        Option("--quote-fraction", help="R2 quote overlay. <1: each level dropped with prob 1-f (e.g. 0.8 = R2 loser). >1: level volumes scaled by f (e.g. 1.25 = MAF winner uplift). Default 1.0 leaves book untouched."),
+    ] = 1.0,
+    maf_bid: Annotated[
+        int,
+        Option("--maf-bid", help="R2 Market Access Fee bid in XIRECs. Subtracted from each session's reported total PnL (bookkeeping)."),
+    ] = 0,
+    ipr_start_fv: Annotated[
+        float,
+        Option("--ipr-start-fv", help="PEPPER starting FV for the first sim day. R1 default 10000. For R2 day 1 use 13000 (portal hold-1 274082 confirmed PEPPER drift continues from R1 end)."),
+    ] = 10000.0,
+    replay_fv_json: Annotated[
+        Optional[Path],
+        Option("--replay-fv-json", help="JSON file with observed server-FV arrays for OSMIUM + PEPPER (e.g. extracted from a hold-1 portal submission). When set, overrides all FV generation so every MC session replays the exact same portal path — used for sim calibration against portal backtests."),
+    ] = None,
 ) -> None:
     if no_out:
         print("Error: Monte Carlo mode always writes a dashboard bundle, so --no-out is not supported")
@@ -92,9 +108,9 @@ def cli(
         sessions = 1000
         sample_sessions = 100
 
-    # Resolve algorithm: if not found, try traders/round1/, traders/round0/, traders/
+    # Resolve algorithm: if not found, search newest-round first
     if not algorithm.exists():
-        for subdir in ["traders/round1", "traders/round0", "traders"]:
+        for subdir in ["traders/round2", "traders/round1", "traders/round0", "traders"]:
             candidate = Path(subdir) / algorithm.name
             if candidate.exists():
                 algorithm = candidate.resolve()
@@ -117,6 +133,10 @@ def cli(
         python_bin=python_bin,
         sample_sessions=sample_sessions,
         ticks_per_day=ticks_per_day,
+        quote_fraction=quote_fraction,
+        maf_bid=maf_bid,
+        ipr_start_fv=ipr_start_fv,
+        replay_fv_json=replay_fv_json,
     )
 
     total_stats = dashboard["overall"]["totalPnl"]

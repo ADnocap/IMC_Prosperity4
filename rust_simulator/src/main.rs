@@ -14,22 +14,31 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 
 const DAYS: [i32; 2] = [-2, -1];
 const PRODUCTS: [&str; 2] = ["ASH_COATED_OSMIUM", "INTARIAN_PEPPER_ROOT"];
-const DEFAULT_TICKS_PER_DAY: usize = 2_000;
+// Portal reality: final round eval runs 10,000 ticks per day. Portal backtest
+// (the UI's "Run" button) runs only 1,000 ticks. Default here matches the final
+// eval — use `--ticks-per-day 1000` to simulate the portal backtest environment.
+const DEFAULT_TICKS_PER_DAY: usize = 10_000;
 const TIMESTAMP_STEP: i32 = 100;
 const POSITION_LIMIT: i32 = 80;
-const ASH_TRADE_ACTIVE_PROB: f64 = 1200.0 / 30_000.0;     // ~4.0% base takers (from CSV)
-const IPR_TRADE_ACTIVE_PROB: f64 = 972.0 / 30_000.0;       // ~3.2% base takers (from CSV)
+// Base taker rates calibrated from R2 hold-1 submission 274082 (pure base-rate,
+// no elastic firing because hold-1 places no resting orders after t=0):
+//   OSMIUM: 46 market-only trades / 1000 ticks = 4.6% (sim retained at 4.0%, close)
+//   PEPPER: 31 market-only trades / 1000 ticks = 3.1% (matches original 3.2%)
+const ASH_TRADE_ACTIVE_PROB: f64 = 1200.0 / 30_000.0;     // ~4.0% base takers
+const IPR_TRADE_ACTIVE_PROB: f64 = 972.0 / 30_000.0;       // ~3.2% base takers (confirmed by 274082)
 const ASH_SECOND_TRADE_PROB: f64 = 13.0 / 1200.0;          // rare 2nd trade
 const IPR_SECOND_TRADE_PROB: f64 = 4.0 / 972.0;            // very rare 2nd trade
 const ASH_TRADE_BUY_PROB: f64 = 0.5;                        // approximate
 const IPR_TRADE_BUY_PROB: f64 = 0.5;                        // approximate
-// Elastic taker demand: additional takers that appear when player quotes
-// tighten the spread. Calibrated from portal submission 107406:
-// total_rate - base_rate = elastic_rate.
-// OSMIUM: 8.2% total - 4.0% base = 4.2% elastic
-// PEPPER: 6.7% total - 3.2% base = 3.5% elastic
-const ASH_ELASTIC_TRADE_PROB: f64 = 0.042;
-const IPR_ELASTIC_TRADE_PROB: f64 = 0.035;
+// Elastic taker demand: additional takers when player has resting orders. Derived
+// from three portal submissions minus the hold-1 base rate (274082, base 3.1% PEPPER / 4.6% OSMIUM):
+//   226828 (R1 MM):  OSMIUM 9.0% → 4.4% elastic   | PEPPER 3.6% →  0.5% elastic
+//   274250 (R2 MM):  OSMIUM 7.6% → 3.0% elastic   | PEPPER 4.3% →  1.2% elastic
+//   Average:         OSMIUM ~3.7-4.4% elastic     | PEPPER ~0.8-1.0% elastic
+// Sample is still only two MM strategies × 1000 ticks each, so these rates have
+// substantial uncertainty — expect to retune as more portal data lands.
+const ASH_ELASTIC_TRADE_PROB: f64 = 0.040;
+const IPR_ELASTIC_TRADE_PROB: f64 = 0.009;
 const STRATEGY_RUN_TIMEOUT_MS: u64 = 900;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -64,6 +73,21 @@ struct Config {
     sessions: usize,
     write_session_limit: usize,
     ticks_per_day: usize,
+    // R2: probability each generated bot quote appears in the book.
+    // Default 1.0 (full book). Portal R2 testing rule is 0.8. MAF winner is 1.05
+    // (interpreted as +25pp of the generated set per the R2 spec's example).
+    quote_fraction: f64,
+    // R2: flat XIRECs deduction from reported total PnL (MAF bookkeeping).
+    maf_bid: i64,
+    // PEPPER starting FV. Default 10,000 (R1 day -2 start). For R2 day 1, the
+    // drift continues from R1 day 0's end — hold-1 submission 274082 confirms
+    // FV starts at ~13,000 on R2 day 1. Set via --ipr-start-fv.
+    ipr_start_fv: f64,
+    // Optional: path to a JSON file { "osmium": [...], "pepper": [...], "ticks": N }
+    // that overrides both OSMIUM and PEPPER FV generation with observed server-FV
+    // paths (typically extracted from a hold-1 submission). Used to compare MC on
+    // the exact FV path that the portal ran against, removing FV-realization noise.
+    replay_fv_json: Option<PathBuf>,
 }
 
 #[derive(Clone, Debug)]
@@ -342,6 +366,10 @@ impl Config {
             sessions: 1,
             write_session_limit: 0,
             ticks_per_day: DEFAULT_TICKS_PER_DAY,
+            quote_fraction: 1.0,
+            maf_bid: 0,
+            ipr_start_fv: 10_000.0,
+            replay_fv_json: None,
         };
 
         let mut args = env::args().skip(1);
@@ -415,6 +443,35 @@ impl Config {
                         .context("missing value for --ticks-per-day")?
                         .parse()
                         .context("invalid --ticks-per-day")?;
+                }
+                "--quote-fraction" => {
+                    config.quote_fraction = args
+                        .next()
+                        .context("missing value for --quote-fraction")?
+                        .parse()
+                        .context("invalid --quote-fraction")?;
+                    if config.quote_fraction < 0.0 || config.quote_fraction > 2.0 {
+                        bail!("--quote-fraction must be in [0.0, 2.0]");
+                    }
+                }
+                "--maf-bid" => {
+                    config.maf_bid = args
+                        .next()
+                        .context("missing value for --maf-bid")?
+                        .parse()
+                        .context("invalid --maf-bid")?;
+                }
+                "--ipr-start-fv" => {
+                    config.ipr_start_fv = args
+                        .next()
+                        .context("missing value for --ipr-start-fv")?
+                        .parse()
+                        .context("invalid --ipr-start-fv")?;
+                }
+                "--replay-fv-json" => {
+                    config.replay_fv_json = Some(PathBuf::from(
+                        args.next().context("missing value for --replay-fv-json")?,
+                    ));
                 }
                 other => bail!("unknown argument {}", other),
             }
@@ -510,9 +567,11 @@ fn generate_day(day: i32, config: &Config, replay: &ReplayData) -> Result<DayOut
 
     for tick in 0..config.ticks_per_day {
         let timestamp = (tick as i32) * TIMESTAMP_STEP;
-        let ash_book = make_ash_book(ash_fair_values[tick], &mut rng);
-        let ipr_fair = compute_ipr_fair(day_index, tick, config.ticks_per_day);
-        let ipr_book = make_ipr_book(ipr_fair, &mut rng);
+        let mut ash_book = make_ash_book(ash_fair_values[tick], &mut rng);
+        let ipr_fair = compute_ipr_fair(day_index, tick, config.ticks_per_day, config.ipr_start_fv);
+        let mut ipr_book = make_ipr_book(ipr_fair, &mut rng);
+        apply_quote_fraction(&mut ash_book, config.quote_fraction, &mut rng);
+        apply_quote_fraction(&mut ipr_book, config.quote_fraction, &mut rng);
 
         price_rows.push(book_to_price_row(day, timestamp, "ASH_COATED_OSMIUM", &ash_book));
         price_rows.push(book_to_price_row(day, timestamp, "INTARIAN_PEPPER_ROOT", &ipr_book));
@@ -703,16 +762,29 @@ fn run_backtest_session(
     let mut run_summaries = Vec::with_capacity(1);
     let session_day = monte_carlo_session_day(session_id);
 
+    // Optional: pre-loaded replay FV arrays (both OSMIUM + PEPPER) from a hold-1
+    // extraction. When present, overrides all FV generation so every session
+    // replays the exact same portal path — the right apples-to-apples comparison
+    // for sim validation against portal backtests.
+    let replay_fv: Option<ReplayFvPaths> = match &config.replay_fv_json {
+        Some(path) => Some(ReplayFvPaths::load(path)?),
+        None => None,
+    };
+
     for day in [session_day] {
         worker.reset()?;
         let mut rng = ChaCha8Rng::seed_from_u64(seed_for_session_day(config.seed, session_id, day));
-        let ash_fair_values = match config.fv_mode {
-            FvMode::Replay => replay
-                .ash_fair_by_day
-                .get(&day)
-                .cloned()
-                .context("missing replay ASH fair values")?,
-            FvMode::Simulate => simulate_ash_fair(config.ticks_per_day, &mut rng),
+        let ash_fair_values = if let Some(rp) = &replay_fv {
+            rp.osmium.clone()
+        } else {
+            match config.fv_mode {
+                FvMode::Replay => replay
+                    .ash_fair_by_day
+                    .get(&day)
+                    .cloned()
+                    .context("missing replay ASH fair values")?,
+                FvMode::Simulate => simulate_ash_fair(config.ticks_per_day, &mut rng),
+            }
         };
         let day_index = DAYS.iter().position(|&d| d == day).unwrap_or(0);
 
@@ -740,18 +812,63 @@ fn run_backtest_session(
 
         for tick in 0..config.ticks_per_day {
             let timestamp = (tick as i32) * TIMESTAMP_STEP;
-            let ash_book = make_ash_book(ash_fair_values[tick], &mut rng);
-            let ipr_fair = compute_ipr_fair(day_index, tick, config.ticks_per_day);
-            let ipr_book = make_ipr_book(ipr_fair, &mut rng);
+            let mut ash_book = make_ash_book(ash_fair_values[tick], &mut rng);
+            let ipr_fair = if let Some(rp) = &replay_fv {
+                rp.pepper[tick]
+            } else {
+                compute_ipr_fair(day_index, tick, config.ticks_per_day, config.ipr_start_fv)
+            };
+            let mut ipr_book = make_ipr_book(ipr_fair, &mut rng);
+            apply_quote_fraction(&mut ash_book, config.quote_fraction, &mut rng);
+            apply_quote_fraction(&mut ipr_book, config.quote_fraction, &mut rng);
 
             if capture_outputs {
                 price_rows.push(book_to_price_row(day, timestamp, "ASH_COATED_OSMIUM", &ash_book));
                 price_rows.push(book_to_price_row(day, timestamp, "INTARIAN_PEPPER_ROOT", &ipr_book));
             }
 
+            // Build the live (mutable) books from bot-posted quotes. Base-rate takers
+            // run against THIS book before the strategy sees anything, matching the
+            // P4 matching sequence: (1) MMs post, (2) bot takers act, (3) strategy
+            // runs on post-take book, (4) strategy orders match, (5) remaining bots
+            // may trade on strategy quotes. Running base takers first is critical
+            // for OSMIUM — otherwise they hit the strategy's penny-jumped quotes
+            // and systematically over-report fill edge (~2× in R2 replay vs portal).
+            let mut live_books = HashMap::from([
+                ("ASH_COATED_OSMIUM".to_string(), book_to_sim_book(&ash_book)),
+                ("INTARIAN_PEPPER_ROOT".to_string(), book_to_sim_book(&ipr_book)),
+            ]);
+
+            let mut own_trades_this_tick = empty_trade_map();
+            let mut market_trades_this_tick = empty_trade_map();
+
+            // Step 2: base-rate bot takers act on the pre-existing bot book.
+            // Since no strategy orders are in the book yet, all fills are bot-to-bot.
+            for (product, count) in [("ASH_COATED_OSMIUM", ash_trade_counts[tick]), ("INTARIAN_PEPPER_ROOT", ipr_trade_counts[tick])] {
+                let product_key = product.to_string();
+                let book = live_books
+                    .get_mut(&product_key)
+                    .context("missing live book for base-taker execution")?;
+                let ledger = ledgers.get_mut(&product_key).context("missing ledger for base-taker execution")?;
+                for _ in 0..count {
+                    let market_buy = sample_trade_side(product, &mut rng);
+                    let fills = execute_taker_trade(product, timestamp, book, ledger, market_buy, &mut rng);
+                    for fill in fills {
+                        let row = fill_to_trade_row(&fill);
+                        // Pre-strategy takers never touch our orders (nothing posted yet),
+                        // so these are always market-only trades.
+                        market_trades_this_tick.entry(product_key.clone()).or_default().push(fill);
+                        if capture_outputs {
+                            trade_rows.push(row);
+                        }
+                    }
+                }
+            }
+
+            // Step 3: strategy sees post-take book.
             let order_depths = HashMap::from([
-                ("ASH_COATED_OSMIUM".to_string(), book_to_worker_depth(&ash_book)),
-                ("INTARIAN_PEPPER_ROOT".to_string(), book_to_worker_depth(&ipr_book)),
+                ("ASH_COATED_OSMIUM".to_string(), sim_book_to_worker_depth(live_books.get("ASH_COATED_OSMIUM").unwrap())),
+                ("INTARIAN_PEPPER_ROOT".to_string(), sim_book_to_worker_depth(live_books.get("INTARIAN_PEPPER_ROOT").unwrap())),
             ]);
             let position = ledgers
                 .iter()
@@ -770,16 +887,10 @@ fn run_backtest_session(
             let response = worker.run(&request)?;
             trader_data = response.trader_data.unwrap_or_default();
 
-            let mut live_books = HashMap::from([
-                ("ASH_COATED_OSMIUM".to_string(), book_to_sim_book(&ash_book)),
-                ("INTARIAN_PEPPER_ROOT".to_string(), book_to_sim_book(&ipr_book)),
-            ]);
             let strategy_orders = normalize_strategy_orders(response.orders.unwrap_or_default());
             let filtered_orders = enforce_strategy_limits(&strategy_orders, &ledgers);
 
-            let mut own_trades_this_tick = empty_trade_map();
-            let mut market_trades_this_tick = empty_trade_map();
-
+            // Step 4: strategy orders match against the post-take book.
             for product in PRODUCTS {
                 let product_key = product.to_string();
                 let orders = filtered_orders
@@ -797,31 +908,7 @@ fn run_backtest_session(
                 own_trades_this_tick.insert(product_key.clone(), fills);
             }
 
-            for (product, count) in [("ASH_COATED_OSMIUM", ash_trade_counts[tick]), ("INTARIAN_PEPPER_ROOT", ipr_trade_counts[tick])] {
-                let product_key = product.to_string();
-                let book = live_books
-                    .get_mut(&product_key)
-                    .context("missing live book for taker execution")?;
-                let ledger = ledgers.get_mut(&product_key).context("missing ledger for taker execution")?;
-                for _ in 0..count {
-                    let market_buy = sample_trade_side(product, &mut rng);
-                    let fills = execute_taker_trade(product, timestamp, book, ledger, market_buy, &mut rng);
-                    for fill in fills {
-                        let row = fill_to_trade_row(&fill);
-                        if fill_involves_strategy(&fill) {
-                            own_trades_this_tick.entry(product_key.clone()).or_default().push(fill);
-                        } else {
-                            market_trades_this_tick.entry(product_key.clone()).or_default().push(fill);
-                        }
-                        if capture_outputs {
-                            trade_rows.push(row);
-                        }
-                    }
-                }
-            }
-
-            // Elastic taker demand: additional takers attracted by tighter spreads
-            // when the player's orders improve the best bid/ask.
+            // Step 5: elastic takers attracted by tighter spreads from strategy quotes.
             // Only fires when the strategy has resting orders in the book.
             for (product, elastic_prob) in [("ASH_COATED_OSMIUM", ASH_ELASTIC_TRADE_PROB), ("INTARIAN_PEPPER_ROOT", IPR_ELASTIC_TRADE_PROB)] {
                 let product_key = product.to_string();
@@ -887,7 +974,11 @@ fn run_backtest_session(
         }
 
         let ash_final_fair = *ash_fair_values.last().unwrap_or(&10_000.0);
-        let ipr_final_fair = compute_ipr_fair(day_index, config.ticks_per_day.saturating_sub(1), config.ticks_per_day);
+        let ipr_final_fair = if let Some(rp) = &replay_fv {
+            rp.pepper[config.ticks_per_day.saturating_sub(1)]
+        } else {
+            compute_ipr_fair(day_index, config.ticks_per_day.saturating_sub(1), config.ticks_per_day, config.ipr_start_fv)
+        };
         let ash_ledger = ledgers.get("ASH_COATED_OSMIUM").context("missing ash ledger")?;
         let ipr_ledger = ledgers.get("INTARIAN_PEPPER_ROOT").context("missing ipr ledger")?;
         let ash_pnl = ash_ledger.cash + ash_ledger.position as f64 * ash_final_fair;
@@ -922,9 +1013,12 @@ fn run_backtest_session(
         });
     }
 
+    // R2: deduct MAF bid from session total PnL (losers pay nothing; this is a pure
+    // bookkeeping subtraction modelling the MAF-winner case).
+    let session_total = ash_total + ipr_total - config.maf_bid as f64;
     let summary = SessionSummary {
         session_id,
-        total_pnl: ash_total + ipr_total,
+        total_pnl: session_total,
         ash_pnl: ash_total,
         ipr_pnl: ipr_total,
         ash_position: ash_final_position,
@@ -1081,6 +1175,27 @@ fn book_to_worker_depth(book: &Book) -> WorkerOrderDepth {
         .asks
         .iter()
         .map(|(price, qty)| (price.to_string(), -*qty))
+        .collect::<HashMap<_, _>>();
+    WorkerOrderDepth {
+        buy_orders,
+        sell_orders,
+    }
+}
+
+/// Convert a (post-take) SimBook back into the WorkerOrderDepth format the
+/// Python strategy worker consumes. Used when base-rate takers run before the
+/// strategy sees the book — the strategy must see the thinned book, not the
+/// raw generated one.
+fn sim_book_to_worker_depth(book: &SimBook) -> WorkerOrderDepth {
+    let buy_orders = book
+        .bids
+        .iter()
+        .map(|level| (level.price.to_string(), level.quantity))
+        .collect::<HashMap<_, _>>();
+    let sell_orders = book
+        .asks
+        .iter()
+        .map(|level| (level.price.to_string(), -level.quantity))
         .collect::<HashMap<_, _>>();
     WorkerOrderDepth {
         buy_orders,
@@ -1505,13 +1620,73 @@ fn simulate_ash_fair(ticks: usize, rng: &mut ChaCha8Rng) -> Vec<f64> {
     values
 }
 
-fn compute_ipr_fair(day_index: usize, tick: usize, ticks_per_day: usize) -> f64 {
+fn compute_ipr_fair(day_index: usize, tick: usize, ticks_per_day: usize, start_fv: f64) -> f64 {
     let total_tick = day_index * ticks_per_day + tick;
-    quantize_1024(10_000.0 + total_tick as f64 * 0.1)
+    quantize_1024(start_fv + total_tick as f64 * 0.1)
 }
 
 fn quantize_1024(value: f64) -> f64 {
     (value * 1024.0).round() / 1024.0
+}
+
+/// Observed server-FV arrays for OSMIUM + PEPPER, typically extracted from a
+/// hold-1 portal submission. When present, MC replays these exact paths instead
+/// of simulating — lets us compare MC PnL against portal PnL on matched FV paths,
+/// removing FV-realization variance as a confounder during sim validation.
+struct ReplayFvPaths {
+    osmium: Vec<f64>,
+    pepper: Vec<f64>,
+}
+
+impl ReplayFvPaths {
+    fn load(path: &Path) -> Result<Self> {
+        #[derive(Deserialize)]
+        struct Raw {
+            osmium: Vec<f64>,
+            pepper: Vec<f64>,
+        }
+        let text = fs::read_to_string(path)
+            .with_context(|| format!("reading replay FV json {}", path.display()))?;
+        let raw: Raw = serde_json::from_str(&text)
+            .with_context(|| format!("parsing replay FV json {}", path.display()))?;
+        if raw.osmium.len() != raw.pepper.len() {
+            bail!(
+                "replay FV json arrays must have equal length (osmium={}, pepper={})",
+                raw.osmium.len(),
+                raw.pepper.len()
+            );
+        }
+        Ok(Self { osmium: raw.osmium, pepper: raw.pepper })
+    }
+}
+
+/// Apply the --quote-fraction overlay to a generated book.
+///
+/// For f < 1.0: each level survives independently with probability f, modeling
+/// the R2 testing rule ("randomized 80% subset of generated quotes"). At f = 0.8
+/// combined with the calibrated 80% bot presence this yields 64% effective
+/// presence per side.
+///
+/// For f > 1.0: each level's volume is scaled by f. This approximates the MAF
+/// "+25% more quotes" uplift by increasing fill capacity proportionally rather
+/// than synthesizing new price levels (simpler, same expected PnL effect).
+///
+/// f = 1.0 (default) leaves the book untouched.
+fn apply_quote_fraction(book: &mut Book, f: f64, rng: &mut ChaCha8Rng) {
+    if (f - 1.0).abs() < 1e-9 {
+        return;
+    }
+    if f < 1.0 {
+        book.bids.retain(|_| rng.gen_bool(f));
+        book.asks.retain(|_| rng.gen_bool(f));
+    } else {
+        for level in &mut book.bids {
+            level.1 = ((level.1 as f64) * f).round() as i32;
+        }
+        for level in &mut book.asks {
+            level.1 = ((level.1 as f64) * f).round() as i32;
+        }
+    }
 }
 
 fn sample_standard_normal(rng: &mut ChaCha8Rng) -> f64 {

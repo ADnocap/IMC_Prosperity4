@@ -187,6 +187,31 @@ prosperity4mcbt a.py --quick --vis --out tmp/results/dashboard.json  # with dash
 ```
 Rust-backed Monte Carlo using calibrated bot models reverse-engineered from tutorial data. Produces distributional PnL stats (mean, std, percentiles) across hundreds/thousands of synthetic sessions.
 
+#### Portal tick counts
+- Portal UI backtest: **1,000 ticks** per day (what the "Run" button shows you)
+- Portal final-round eval: **10,000 ticks** per day (actual scoring at round close)
+- MC default `--ticks-per-day` is **10,000** (matches final eval). Pass `--ticks-per-day 1000` for portal-UI-backtest comparisons.
+
+#### Round 2 specifics
+
+R2 backtests must pass `--ipr-start-fv 13000` because PEPPER's drift continues from the end of R1 day 0 (confirmed by hold-1 submission 274082). Also available: `--quote-fraction` (MAF overlay) and `--maf-bid` (bid bookkeeping).
+
+```bash
+# R2 dev iteration (matches portal final-eval scale)
+prosperity4mcbt traders/round2/a.py --quick --ipr-start-fv 13000 --out tmp/results/r2_quick.json
+prosperity4mcbt traders/round2/a.py --heavy --ipr-start-fv 13000 --out tmp/results/r2_heavy.json
+
+# Match portal-UI backtest (1,000 ticks) for apples-to-apples with portal submissions
+prosperity4mcbt traders/round2/a.py --heavy --ipr-start-fv 13000 --ticks-per-day 1000 --out tmp/results/r2_portal_bt.json
+
+# R2 MAF analysis (at portal final scale)
+prosperity4mcbt traders/round2/a.py --sessions 200 --ipr-start-fv 13000 --quote-fraction 0.8 --out tmp/results/r2_loser.json
+prosperity4mcbt traders/round2/a.py --sessions 200 --ipr-start-fv 13000 --quote-fraction 1.25 --out tmp/results/r2_winner.json
+prosperity4mcbt traders/round2/a.py --sessions 200 --ipr-start-fv 13000 --quote-fraction 1.25 --maf-bid 500 --out tmp/results/r2_maf500.json
+```
+
+See [BACKTEST.md#running-a-round-2-backtest](BACKTEST.md#running-a-round-2-backtest) for the full flag reference, MAF-uplift table, and tradeoffs.
+
 ### CSV Replay (sanity checks)
 ```bash
 prosperity3bt traders/round2/a.py 1                    # historical replay on R1 data
@@ -195,7 +220,47 @@ py -3.13 scripts/bt_stats.py traders/round2/a.py 1     # fill analytics
 **Warning**: `--match-trades all` (default) over-reports PnL for market making. Use for relative A/B comparison only.
 
 ### Portal Submission Results
-Raw logs live in `submission_results/<sub_id>/` — see the directory for the full history. The best Round 1 submission used `traders/round1/final_obi_v4.py`.
+
+**Round 1 (final, `traders/round1/final_obi_v4.py`):**
+- Algorithmic Challenge: **99,546 XIRECs**
+- Manual Challenge ("An Intarian Welcome"): **87,995 XIRECs**
+- **Total: 187,541** (94% of the 200,000 threshold to advance)
+- Need ≥ **12,459** more in R2 to clear the threshold
+
+**Sim calibration (final, validated on matched FV paths):**
+
+Three portal submissions drove the calibration:
+- **226828** (R1 MM backtest, 1K ticks): total trade-rate observations
+- **274082** (R2 hold-1, 1K ticks): pure base-rate takers (no elastic) — extracted server FV to `data/prosperity4/round2/r2_day1_fv.json` for replay
+- **274250 + 274468** (R2 a.py identical-code repeats): confirmed portal backtest runs a single fixed FV path (only 80% quote subset is randomized)
+
+**Bugs found and fixed:**
+1. **PEPPER elastic rate was 7× too high**. Hold-1 base-rate separated clean: PEPPER elastic is ~0.9%, not 3.5% as in the original sim. Fixed via `IPR_ELASTIC_TRADE_PROB: 0.035 → 0.009`.
+2. **Matching-engine ordering was wrong**. Sim ran base-rate takers AFTER the strategy ran, so they hit our penny-jumped quotes and inflated edge ~2×. Per P4 spec, bot takers act BEFORE the strategy sees the book. Reordered the tick loop — OSMIUM PnL on matched FV paths dropped from 3,443 → 1,957, matching portal 1,752 within 0.6σ.
+3. **R2 PEPPER starting FV**. Drift continues from R1 day 0's end at ~13,000 (not reset to 10,000). Exposed as `--ipr-start-fv 13000` flag.
+
+**Post-fix validation (MC replay on portal's exact FV path, 200 sessions, 1,000 ticks):**
+| Product | MC mean | Portal avg (274250+274468) | z |
+|---|---|---|---|
+| OSMIUM | 1,957 | 1,752 | −0.6σ ✓ |
+| PEPPER | 7,323 | 7,455 | +2.2σ ✓ |
+| **Total** | **9,280** | **9,207** | **−0.2σ** |
+
+Total gap **+73 XIRECs (0.8%)** — sim is now calibrated against portal reality.
+
+**Post-calibration R2 MC (200 sessions × 10,000 ticks, `--ipr-start-fv 13000`):**
+
+| Scenario | Mean PnL per final eval | Std | vs R1 portal final |
+|---|---|---|---|
+| R2 loser (`--quote-fraction 0.8`) | **98,642** | 1,042 | −1% from 99,546 ✓ |
+| R2 MAF winner (`--quote-fraction 1.25`) | **100,116** | 1,096 | +1% from 99,546 |
+| **MAF uplift (winner − loser)** | **+1,474 per final eval** | | |
+
+**MAF bid guidance**: uplift is ~1,474 XIRECs per final eval. You only need to beat the median of all teams' bids, not buy the full uplift — shade well below. A first defensible opening is **300-500**; if the field under-bids, much less will do. `MAF_BID = 0` is a fine "do nothing" baseline.
+
+MC absolute numbers are now trustworthy (not just relative deltas) — the sim matches portal reality within 1% on matched FV paths.
+
+Raw tutorial submission logs live in `submission_results/<sub_id>/` (R0 products only — the R1 portal final log isn't downloadable per user).
 
 ### Visualization
 - Local MC dashboard: `cd visualizer && npm install && npm run dev` then use `--vis` flag

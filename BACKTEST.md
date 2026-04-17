@@ -127,6 +127,91 @@ prosperity4mcbt traders/round2/a.py --quick --trade-mode simulate --out tmp/resu
 prosperity4mcbt traders/round2/a.py --sessions 3000 --sample-sessions 150 --out tmp/results/dashboard.json
 ```
 
+---
+
+## Running a Round 2 backtest
+
+R2 uses the same products as R1, but two things changed that affect the sim:
+
+1. **PEPPER FV continues from R1's end.** R1 day 0 ended at FV ≈ 13,000. Hold-1 submission 274082 confirmed R2 day 1 starts at 13,000 (not 10,000). Pass `--ipr-start-fv 13000`.
+2. **MAF auction.** Add a `bid()` method to your `Trader` class and use the MAF flags below to simulate the +25% quote uplift a winner would see.
+
+### Portal tick counts (important!)
+
+- **Portal UI backtest** (the "Run" button in the portal): **1,000 ticks** = 0.1 real day
+- **Portal final-round eval** (actual scoring at round close): **10,000 ticks** = 1 real day
+- **MC default `--ticks-per-day` is now 10,000** (matches final eval, not the portal UI backtest)
+
+Use `--ticks-per-day 1000` when you want MC numbers comparable to the portal UI backtest output.
+
+### Standard R2 dev iteration
+
+```bash
+# Quick iteration (100 sessions, 10,000 ticks each)
+prosperity4mcbt traders/round2/a.py --quick --ipr-start-fv 13000 --out tmp/results/r2_quick.json
+
+# Pre-submission eval (1000 sessions, 10,000 ticks each — matches final-eval scale)
+prosperity4mcbt traders/round2/a.py --heavy --ipr-start-fv 13000 --out tmp/results/r2_heavy.json
+
+# Match portal UI backtest (1,000 ticks) for apples-to-apples with portal submissions
+prosperity4mcbt traders/round2/a.py --heavy --ipr-start-fv 13000 --ticks-per-day 1000 --out tmp/results/r2_portal_bt.json
+```
+
+### R2 MAF analysis
+
+```bash
+# Loser (R2 testing default: 80% of generated quotes visible)
+prosperity4mcbt traders/round2/a.py --sessions 200 --ipr-start-fv 13000 --quote-fraction 0.8 --out tmp/results/r2_loser.json
+
+# Winner (MAF accepted: +25% quote-volume uplift)
+prosperity4mcbt traders/round2/a.py --sessions 200 --ipr-start-fv 13000 --quote-fraction 1.25 --out tmp/results/r2_winner.json
+
+# Net PnL if we bid 500 XIRECs and win (subtracts bid from reported total)
+prosperity4mcbt traders/round2/a.py --sessions 200 --ipr-start-fv 13000 --quote-fraction 1.25 --maf-bid 500 --out tmp/results/r2_maf500.json
+```
+
+### CSV replay against R1 historical data
+
+```bash
+prosperity3bt traders/round2/a.py 1                    # replay against R1 days
+py -3.13 scripts/bt_stats.py traders/round2/a.py 1     # fill breakdown
+```
+
+### R2 flag reference
+
+| Flag | Purpose |
+|---|---|
+| `--ticks-per-day 10000` | **Default.** Matches portal final-round eval. Use `1000` for portal-UI-backtest scale. |
+| `--ipr-start-fv 13000` | **R2 required.** PEPPER starting FV for day 1 of the sim. |
+| `--quote-fraction f` | R2 quote overlay. `0.8` = loser (each level dropped w.p. 0.2). `1.25` = MAF winner (level volumes × 1.25). Default `1.0` untouched. |
+| `--maf-bid N` | Deducts N XIRECs from each session's total PnL. Use when modelling MAF-winner net PnL. |
+
+### Sim calibration status
+
+The sim is now calibrated against portal reality on matched FV paths (within 0.8% total, 0.6σ on OSMIUM, 2.2σ on PEPPER). See `CLAUDE.md` "Sim calibration" section for the fix history — the last critical bug was matching-engine ordering (base takers now run BEFORE the strategy, per P4 spec). Absolute MC numbers are trustworthy, not just relative deltas.
+
+To validate on a new portal backtest, drop the `activitiesLog` into an extractor and regenerate `data/prosperity4/round2/r2_day1_fv.json`, then:
+```bash
+prosperity4mcbt traders/round2/a.py --sessions 200 --ticks-per-day 1000 \
+  --replay-fv-json data/prosperity4/round2/r2_day1_fv.json --out tmp/results/r2_replay.json
+```
+
+### R2 MAF uplift sensitivity (post-calibration, 200 sessions × 10,000 ticks = portal final scale)
+
+Run against `traders/round2/a.py` with `--ipr-start-fv 13000`:
+
+| `--quote-fraction` | Mean PnL per final eval | Std |
+|---|---|---|
+| 0.8 (R2 loser)  | **98,642** | 1,042 |
+| 1.25 (MAF winner) | **100,116** | 1,096 |
+| **Uplift (winner − loser)** | **+1,474** | |
+
+**MAF bid guidance**: uplift is ~1,474 XIRECs per final eval — that's the absolute upper-bound bid. You only need to beat the median of all teams' bids, not buy the full uplift. Shade well below: **300-500** is a defensible opening, `MAF_BID = 0` is a fine do-nothing default.
+
+Sanity vs R1 portal final (99,546): MC loser mean 98,642 — within 1% ✓.
+
+---
+
 ### Output bundle
 
 ```
@@ -140,13 +225,18 @@ tmp/results/
 
 ### Regenerating the MC baseline for Round 2
 
-The previous strategy-comparison table was R1-specific and has been removed. When R2 data arrives, re-baseline with:
+The previous strategy-comparison table was R1-specific and has been removed. R2 uses the same products, so the R1 baseline is still the most relevant reference:
+
+- `traders/round1/final_obi_v4.py` MC heavy (1000×5-day sessions): mean **114,867 XIRECs**, std 1,517, OSMIUM 34,887, PEPPER 79,980.
+- Portal R1 actual: **99,546** algo challenge. **~13% shortfall vs MC** — see CLAUDE.md "Portal Submission Results" for the gap-analysis hypotheses. Treat MC as an upper-bound proxy, not a calibrated estimate.
+
+When iterating on R2 changes, re-baseline with:
 
 ```bash
 prosperity4mcbt traders/round2/a.py --heavy --out tmp/results/r2_baseline.json
 ```
 
-Record the mean / std / P5–P95 in your PR description to track regressions as you iterate.
+Record mean / std / P5–P95 to track regressions, but **do not trust absolute numbers** — only relative A/B deltas.
 
 ---
 
