@@ -22,6 +22,15 @@ class Trader:
     IPR_ASK_QTY_1 = 10
     IPR_ASK_QTY_2 = 15
 
+    # R2 Market Access Fee. Top 50% of bids across all participants pay their bid
+    # and get +25% quote volume during the final sim. Ignored in testing, and in
+    # all rounds except R2. Tune this against expected edge from the extra
+    # 25% fills before submitting — over-bidding is pure PnL leak.
+    MAF_BID = 0
+
+    def bid(self):
+        return self.MAF_BID
+
     def run(self, state: TradingState):
         result: Dict[str, List[Order]] = {}
         conversions = 0

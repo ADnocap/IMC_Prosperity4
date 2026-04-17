@@ -76,6 +76,13 @@ def run(self, state: TradingState) -> tuple[dict[str, list[Order]], int, str]:
 - `conversions`: int - cross-market conversions (0 unless applicable)
 - `traderData`: str - serialized state for next iteration
 
+### Optional `bid()` Method (R2 only)
+```python
+def bid(self) -> int:
+    return <MAF in XIRECs>
+```
+Only used in Round 2 for the Market Access Fee auction. Ignored in all other rounds and in testing. Top 50% of bids win +25% quote volume and pay their bid once.
+
 ### Position Limit CRITICAL Rule
 If the sum of ALL your outstanding orders for a product could push your position past the limit (assuming worst-case all fill), **ALL orders for that product are cancelled**. Always calculate worst-case before submitting.
 
@@ -103,14 +110,22 @@ If the sum of ALL your outstanding orders for a product could push your position
 
 Bot calibration for R1 is fully solved — see `calibration/round1_calibration.md`. Key finding: **PEPPER bots use proportional offsets** (`bid = floor(FV*(1 - K))`, `ask = ceil(FV*(1 + K))`) with Bot1 K=3/4000 and Bot2 K=1/2000.
 
-### Round 2 — starts Apr 17, 2026 (ACTIVE)
-Products unknown until IMC publishes. Historically (P3 pattern) Round 2 introduces a **basket ETF + constituents** for statistical-arb trading. Prep checklist when data drops:
-1. Drop CSVs into `data/prosperity4/round2/`
-2. Submit `traders/trader_hold1.py` on each new product to extract server FV via PnL
-3. Copy template scripts from `calibration/round1/scripts/` into `calibration/round2/scripts/`
-4. Identify new bot quote rules — target ≥95% exact-match validation
-5. Update `rust_simulator/src/main.rs` with new products/bot params
-6. Extend `traders/round2/a.py` with the new product handlers
+### Round 2 — Apr 17–20, 2026 (ACTIVE, "Growing Your Outpost")
+**No new products.** Same symbols, same limits (`ASH_COATED_OSMIUM` 80, `INTARIAN_PEPPER_ROOT` 80). The R2 challenge is a **Market Access Fee (MAF)** sealed-bid auction layered on top.
+
+**MAF mechanic:**
+- Add a `bid(self) -> int` method to the `Trader` class, returning XIRECs
+- Top 50% of bids across all participants (strictly above median) win: they pay their bid once and get **+25% quote volume** during the final R2 simulation
+- Losers pay nothing, get default flow
+- Blind auction — bids are only compared at the final sim. During testing IMC serves all teams a randomized 80% subset of quotes, so you **cannot test whether you'd win**
+- Scope: R2 only. `bid()` is ignored in R1 and R3–R5
+- Currently set to `MAF_BID = 0` in `traders/round2/a.py` — tune before final submit
+
+**Manual challenge ("Invest & Expand"):** allocate % of budget across Research/Scale/Speed. `PnL = Research × Scale × Speed − Budget_Used`. Research is log-scaled, Scale is linear, Speed is rank-based. Spec has a **50K vs 100K budget ambiguity** — verify on portal. See `manual/round2/01_challenge_explanation.md` for the full solver notes.
+
+**Prep that's still relevant:**
+- Re-analyze R1 PnL by product to find regressions worth fixing in `traders/round2/a.py`
+- If we want to simulate +25% flow, extend `rust_simulator/src/main.rs` with an `--extra-flow` mode (bot quote volumes × 1.25)
 
 ### Data Format (CSV, semicolon-delimited)
 - **prices**: day;timestamp;product;bid_price_1-3;bid_volume_1-3;ask_price_1-3;ask_volume_1-3;mid_price;profit_and_loss
@@ -121,15 +136,9 @@ Products unknown until IMC publishes. Historically (P3 pattern) Round 2 introduc
 
 ## Expected Round Types (Based on Prosperity 3 Pattern)
 
-| Round | Type | Products Expected | Core Strategy |
-|-------|------|-------------------|---------------|
-| 1 | Market Making | Stationary + drifting assets (confirmed: OSMIUM + PEPPER_ROOT) | MM + adaptive MM |
-| 2 | Basket Arbitrage | Basket ETF + constituents | Statistical arb, z-score |
-| 3 | Options | Underlying + vouchers/options | Black-Scholes, IV trading |
-| 4 | Cross-Market | Product tradeable across exchanges | Conversion arb with fees |
-| 5 | Information | All products + trader IDs revealed | Copy-trading informed bots |
+Note: Prosperity 4 breaks the P3 pattern. R1 and R2 both trade only OSMIUM + PEPPER_ROOT — R2 adds the MAF auction instead of new products. Unclear yet how many rounds P4 has in total; the wiki top-level timeline lists 5 rounds but the R2 page calls itself the "final trading round on Intara", suggesting later rounds may be off-planet with new products.
 
-All prior-round products remain tradeable in later rounds, so OSMIUM and PEPPER_ROOT handlers must stay live in `traders/round2/a.py`.
+All prior-round products remain tradeable in later rounds, so OSMIUM and PEPPER_ROOT handlers must stay live in `traders/round2/a.py` and any future round's trader.
 
 ## Strategy Framework
 
