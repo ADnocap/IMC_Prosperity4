@@ -23,7 +23,14 @@
       "Bash(py -3.13 -m pip install jsonpickle)",
       "Bash(PYTHONIOENCODING=utf-8 py -3.13 analysis/tutorial_eda.py)",
       "Bash(py -3.13 -m pip install prosperity4btx)",
-      "Bash(py -3.13 -m prosperity4bt trader.py 0)"
+      "Bash(py -3.13 -m prosperity4bt trader.py 0)",
+      "Bash(py *)",
+      "Bash(unzip -o -q 235787.zip -d 235787_logs/)",
+      "Bash(prosperity4mcbt traders/TaiLUNG_v6.py --heavy --out tmp/results/tailung_v6_heavy.json)",
+      "Bash(unzip -o -q 236340.zip -d 236340_logs/)",
+      "Bash(prosperity4mcbt traders/TaiLUNG_v7.py --heavy --out tmp/results/tailung_v7_heavy.json)",
+      "Bash(prosperity4mcbt traders/TaiLUNG_v7.py --heavy --out tmp/results/tailung_v7b_heavy.json)",
+      "Bash(prosperity4mcbt traders/TaiLUNG_v7c.py --heavy --out tmp/results/tailung_v7c_heavy.json)"
     ]
   }
 }
