@@ -1,0 +1,470 @@
+from datamodel import OrderDepth, TradingState, Order
+from typing import Dict, List
+import json
+
+
+class Logger:
+    """Compressed logger for the Prosperity visualizer."""
+
+    def __init__(self):
+        self.logs = ""
+
+    def print(self, *objects, sep=" ", end="\n"):
+        self.logs += sep.join(map(str, objects)) + end
+
+    def flush(self, state, orders, conversions, trader_data):
+        listings = [[l.symbol, l.product, l.denomination] for l in state.listings.values()] if hasattr(state, 'listings') and state.listings else []
+        order_depths = {sym: [od.buy_orders, od.sell_orders] for sym, od in state.order_depths.items()}
+        own_trades = []
+        if hasattr(state, 'own_trades'):
+            for sym, trades in state.own_trades.items():
+                for t in trades:
+                    own_trades.append([sym, t.price, t.quantity, getattr(t, 'buyer', ''), getattr(t, 'seller', ''), t.timestamp])
+        market_trades = []
+        if hasattr(state, 'market_trades'):
+            for sym, trades in state.market_trades.items():
+                for t in trades:
+                    market_trades.append([sym, t.price, t.quantity, getattr(t, 'buyer', ''), getattr(t, 'seller', ''), t.timestamp])
+        position = state.position if state.position else {}
+        observations = [{}, {}]
+        if hasattr(state, 'observations') and state.observations:
+            obs = state.observations
+            if hasattr(obs, 'plainValueObservations') and obs.plainValueObservations:
+                observations[0] = obs.plainValueObservations
+            if hasattr(obs, 'conversionObservations') and obs.conversionObservations:
+                for prod, co in obs.conversionObservations.items():
+                    observations[1][prod] = [co.bidPrice, co.askPrice, co.transportFees, co.exportTariff, co.importTariff, co.sugarPrice, co.sunlightIndex]
+
+        compressed = [
+            [state.timestamp, state.traderData, listings, order_depths, own_trades, market_trades, position, observations],
+            [[sym, o.price, o.quantity] for sym, ol in orders.items() for o in ol],
+            conversions, trader_data, self.logs
+        ]
+        print(json.dumps(compressed, separators=(",", ":")))
+        self.logs = ""
+
+
+logger = Logger()
+
+OSMIUM = "ASH_COATED_OSMIUM"
+PEPPER = "INTARIAN_PEPPER_ROOT"
+LIMIT = 80
+
+# ACO making constants
+DISREGARD = 1
+JOIN_EDGE = 2
+DEFAULT_EDGE = 7
+
+
+class Trader:
+    """
+    Round 1 — TaiLUNG.
+
+    ACO: P3-inspired three-phase (Take/Clear/Make) with Bot1-anchored FV,
+         penny/join passive quoting.
+    IPR: Fast accumulation (sweep vol <= 15) + passive bid + FV-aware
+         passive ask at FV+8 to capture trade bot buys when Bot 2 absent.
+    """
+
+    # ACO microstructure signal controls.
+    ACO_OBI_GAIN = 3.0       # graded skew: int(round(gain*OBI)) clipped to ±ACO_OBI_MAX
+    ACO_OBI_MAX = 2
+    ACO_ANCHOR = 10000       # OU long-run mean (μ ≈ 9998-10002 across 3 days)
+    ACO_ANCHOR_GAIN = 0.25   # graded skew: int(round(gain*(FV-anchor))) toward anchor
+    ACO_ANCHOR_MAX = 2
+    ACO_STEP_SKEW = 1        # fade magnitude for last FV step (65% reversal)
+    ACO_BOT1_SKEW = 1        # magnitude for Bot1 asym skew (~94% FV-direction accuracy)
+    ACO_BOT1_WARMUP = 100    # lowered from v3's 800 so signal fires on 1000-tick portal day
+    ACO_BOT1_EDGE_THRESH = 0.10
+    ACO_TOTAL_SKEW_MAX = 4   # cap on combined OBI + anchor + step + bot1 skew
+    ACO_RET_WINDOW = 16
+    ACO_RECENT_RET = 4
+    ACO_VOL_WIDEN = 1.35
+    ACO_VOL_WIDEN_STRONG = 1.80
+
+    def run(self, state: TradingState):
+        result: Dict[str, List[Order]] = {}
+        conversions = 0
+
+        td = {}
+        if state.traderData:
+            try:
+                td = json.loads(state.traderData)
+            except Exception:
+                td = {}
+
+        for product in state.order_depths:
+            od: OrderDepth = state.order_depths[product]
+            pos = state.position.get(product, 0)
+
+            if product == OSMIUM:
+                orders, td = self._trade_osmium(od, pos, td)
+            elif product == PEPPER:
+                orders, td = self._trade_ipr(od, pos, td)
+            else:
+                orders = []
+
+            result[product] = orders
+
+        trader_data_str = json.dumps(td)
+        logger.flush(state, result, conversions, trader_data_str)
+        return result, conversions, trader_data_str
+
+    # ==================================================================
+    # ASH_COATED_OSMIUM — P3-inspired Take/Clear/Make
+    # ==================================================================
+    def _fv(self, od, bids, asks, td):
+        """Bot1-anchored FV estimation."""
+        if not bids and not asks:
+            return td.get("fv")
+
+        bot1_estimates = []
+        for p in bids:
+            if od.buy_orders[p] >= 20:
+                bot1_estimates.append(p + 10.5)
+        for p in asks:
+            if -od.sell_orders[p] >= 20:
+                bot1_estimates.append(p - 10.5)
+        bot1_fv = sum(bot1_estimates) / len(bot1_estimates) if bot1_estimates else None
+
+        ref_fv = bot1_fv or td.get("fv")
+        if ref_fv is None:
+            if bids and asks:
+                ref_fv = (bids[0] + asks[0]) / 2
+            elif bids:
+                ref_fv = bids[0] + 8
+            else:
+                ref_fv = asks[0] - 8
+
+        estimates = []
+        for p in bids:
+            v = od.buy_orders[p]
+            if 10 <= v <= 15:
+                if abs(p - (ref_fv - 8)) <= 3:
+                    estimates.append((p + 8, 2.0))
+            elif v >= 20:
+                estimates.append((p + 10.5, 1.0))
+
+        for p in asks:
+            v = -od.sell_orders[p]
+            if 10 <= v <= 15:
+                if abs(p - (ref_fv + 8)) <= 3:
+                    estimates.append((p - 8, 2.0))
+            elif v >= 20:
+                estimates.append((p - 10.5, 1.0))
+
+        if estimates:
+            tw = sum(w for _, w in estimates)
+            return sum(e * w for e, w in estimates) / tw
+        if bids and asks:
+            return (bids[0] + asks[0]) / 2
+        if bids:
+            return bids[0] + 10.5
+        if asks:
+            return asks[0] - 10.5
+        return td.get("fv")
+
+    def _trade_osmium(self, od: OrderDepth, position: int, td: dict):
+        orders = []
+        starting_pos = position
+
+        bids = sorted(od.buy_orders.keys(), reverse=True) if od.buy_orders else []
+        asks = sorted(od.sell_orders.keys()) if od.sell_orders else []
+
+        fv = self._fv(od, bids, asks, td)
+        if fv is None:
+            return orders, td
+
+        fv_r = int(round(fv))
+        td["fv"] = fv
+
+        buy_ordered = 0
+        sell_ordered = 0
+
+        # Phase 1: TAKE — grab mispriced orders (edge >= 2)
+        take_thresh = 2
+        for ap in asks:
+            if ap > fv_r - take_thresh:
+                break
+            vol = -od.sell_orders[ap]
+            can = LIMIT - starting_pos - buy_ordered
+            if can <= 0:
+                break
+            qty = min(vol, can)
+            orders.append(Order(OSMIUM, ap, qty))
+            buy_ordered += qty
+
+        for bp in bids:
+            if bp < fv_r + take_thresh:
+                break
+            vol = od.buy_orders[bp]
+            can = LIMIT + starting_pos - sell_ordered
+            if can <= 0:
+                break
+            qty = min(vol, can)
+            orders.append(Order(OSMIUM, bp, -qty))
+            sell_ordered += qty
+
+        # Phase 2: CLEAR — flatten inventory at FV (0-edge)
+        pos_after_take = starting_pos + buy_ordered - sell_ordered
+
+        if pos_after_take > 0:
+            for bp in bids:
+                if bp < fv_r:
+                    break
+                vol = od.buy_orders[bp]
+                can_clear = min(vol, pos_after_take, LIMIT + starting_pos - sell_ordered)
+                if can_clear > 0:
+                    orders.append(Order(OSMIUM, bp, -can_clear))
+                    sell_ordered += can_clear
+                    pos_after_take -= can_clear
+
+        elif pos_after_take < 0:
+            for ap in asks:
+                if ap > fv_r:
+                    break
+                vol = -od.sell_orders[ap]
+                can_clear = min(vol, -pos_after_take, LIMIT - starting_pos - buy_ordered)
+                if can_clear > 0:
+                    orders.append(Order(OSMIUM, ap, can_clear))
+                    buy_ordered += can_clear
+                    pos_after_take += can_clear
+
+        # Phase 3: MAKE — penny/join passive quoting
+        directional_skew, make_edge = self._aco_make_signal(od, bids, asks, fv, td)
+        center = fv_r + directional_skew
+
+        buy_room = LIMIT - starting_pos - buy_ordered
+        sell_room = LIMIT + starting_pos - sell_ordered
+
+        our_bid = center - make_edge
+        for bp in bids:
+            if bp <= center - DISREGARD:
+                if center - bp <= JOIN_EDGE:
+                    our_bid = bp
+                else:
+                    our_bid = bp + 1
+                break
+
+        our_ask = center + make_edge
+        for ap in asks:
+            if ap >= center + DISREGARD:
+                if ap - center <= JOIN_EDGE:
+                    our_ask = ap
+                else:
+                    our_ask = ap - 1
+                break
+
+        our_bid = min(our_bid, center - 1)
+        our_ask = max(our_ask, center + 1)
+        if our_bid >= our_ask:
+            our_bid = center - 1
+            our_ask = center + 1
+
+        if buy_room > 0:
+            orders.append(Order(OSMIUM, our_bid, buy_room))
+        if sell_room > 0:
+            orders.append(Order(OSMIUM, our_ask, -sell_room))
+
+        return orders, td
+
+    def _detect_bot1_asym(self, od: OrderDepth, bids: List[int], asks: List[int], fv_r: int) -> int:
+        """Bot1 asymmetry: +1 bullish (ask offset wider), -1 bearish (bid offset wider), 0 n/a.
+
+        Bot1 posts at FV±{10,11} with asymmetric offsets encoding next FV move direction.
+        """
+        bid_off = None
+        ask_off = None
+        for p in bids:
+            if 20 <= od.buy_orders[p] <= 30:
+                bid_off = fv_r - p
+                break
+        for p in asks:
+            if 20 <= -od.sell_orders[p] <= 30:
+                ask_off = p - fv_r
+                break
+        if bid_off in (10, 11) and ask_off in (10, 11) and bid_off != ask_off:
+            return ask_off - bid_off
+        return 0
+
+    def _signal_mode(self, td: dict, fv_r: int) -> int:
+        """Online filter. Returns +1 (use raw), -1 (invert), 0 (disable/warmup)."""
+        prev_fv = td.get("sig_prev_fv")
+        prev_raw = td.get("sig_prev_raw", 0)
+        if prev_fv is not None and prev_raw != 0:
+            move = fv_r - prev_fv
+            if move != 0:
+                td["sig_count"] = td.get("sig_count", 0) + 1
+                sig_score = td.get("sig_score", 0)
+                if (prev_raw > 0 and move > 0) or (prev_raw < 0 and move < 0):
+                    sig_score += 1
+                else:
+                    sig_score -= 1
+                td["sig_score"] = sig_score
+        td["sig_prev_fv"] = fv_r
+
+        sig_count = td.get("sig_count", 0)
+        if sig_count < self.ACO_BOT1_WARMUP:
+            return 0
+        edge = td.get("sig_score", 0) / sig_count
+        if edge >= self.ACO_BOT1_EDGE_THRESH:
+            return 1
+        if edge <= -self.ACO_BOT1_EDGE_THRESH:
+            return -1
+        return 0
+
+    def _aco_make_signal(self, od: OrderDepth, bids: List[int], asks: List[int], fv: float, td: dict):
+        """Return (directional center skew in ticks, adaptive make edge)."""
+        if not bids or not asks:
+            return 0, DEFAULT_EDGE
+
+        best_bid = bids[0]
+        best_ask = asks[0]
+        mid = (best_bid + best_ask) / 2
+
+        # L1 imbalance: robust directional cue for next-tick return (corr ~+0.59
+        # across d-2/d-1/d0). Graded skew, not binary: int(round(gain*OBI)) clipped.
+        bid_vol = od.buy_orders.get(best_bid, 0)
+        ask_vol = -od.sell_orders.get(best_ask, 0)
+        total = bid_vol + ask_vol
+        obi = (bid_vol - ask_vol) / total if total > 0 else 0.0
+        raw_obi = int(round(self.ACO_OBI_GAIN * obi))
+        obi_skew = max(-self.ACO_OBI_MAX, min(self.ACO_OBI_MAX, raw_obi))
+
+        # Mean reversion to OU anchor (μ≈10000). Reversal probability rises with
+        # |FV-μ|: ~65% at dev≤7, ~75% at dev 8-11, ~75-90% at dev≥12. Skew TOWARD
+        # anchor, graded by distance.
+        anchor_dev = fv - self.ACO_ANCHOR
+        raw_anchor = int(round(self.ACO_ANCHOR_GAIN * anchor_dev))
+        anchor_skew = -max(-self.ACO_ANCHOR_MAX, min(self.ACO_ANCHOR_MAX, raw_anchor))
+
+        # Step reversal: AC(1) on FV steps ≈ -0.50; 65% of FV moves reverse next step.
+        # Track last observed FV step direction; persists until a new step occurs.
+        fv_r = int(round(fv))
+        prev_fv_r = td.get("aco_prev_fv_r", fv_r)
+        if fv_r > prev_fv_r:
+            td["aco_last_step"] = 1
+        elif fv_r < prev_fv_r:
+            td["aco_last_step"] = -1
+        td["aco_prev_fv_r"] = fv_r
+        step_skew = -td.get("aco_last_step", 0) * self.ACO_STEP_SKEW
+
+        # Bot1 asymmetry: 94% FV-direction accuracy per FINDINGS.md. signal_mode
+        # filters raw signal (use/invert/disable) based on online accuracy measurement.
+        signal_mode = self._signal_mode(td, fv_r)
+        raw_bot1 = self._detect_bot1_asym(od, bids, asks, fv_r)
+        td["sig_prev_raw"] = raw_bot1
+        if signal_mode > 0:
+            bot1_skew = raw_bot1 * self.ACO_BOT1_SKEW
+        elif signal_mode < 0:
+            bot1_skew = -raw_bot1 * self.ACO_BOT1_SKEW
+        else:
+            bot1_skew = 0
+
+        # Additive composition: four independent signals summed and capped.
+        combined = obi_skew + anchor_skew + step_skew + bot1_skew
+        directional_skew = max(-self.ACO_TOTAL_SKEW_MAX, min(self.ACO_TOTAL_SKEW_MAX, combined))
+
+        # Volatility clustering: widen edge after elevated |mid returns|.
+        abs_rets = td.get("aco_abs_rets", [])
+        prev_mid = td.get("aco_prev_mid")
+        if prev_mid is not None:
+            abs_rets.append(abs(mid - prev_mid))
+            if len(abs_rets) > self.ACO_RET_WINDOW:
+                abs_rets = abs_rets[-self.ACO_RET_WINDOW:]
+        td["aco_prev_mid"] = mid
+        td["aco_abs_rets"] = abs_rets
+
+        make_edge = DEFAULT_EDGE
+        if len(abs_rets) >= self.ACO_RECENT_RET + 2:
+            recent = sum(abs_rets[-self.ACO_RECENT_RET:]) / self.ACO_RECENT_RET
+            long = sum(abs_rets) / len(abs_rets)
+            if long > 0:
+                ratio = recent / long
+                if ratio >= self.ACO_VOL_WIDEN_STRONG:
+                    make_edge += 2
+                elif ratio >= self.ACO_VOL_WIDEN:
+                    make_edge += 1
+
+        td["aco_obi"] = obi
+        td["aco_anchor_dev"] = anchor_dev
+        td["aco_dir_skew"] = directional_skew
+        td["aco_make_edge"] = make_edge
+        return directional_skew, make_edge
+
+    # ==================================================================
+    # INTARIAN_PEPPER_ROOT — accumulate + FV-aware passive ask
+    # ==================================================================
+    def _estimate_ipr_fv(self, od: OrderDepth, td: dict) -> float:
+        """Estimate IPR fair value from bot walls."""
+        bids = sorted(od.buy_orders.keys(), reverse=True) if od.buy_orders else []
+        asks = sorted(od.sell_orders.keys()) if od.sell_orders else []
+
+        estimates = []
+        for p in bids:
+            v = od.buy_orders[p]
+            if 8 <= v <= 12:
+                estimates.append((p + 6.5, 2.0))
+            elif 15 <= v <= 25:
+                estimates.append((p + 9.5, 1.0))
+        for p in asks:
+            v = -od.sell_orders[p]
+            if 8 <= v <= 12:
+                estimates.append((p - 6.5, 2.0))
+            elif 15 <= v <= 25:
+                estimates.append((p - 9.5, 1.0))
+
+        if estimates:
+            tw = sum(w for _, w in estimates)
+            fv = sum(e * w for e, w in estimates) / tw
+        elif bids and asks:
+            fv = (bids[0] + asks[0]) / 2
+        else:
+            fv = td.get("ipr_fv", 10000.0)
+
+        td["ipr_fv"] = fv
+        return fv
+
+    IPR_ASK_OFFSET = 8
+
+    def _trade_ipr(self, od: OrderDepth, position: int, td: dict):
+        orders = []
+        remaining = LIMIT - position
+
+        fv = self._estimate_ipr_fv(od, td)
+        fv_r = int(round(fv))
+
+        asks_sorted = sorted(od.sell_orders.keys()) if od.sell_orders else []
+        bids_sorted = sorted(od.buy_orders.keys(), reverse=True) if od.buy_orders else []
+
+        # Accumulate: sweep asks vol <= 15 (Bot 2 + Bot 3, skip Bot 1)
+        for ask_price in asks_sorted:
+            if remaining <= 0:
+                break
+            vol = -od.sell_orders[ask_price]
+            if vol > 15:
+                continue
+            qty = min(vol, remaining)
+            if qty > 0:
+                orders.append(Order(PEPPER, ask_price, qty))
+                remaining -= qty
+
+        # Passive bid: penny-jump best bid
+        if remaining > 0:
+            if bids_sorted:
+                our_bid = bids_sorted[0] + 1
+            elif asks_sorted:
+                our_bid = asks_sorted[0] - 1
+            else:
+                our_bid = fv_r - 6
+            orders.append(Order(PEPPER, our_bid, remaining))
+
+        # Passive ask at FV+8: fills when Bot 2 absent (~20%), sells above rebuy cost
+        sell_room = LIMIT + position
+        if position >= 60:
+            our_ask = fv_r + self.IPR_ASK_OFFSET
+            ask_qty = min(25, sell_room)
+            if ask_qty > 0:
+                orders.append(Order(PEPPER, our_ask, -ask_qty))
+
+        return orders, td
