@@ -77,7 +77,7 @@ To win you only need to be **in the top 50%**, not the highest. Bidding high gua
 
 ## 2. Manual challenge — "Invest & Expand"
 
-> ⚠️ **Budget ambiguity in spec**: the page intro says `100,000 XIRECs` but the manual-challenge section later says `50,000 XIRECs`. **Check the portal UI before locking a submission.** Either value preserves the optimization below; only the final scaling changes.
+> ✅ **Budget confirmed: 50,000 XIRECs** (verified from portal UI on 2026-04-19). Ambiguity resolved.
 
 ### Structure
 
