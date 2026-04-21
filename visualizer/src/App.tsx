@@ -1,6 +1,8 @@
 import '@mantine/core/styles.css';
 import '@mantine/dropzone/styles.css';
 import '@mantine/code-highlight/styles.css';
+import '@mantine/dates/styles.css';
+import 'mantine-react-table/styles.css';
 
 import { createTheme, MantineProvider } from '@mantine/core';
 import { ReactNode } from 'react';
@@ -8,6 +10,7 @@ import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterP
 import { BasePage } from './pages/base/BasePage.tsx';
 import { MonteCarloPage } from './pages/montecarlo/MonteCarloPage.tsx';
 import { RunnerPage } from './pages/runner/RunnerPage.tsx';
+import { WorkshopPage } from './pages/workshop/WorkshopPage.tsx';
 import { useStore } from './store.ts';
 
 const theme = createTheme({
@@ -36,6 +39,7 @@ const router = createBrowserRouter(
       <Route path="/" element={<BasePage />}>
         <Route index element={<MonteCarloPage />} />
         <Route path="run" element={<RunnerPage />} />
+        <Route path="workshop" element={<WorkshopPage />} />
       </Route>
       <Route path="prosperity4mcbt/*" element={<Navigate to="/" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -12,6 +12,7 @@ export function Header(): ReactNode {
   const links = [
     { label: 'Results', path: '/' },
     { label: 'Run', path: '/run' },
+    { label: 'Workshop', path: '/workshop' },
   ];
 
   return (

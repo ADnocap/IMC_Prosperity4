@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -12,7 +13,7 @@ from datetime import datetime
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 from urllib.error import URLError
 from urllib.request import urlopen
 
@@ -24,6 +25,7 @@ DEFAULT_PORT = 8001
 STATUS_PATH = "/__prosperity4mcbt__/status.json"
 RUN_DASHBOARD_PREFIX = "/__prosperity4mcbt__/runs/"
 RUNNER_PREFIX = "/__prosperity4mcbt__/runner/"
+WORKSHOP_PREFIX = "/__prosperity4mcbt__/workshop/"
 
 # ── Runner state (single backtest at a time) ────────────────────────
 _runner_lock = threading.Lock()
@@ -173,6 +175,79 @@ def _list_runs(current_root: Path) -> tuple[list[dict[str, object]], str | None]
     return runs, current_run_id
 
 
+# ── Workshop (raw-data browser) ─────────────────────────────────────
+
+_ROUND_DAY_RE = re.compile(r"round_(\d+)_day_(-?\d+)", re.IGNORECASE)
+
+
+def _data_root() -> Path:
+    return _project_root() / "data"
+
+
+def _classify_data_file(name: str) -> str:
+    low = name.lower()
+    if low.startswith("prices_"):
+        return "prices"
+    if low.startswith("trades_"):
+        return "trades"
+    if low.startswith("observations_"):
+        return "observations"
+    return "other"
+
+
+def _parse_round_day(name: str) -> tuple[int | None, int | None]:
+    m = _ROUND_DAY_RE.search(name)
+    if not m:
+        return (None, None)
+    return (int(m.group(1)), int(m.group(2)))
+
+
+def _workshop_tree() -> list[dict[str, object]]:
+    root = _data_root()
+    if not root.is_dir():
+        return []
+    out: list[dict[str, object]] = []
+    for version_dir in sorted(root.iterdir()):
+        if not version_dir.is_dir():
+            continue
+        for round_dir in sorted(version_dir.iterdir()):
+            if not round_dir.is_dir():
+                continue
+            for f in sorted(round_dir.iterdir()):
+                if not f.is_file() or f.suffix.lower() != ".csv":
+                    continue
+                round_num, day_num = _parse_round_day(f.name)
+                rel = f.relative_to(root)
+                out.append(
+                    {
+                        "version": version_dir.name,
+                        "round": round_dir.name,
+                        "roundNumber": round_num,
+                        "day": day_num,
+                        "filename": f.name,
+                        "path": str(rel).replace("\\", "/"),
+                        "role": _classify_data_file(f.name),
+                        "sizeBytes": f.stat().st_size,
+                    }
+                )
+    return out
+
+
+def _resolve_data_file(rel_path: str) -> Path | None:
+    """Resolve `rel_path` against the data root, rejecting traversal attempts."""
+    root = _data_root().resolve()
+    if not root.is_dir():
+        return None
+    candidate = (root / rel_path).resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        return None
+    if not candidate.is_file():
+        return None
+    return candidate
+
+
 class DashboardRequestHandler(SimpleHTTPRequestHandler):
     def translate_path(self, path: str) -> str:
         """Resolve file paths: try the server root first, then the latest run directory."""
@@ -199,6 +274,9 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
             return
         if path.startswith(RUNNER_PREFIX):
             self._handle_runner_get(path)
+            return
+        if path.startswith(WORKSHOP_PREFIX):
+            self._handle_workshop_get(parsed)
             return
         super().do_GET()
 
@@ -301,6 +379,32 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
             self._serve_runner_status()
         else:
             self.send_error(404)
+
+    # ── Workshop endpoints ──────────────────────────────────────────
+
+    def _handle_workshop_get(self, parsed) -> None:
+        route = parsed.path[len(WORKSHOP_PREFIX):]
+        if route == "tree":
+            self._send_json({"files": _workshop_tree()})
+            return
+        if route == "file":
+            params = parse_qs(parsed.query)
+            rel_list = params.get("path", [])
+            if not rel_list:
+                self.send_error(400, "missing path")
+                return
+            resolved = _resolve_data_file(unquote(rel_list[0]))
+            if resolved is None:
+                self.send_error(404)
+                return
+            body = resolved.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/csv; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        self.send_error(404)
 
     def _handle_runner_post(self, path: str) -> None:
         route = path[len(RUNNER_PREFIX):]

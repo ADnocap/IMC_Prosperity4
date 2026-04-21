@@ -26,4 +26,15 @@ export default defineConfig({
       '@tabler/icons-react': '@tabler/icons-react/dist/esm/icons/index.mjs',
     },
   },
+  optimizeDeps: {
+    include: [
+      'papaparse',
+      'arquero',
+      'simple-statistics',
+      'mantine-react-table',
+      '@mantine/dates',
+      '@tanstack/react-table',
+      'dayjs',
+    ],
+  },
 });
