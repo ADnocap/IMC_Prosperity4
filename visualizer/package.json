@@ -4,8 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "build:wasm": "cd ../wasm_compute && wasm-pack build --release --target web --out-dir ../visualizer/wasm_compute",
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "npm run build:wasm && tsc && vite build",
     "preview": "vite preview",
     "lint": "pnpm run \"/^lint:.*/\"",
     "lint:eslint": "eslint --format codeframe '**/*.ts' '**/*.tsx'",

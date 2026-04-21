@@ -2,6 +2,7 @@ import { Button, Container, Group, Loader, Stack, Table, Text } from '@mantine/c
 import { Link } from 'react-router-dom';
 import Highcharts from 'highcharts';
 import HighchartsMore from 'highcharts/highcharts-more';
+import HighchartsBoost from 'highcharts/modules/boost';
 import HighchartsAccessibility from 'highcharts/modules/accessibility';
 import HighchartsExporting from 'highcharts/modules/exporting';
 import HighchartsOfflineExporting from 'highcharts/modules/offline-exporting';
@@ -18,6 +19,7 @@ HighchartsAccessibility(Highcharts);
 HighchartsExporting(Highcharts);
 HighchartsOfflineExporting(Highcharts);
 HighchartsMore(Highcharts);
+HighchartsBoost(Highcharts);
 
 export interface SimpleChartProps {
   title: string;
@@ -80,6 +82,9 @@ export function SimpleChart({ title, subtitle, series, options }: SimpleChartPro
               textOutline: 'none',
             },
             formatter(this: Highcharts.AxisLabelsFormatterContextObject) {
+              // Category axes pass strings; keep them verbatim so we don't
+              // render "NaN" from Number("KELP").
+              if (typeof this.value === 'string') return this.value;
               return formatNumber(Number(this.value));
             },
           },
@@ -103,6 +108,9 @@ export function SimpleChart({ title, subtitle, series, options }: SimpleChartPro
               textOutline: 'none',
             },
             formatter(this: Highcharts.AxisLabelsFormatterContextObject) {
+              // Category axes pass strings; keep them verbatim so we don't
+              // render "NaN" from Number("KELP").
+              if (typeof this.value === 'string') return this.value;
               return formatNumber(Number(this.value));
             },
           },
@@ -134,13 +142,20 @@ export function SimpleChart({ title, subtitle, series, options }: SimpleChartPro
             animation: false,
             marker: { enabled: false },
             states: { inactive: { opacity: 1 } },
+            boostThreshold: 2000,
           },
           scatter: {
             marker: {
               enabled: true,
               radius: 3,
             },
+            // Scatter is O(n^2) for tooltips in SVG mode; force canvas path.
+            boostThreshold: 1,
           },
+        },
+        boost: {
+          useGPUTranslations: true,
+          usePreallocated: true,
         },
         navigator: { enabled: false },
         rangeSelector: { enabled: false },

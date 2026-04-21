@@ -48,24 +48,39 @@ cleanup() {
 }
 trap cleanup INT TERM
 
-# Start data server in background
+# Build WASM compute module if stale
+WASM_PKG="$PROJECT_ROOT/visualizer/wasm_compute/wasm_compute_bg.wasm"
+WASM_SRC="$PROJECT_ROOT/wasm_compute/src/lib.rs"
+if [[ ! -f "$WASM_PKG" ]] || [[ "$WASM_SRC" -nt "$WASM_PKG" ]]; then
+    echo "Building WASM compute kernels (release)..."
+    (cd "$PROJECT_ROOT/wasm_compute" && wasm-pack build --release --target web --out-dir "$PROJECT_ROOT/visualizer/wasm_compute" 2>&1 | tee "$BACKTESTS_DIR/wasm_build.log") || echo "wasm-pack failed -- see $BACKTESTS_DIR/wasm_build.log"
+fi
+
+# Start data server in background (stdout/stderr captured so import errors aren't silent)
 echo "Starting data server on :8001..."
-python -m backtester.dashboard_server "$BACKTESTS_DIR" 8001 &
+SERVER_LOG="$BACKTESTS_DIR/dashboard_server.log"
+python -m backtester.dashboard_server "$BACKTESTS_DIR" 8001 >"$SERVER_LOG" 2>"${SERVER_LOG}.err" &
 SERVER_PID=$!
 
 # Start Vite frontend in background
 echo "Starting frontend on :5555 (first run pre-bundles deps -- may take 20-30s)..."
-(cd "$PROJECT_ROOT/visualizer" && npm run dev) &
+VIZ_LOG="$BACKTESTS_DIR/vite.log"
+(cd "$PROJECT_ROOT/visualizer" && npm run dev >"$VIZ_LOG" 2>"${VIZ_LOG}.err") &
 VIZ_PID=$!
 
 # Wait for Vite to actually be ready
+vite_ready=0
 for i in $(seq 1 60); do
     if curl -sSf --max-time 1 http://localhost:5555/ > /dev/null 2>&1; then
+        vite_ready=1
         break
     fi
     [[ $i -eq 6 ]] && echo "  still waiting on Vite..."
     sleep 1
 done
+if [[ $vite_ready -eq 0 ]]; then
+    echo "Vite did not come up within 60s. Check $VIZ_LOG / ${VIZ_LOG}.err"
+fi
 
 if command -v open &>/dev/null; then
     open "http://localhost:5555/#/mc?tab=run"
@@ -74,6 +89,7 @@ elif command -v xdg-open &>/dev/null; then
 fi
 
 echo "Dashboard open at http://localhost:5555/"
+echo "Server log: $SERVER_LOG   Vite log: $VIZ_LOG"
 echo "Press Ctrl+C to stop."
 
 # Wait forever until interrupted

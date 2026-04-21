@@ -41,6 +41,29 @@ foreach ($holderPid in $viteHolders) {
 }
 Start-Sleep -Milliseconds 300
 
+# Build WASM compute module (idempotent; Cargo skips if already fresh).
+$wasmPkgWasm = Join-Path $projectRoot "visualizer\wasm_compute\wasm_compute_bg.wasm"
+$wasmSrc = Join-Path $projectRoot "wasm_compute\src\lib.rs"
+$needsWasmBuild = $false
+if (-not (Test-Path $wasmPkgWasm)) {
+    $needsWasmBuild = $true
+} elseif (Test-Path $wasmSrc) {
+    $srcTime = (Get-Item $wasmSrc).LastWriteTime
+    $pkgTime = (Get-Item $wasmPkgWasm).LastWriteTime
+    if ($srcTime -gt $pkgTime) { $needsWasmBuild = $true }
+}
+if ($needsWasmBuild) {
+    Write-Host "Building WASM compute kernels (release)..." -ForegroundColor Cyan
+    $wasmOutput = Join-Path $projectRoot "visualizer\wasm_compute"
+    Push-Location (Join-Path $projectRoot "wasm_compute")
+    try {
+        & wasm-pack build --release --target web --out-dir $wasmOutput 2>&1 | Tee-Object -FilePath (Join-Path $backtestsDir "wasm_build.log") | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "wasm-pack failed -- see $(Join-Path $backtestsDir 'wasm_build.log')" -ForegroundColor Red
+        }
+    } finally { Pop-Location }
+}
+
 # Start data server in background (stdout/stderr surfaced so import errors aren't hidden)
 Write-Host "Starting data server on :8001..." -ForegroundColor Cyan
 $serverLog = Join-Path $backtestsDir "dashboard_server.log"

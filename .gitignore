@@ -27,8 +27,11 @@ zscore_gridsearch.py
 
 visualizer/node_modules/
 visualizer/dist/
+visualizer/wasm_compute/
 
 rust_simulator/target/
+wasm_compute/target/
+wasm_compute/Cargo.lock
 prosperity4mcbt.egg-info/
 
 *.log

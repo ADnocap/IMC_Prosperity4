@@ -27,6 +27,43 @@ async function fetchCsv(path: string): Promise<string> {
   return response.data;
 }
 
+function parseCsvInWorker(text: string, delimiter: string): Promise<Row[]> {
+  return new Promise((resolve, reject) => {
+    // PapaParse's `worker: true` spawns its own worker so parsing + row-object
+    // allocation happens off the main thread -- the heaviest single step of
+    // any load.
+    Papa.parse<Row>(text, {
+      worker: true,
+      header: true,
+      delimiter,
+      dynamicTyping: false,
+      skipEmptyLines: true,
+      complete: results => {
+        // Headers come through raw; trim whitespace lazily (cheap loop, on
+        // main thread but dominated by N cols, not N rows).
+        const rows = results.data.filter(r => r && Object.keys(r).length > 0);
+        if (rows.length > 0) {
+          const keys = Object.keys(rows[0]);
+          const trimmed = keys.filter(k => k !== k.trim());
+          if (trimmed.length > 0) {
+            for (const row of rows) {
+              for (const dirty of trimmed) {
+                const clean = dirty.trim();
+                if (clean !== dirty && row[dirty] !== undefined) {
+                  row[clean] = row[dirty];
+                  delete row[dirty];
+                }
+              }
+            }
+          }
+        }
+        resolve(rows);
+      },
+      error: (err: Error) => reject(err),
+    });
+  });
+}
+
 const tableCache = new Map<string, Promise<ParsedTable>>();
 
 export function loadTable(entry: TreeEntry): Promise<ParsedTable> {
@@ -35,14 +72,7 @@ export function loadTable(entry: TreeEntry): Promise<ParsedTable> {
   const promise = (async (): Promise<ParsedTable> => {
     const text = await fetchCsv(entry.path);
     const delimiter = detectDelimiter(text);
-    const parsed = Papa.parse<Row>(text, {
-      header: true,
-      delimiter,
-      dynamicTyping: false,
-      skipEmptyLines: true,
-      transformHeader: (h: string) => h.trim(),
-    });
-    const rows = parsed.data.filter(r => r && Object.keys(r).length > 0);
+    const rows = await parseCsvInWorker(text, delimiter);
     const shape = inferShape(rows);
     return { entry, rows, shape };
   })();

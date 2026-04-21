@@ -17,10 +17,23 @@ import axios from 'axios';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { VisualizerCard } from '../visualizer/VisualizerCard.tsx';
 import { concatTables, ConcatenatedTable } from './concat.ts';
+import { preparePrices, prepareTrades } from './compute/project.ts';
 import { fetchTree, loadTable } from './loader.ts';
+import { CorrMatrixPanel } from './panels/CorrMatrixPanel.tsx';
 import { CounterpartyPivot } from './panels/CounterpartyPivot.tsx';
+import { DepthAreaPanel } from './panels/DepthAreaPanel.tsx';
+import { EffRealizedPanel } from './panels/EffRealizedPanel.tsx';
+import { LeadLagPanel } from './panels/LeadLagPanel.tsx';
+import { MarkoutPanel } from './panels/MarkoutPanel.tsx';
 import { MidPricePanel } from './panels/MidPricePanel.tsx';
+import { ObsBetaPanel } from './panels/ObsBetaPanel.tsx';
+import { ObservationsLinesPanel } from './panels/ObservationsLinesPanel.tsx';
+import { OffsetFromMidPanel } from './panels/OffsetFromMidPanel.tsx';
+import { OfiPanel } from './panels/OfiPanel.tsx';
+import { PairSpreadPanel } from './panels/PairSpreadPanel.tsx';
+import { QueueImbalancePanel } from './panels/QueueImbalancePanel.tsx';
 import { SchemaCard } from './panels/SchemaCard.tsx';
+import { SeasonalityPanel } from './panels/SeasonalityPanel.tsx';
 import { SpreadPanel } from './panels/SpreadPanel.tsx';
 import { TradeTape } from './panels/TradeTape.tsx';
 import { ParsedTable, TreeEntry } from './types.ts';
@@ -144,6 +157,9 @@ export function WorkshopPage(): ReactNode {
     })();
     return () => { cancelled = true; };
   }, [tree, version, round, daySelection, dayEntries]);
+
+  const preparedPrices = useMemo(() => preparePrices(pricesTable), [pricesTable]);
+  const preparedTrades = useMemo(() => prepareTrades(tradesTable), [tradesTable]);
 
   const availableProducts = useMemo(() => {
     const fromPrices = pricesTable?.shape.products ?? [];
@@ -273,9 +289,27 @@ export function WorkshopPage(): ReactNode {
             </Alert>
           )}
 
-          <Tabs defaultValue="overview" keepMounted={false}>
+          <Tabs defaultValue="overview" keepMounted={true}>
             <Tabs.List>
               <Tabs.Tab value="overview">Overview</Tabs.Tab>
+              <Tabs.Tab value="lob" disabled={preparedPrices === null || !preparedPrices.hasLadder}>
+                LOB
+              </Tabs.Tab>
+              <Tabs.Tab
+                value="mmalpha"
+                disabled={preparedPrices === null || preparedTrades === null || !preparedTrades.hasCounterparties}
+              >
+                MM Alpha
+              </Tabs.Tab>
+              <Tabs.Tab value="cross" disabled={preparedPrices === null || availableProducts.length < 2}>
+                Cross-Asset
+              </Tabs.Tab>
+              <Tabs.Tab value="exogenous" disabled={preparedPrices === null || observationsTable === null}>
+                Exogenous
+              </Tabs.Tab>
+              <Tabs.Tab value="seasonality" disabled={preparedPrices === null}>
+                Seasonality
+              </Tabs.Tab>
               <Tabs.Tab value="trades" disabled={tradesTable === null}>
                 Trades
               </Tabs.Tab>
@@ -301,12 +335,69 @@ export function WorkshopPage(): ReactNode {
                   </VisualizerCard>
                 </Grid.Col>
                 <Grid.Col span={12}>
-                  <MidPricePanel table={pricesTable} products={activeProducts} />
+                  <MidPricePanel prepared={preparedPrices} products={activeProducts} />
                 </Grid.Col>
                 <Grid.Col span={12}>
-                  <SpreadPanel table={pricesTable} products={activeProducts} />
+                  <SpreadPanel prepared={preparedPrices} products={activeProducts} />
                 </Grid.Col>
               </Grid>
+            </Tabs.Panel>
+
+            <Tabs.Panel value="lob" pt="sm">
+              <Grid>
+                <Grid.Col span={12}>
+                  <DepthAreaPanel prepared={preparedPrices} products={activeProducts} />
+                </Grid.Col>
+                <Grid.Col span={12}>
+                  <QueueImbalancePanel prepared={preparedPrices} products={activeProducts} />
+                </Grid.Col>
+                <Grid.Col span={12}>
+                  <OfiPanel prepared={preparedPrices} products={activeProducts} />
+                </Grid.Col>
+              </Grid>
+            </Tabs.Panel>
+
+            <Tabs.Panel value="mmalpha" pt="sm">
+              <Grid>
+                <Grid.Col span={12}>
+                  <MarkoutPanel prices={preparedPrices} trades={preparedTrades} products={activeProducts} />
+                </Grid.Col>
+                <Grid.Col span={12}>
+                  <EffRealizedPanel prices={preparedPrices} trades={preparedTrades} products={activeProducts} />
+                </Grid.Col>
+                <Grid.Col span={12}>
+                  <OffsetFromMidPanel prices={preparedPrices} trades={preparedTrades} products={activeProducts} />
+                </Grid.Col>
+              </Grid>
+            </Tabs.Panel>
+
+            <Tabs.Panel value="cross" pt="sm">
+              <Grid>
+                <Grid.Col span={12}>
+                  <CorrMatrixPanel prices={preparedPrices} products={activeProducts} />
+                </Grid.Col>
+                <Grid.Col span={12}>
+                  <LeadLagPanel prices={preparedPrices} products={activeProducts} />
+                </Grid.Col>
+                <Grid.Col span={12}>
+                  <PairSpreadPanel prices={preparedPrices} products={activeProducts} />
+                </Grid.Col>
+              </Grid>
+            </Tabs.Panel>
+
+            <Tabs.Panel value="exogenous" pt="sm">
+              <Grid>
+                <Grid.Col span={12}>
+                  <ObservationsLinesPanel table={observationsTable} />
+                </Grid.Col>
+                <Grid.Col span={12}>
+                  <ObsBetaPanel prices={preparedPrices} observations={observationsTable} products={activeProducts} />
+                </Grid.Col>
+              </Grid>
+            </Tabs.Panel>
+
+            <Tabs.Panel value="seasonality" pt="sm">
+              <SeasonalityPanel prices={preparedPrices} products={activeProducts} />
             </Tabs.Panel>
 
             <Tabs.Panel value="trades" pt="sm">
