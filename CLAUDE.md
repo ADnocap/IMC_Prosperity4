@@ -39,7 +39,8 @@ IMC_trading_hack/
 │   ├── prosperity4mcbt/               #   Monte Carlo CLI (primary backtester)
 │   └── prosperity3bt/                 #   Historical CSV replay CLI
 ├── rust_simulator/                    # Rust Monte Carlo simulation engine (one file per asset under src/assets/)
-├── visualizer/                        # Local dashboard frontend (Vite/React)
+├── wasm_compute/                      # Rust/WASM kernels for the Workshop tab (microstructure analytics)
+├── visualizer/                        # Local dashboard frontend (Vite/React) — includes Workshop tab
 ├── calibration/                       # Bot reverse-engineering, one dir per asset
 │   ├── ANALYSIS_PHILOSOPHY.md         #   Methodology (condition on everything, stat tests)
 │   ├── README.md                      #   Per-asset summary + new-asset workflow
@@ -58,12 +59,14 @@ IMC_trading_hack/
 │   └── bt_stats.py                    #   Fill analytics wrapper
 ├── CLAUDE.md                          # This file - project context
 ├── BACKTEST.md                        # Backtesting & calibration guide
+├── DATA_WORKSHOP.md                   # Browser-based data analysis workshop guide
 └── PROSPERITY_4_WIKI_COMPLETE.md      # Full game reference
 ```
 
 ## Architecture & Constraints
 
 ### Submission Format
+
 - **Single Python file** (currently `traders/round3/a.py`) containing a `Trader` class with a `run()` method
 - No external file access, no network, no pip installs at runtime
 - Available: standard library + numpy + jsonpickle
@@ -72,25 +75,31 @@ IMC_trading_hack/
 - All orders expire each timestep (no GTC orders)
 
 ### Run Method Signature
+
 ```python
 def run(self, state: TradingState) -> tuple[dict[str, list[Order]], int, str]:
     return result, conversions, traderData
 ```
+
 - `result`: Dict[Symbol, List[Order]] - orders per product
 - `conversions`: int - cross-market conversions (0 unless applicable)
 - `traderData`: str - serialized state for next iteration
 
 ### Optional `bid()` Method (R2 only)
+
 ```python
 def bid(self) -> int:
     return <MAF in XIRECs>
 ```
+
 Only used in Round 2 for the Market Access Fee auction. Ignored in all other rounds and in testing. Top 50% of bids win +25% quote volume and pay their bid once.
 
 ### Position Limit CRITICAL Rule
+
 If the sum of ALL your outstanding orders for a product could push your position past the limit (assuming worst-case all fill), **ALL orders for that product are cancelled**. Always calculate worst-case before submitting.
 
 ### Order Matching Sequence (per timestep)
+
 1. Deep-liquidity market makers post orders
 2. Bot takers act
 3. YOUR algorithm runs (receives TradingState, returns orders)
@@ -101,28 +110,33 @@ If the sum of ALL your outstanding orders for a product could push your position
 ## Products by Round
 
 ### Round 0 — Tutorial (shipped)
-| Product | Position Limit | Behavior | Strategy |
-|---------|---------------|----------|----------|
-| EMERALDS | 80 | Stationary ~10,000 | Fixed fair-value market making |
-| TOMATOES | 80 | Drifting (Gaussian random walk, σ=0.496/tick) | Adaptive market making |
+
+| Product  | Position Limit | Behavior                                      | Strategy                       |
+| -------- | -------------- | --------------------------------------------- | ------------------------------ |
+| EMERALDS | 80             | Stationary ~10,000                            | Fixed fair-value market making |
+| TOMATOES | 80             | Drifting (Gaussian random walk, σ=0.496/tick) | Adaptive market making         |
 
 ### Round 1 — shipped (Apr 14–17)
-| Product | Position Limit | Behavior | Strategy (what worked in R1) |
-|---------|---------------|----------|------------------------------|
-| ASH_COATED_OSMIUM | 80 | Gaussian random walk, σ=0.312/tick, starts ~10,000 | MM + OBI quote-skew + Bot1-asym adaptive signal |
-| INTARIAN_PEPPER_ROOT | 80 | Deterministic drift +0.1/tick, starts ~10,000 → ~13,000 | Long-biased: aggressive take, tiered asks to unload at high inventory |
+
+| Product              | Position Limit | Behavior                                                | Strategy (what worked in R1)                                          |
+| -------------------- | -------------- | ------------------------------------------------------- | --------------------------------------------------------------------- |
+| ASH_COATED_OSMIUM    | 80             | Gaussian random walk, σ=0.312/tick, starts ~10,000      | MM + OBI quote-skew + Bot1-asym adaptive signal                       |
+| INTARIAN_PEPPER_ROOT | 80             | Deterministic drift +0.1/tick, starts ~10,000 → ~13,000 | Long-biased: aggressive take, tiered asks to unload at high inventory |
 
 Bot calibration for R1 is fully solved — see `calibration/ash_coated_osmium/calibration.md` and `calibration/intarian_pepper_root/calibration.md`. Key finding: **PEPPER bots use proportional offsets** (`bid = floor(FV*(1 - K))`, `ask = ceil(FV*(1 + K))`) with Bot1 K=3/4000 and Bot2 K=1/2000.
 
 ### Round 2 — shipped (Apr 17–20, 2026, "Growing Your Outpost")
+
 **No new products.** Same symbols, same limits (`ASH_COATED_OSMIUM` 80, `INTARIAN_PEPPER_ROOT` 80). Challenge was a **Market Access Fee (MAF)** sealed-bid auction — `bid()` method on the Trader, top 50% won +25% quote volume. We shipped `MAF_BID = 0` (defensible default) and still cleared the round comfortably. Final submission: `traders/round2/submission.py` (portal sub 360419). Result snapshot in `results/round2/`.
 
 Manual challenge was "Invest & Expand" (allocate % across Research/Scale/Speed; `PnL = Research × Scale × Speed − Budget_Used`). See `manual/round2/` for notes.
 
 ### Round 3 — ACTIVE (2026-04-21 →)
+
 Products and rules pending IMC publishing. The active submission file is `traders/round3/a.py`, seeded from the R2 final. OSMIUM and PEPPER_ROOT handlers remain live (prior-round products remain tradeable). New-round data will drop into `data/prosperity4/round3/`.
 
 ### Data Format (CSV, semicolon-delimited)
+
 - **prices**: day;timestamp;product;bid_price_1-3;bid_volume_1-3;ask_price_1-3;ask_volume_1-3;mid_price;profit_and_loss
 - **trades**: timestamp;buyer;seller;symbol;currency;price;quantity
 - Currency: XIRECs
@@ -138,26 +152,31 @@ All prior-round products remain tradeable in later rounds, so OSMIUM and PEPPER_
 ## Strategy Framework
 
 ### 1. Alpha Engine (Fair Value Estimation)
+
 - Stationary: fixed value (e.g., EMERALDS = 10,000)
 - Drifting: EMA of mid-price, VWAP, or weighted regression
 - Volatile: Bollinger bands, z-score mean-reversion
 
 ### 2. Risk Engine
+
 - Soft position limits (e.g., start tightening at 60% of hard limit)
 - Skew quotes based on inventory (bid tighter when long, ask tighter when short)
 - Max drawdown checks via traderData
 
 ### 3. Inventory Management
+
 - Track position in traderData
 - Reduce spread asymmetrically to shed inventory
 - Never let worst-case fills breach position limits
 
 ### 4. Execution
+
 - Aggressive: take mispriced orders from the book immediately
 - Passive: place limit orders at fair_value +/- spread
 - Hybrid: take extreme mispricings, quote passively otherwise
 
 ### 5. Per-Product Config (expand as rounds unlock)
+
 ```python
 PRODUCT_CONFIG = {
     "EMERALDS": {"fair_value": 10000, "spread": 2, "limit": 80, "strategy": "fixed_mm"},
@@ -174,15 +193,18 @@ Use **Python 3.13** via `py -3.13`. For console output with unicode, set `PYTHON
 See [BACKTEST.md](BACKTEST.md) for the full guide including calibration methodology.
 
 ### Monte Carlo Backtester (PRIMARY -- use this)
+
 ```bash
 # Install (one-time): pip install -e .
 prosperity4mcbt a.py --quick              # dev iteration (~6s)
 prosperity4mcbt a.py --heavy              # pre-submission (~55s)
 prosperity4mcbt a.py --quick --vis        # with dashboard
 ```
+
 Output defaults to `tmp/backtests/<timestamp>_monte_carlo/dashboard.json` — only pass `--out` when you need a specific path. Rust-backed Monte Carlo using calibrated bot models reverse-engineered from tutorial data. Produces distributional PnL stats (mean, std, percentiles) across hundreds/thousands of synthetic sessions.
 
 #### Portal tick counts
+
 - Portal UI backtest: **1,000 ticks** per day (what the "Run" button shows you)
 - Portal final-round eval: **10,000 ticks** per day (actual scoring at round close)
 - MC default `--ticks-per-day` is **10,000** (matches final eval). Pass `--ticks-per-day 1000` for portal-UI-backtest comparisons.
@@ -190,6 +212,7 @@ Output defaults to `tmp/backtests/<timestamp>_monte_carlo/dashboard.json` — on
 #### Flag scheme — global vs per-asset
 
 The sim parses CLI flags into two categories:
+
 - **Global** (`--sessions`, `--ticks-per-day`, `--seed`, `--fv-mode`, `--trade-mode`, `--quote-fraction`, `--maf-bid`, `--strategy`, `--output`, …) apply to the whole run.
 - **Per-asset** flags are prefixed by the asset's lowercased-kebab symbol: `--<asset-kebab>-<flag>`. Example: PEPPER's starting-FV override is `--intarian-pepper-root-start-fv 13000`. Passing a flag for an asset the trader doesn't declare is a hard error.
 
@@ -212,10 +235,12 @@ prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-
 See [BACKTEST.md](BACKTEST.md) for the full flag reference, MAF-uplift table, and the workflow for adding a new asset (one Rust file per asset under `rust_simulator/src/assets/`).
 
 ### CSV Replay (sanity checks)
+
 ```bash
 prosperity3bt traders/round3/a.py 1                    # historical replay on R1 data
 py -3.13 scripts/bt_stats.py traders/round3/a.py 1     # fill analytics
 ```
+
 **Warning**: `--match-trades all` (default) over-reports PnL for market making. Use for relative A/B comparison only.
 
 ### Portal Submission Results
@@ -223,21 +248,25 @@ py -3.13 scripts/bt_stats.py traders/round3/a.py 1     # fill analytics
 Both R1 and R2 cleared the advancement threshold. Post-round-close snapshots (portal `.png`, `.log`, `.json`) live in `results/round{1,2}/`.
 
 **Round 1 (final, `traders/round1/submission.py`, portal sub 269599):**
+
 - Algorithmic Challenge: **99,546 XIRECs**
 - Manual Challenge ("An Intarian Welcome"): **87,995 XIRECs**
 - Total: 187,541 (94% of the 200k advance threshold)
 
 **Round 2 (final, `traders/round2/submission.py`, portal sub 360419):**
+
 - Shipped with `MAF_BID = 0`. Passed to R3. Specifics in `results/round2/round2_results.png`.
 
 **Sim calibration (final, validated on matched FV paths):**
 
 Three portal submissions drove the calibration:
+
 - **226828** (R1 MM backtest, 1K ticks): total trade-rate observations
 - **274082** (R2 hold-1, 1K ticks): pure base-rate takers (no elastic) — extracted server FV to `calibration/intarian_pepper_root/data/r2_day1_fv.json` for replay
 - **274250 + 274468** (R2 a.py identical-code repeats): confirmed portal backtest runs a single fixed FV path (only 80% quote subset is randomized)
 
 **Bugs found and fixed:**
+
 1. **PEPPER elastic rate was 7× too high**. Hold-1 base-rate separated clean: PEPPER elastic is ~0.9%, not 3.5% as in the original sim. Fixed via `IPR_ELASTIC_TRADE_PROB: 0.035 → 0.009`.
 2. **Matching-engine ordering was wrong**. Sim ran base-rate takers AFTER the strategy ran, so they hit our penny-jumped quotes and inflated edge ~2×. Per P4 spec, bot takers act BEFORE the strategy sees the book. Reordered the tick loop — OSMIUM PnL on matched FV paths dropped from 3,443 → 1,957, matching portal 1,752 within 0.6σ.
 3. **R2 PEPPER starting FV**. Drift continues from R1 day 0's end at ~13,000 (not reset to 10,000). Exposed as `--ipr-start-fv 13000` flag.
@@ -253,11 +282,11 @@ Total gap **+73 XIRECs (0.8%)** — sim is now calibrated against portal reality
 
 **Post-calibration R2 MC (200 sessions × 10,000 ticks, `--ipr-start-fv 13000`):**
 
-| Scenario | Mean PnL per final eval | Std | vs R1 portal final |
-|---|---|---|---|
-| R2 loser (`--quote-fraction 0.8`) | **98,642** | 1,042 | −1% from 99,546 ✓ |
-| R2 MAF winner (`--quote-fraction 1.25`) | **100,116** | 1,096 | +1% from 99,546 |
-| **MAF uplift (winner − loser)** | **+1,474 per final eval** | | |
+| Scenario                                | Mean PnL per final eval   | Std   | vs R1 portal final |
+| --------------------------------------- | ------------------------- | ----- | ------------------ |
+| R2 loser (`--quote-fraction 0.8`)       | **98,642**                | 1,042 | −1% from 99,546 ✓  |
+| R2 MAF winner (`--quote-fraction 1.25`) | **100,116**               | 1,096 | +1% from 99,546    |
+| **MAF uplift (winner − loser)**         | **+1,474 per final eval** |       |                    |
 
 **MAF bid guidance**: uplift is ~1,474 XIRECs per final eval. You only need to beat the median of all teams' bids, not buy the full uplift — shade well below. A first defensible opening is **300-500**; if the field under-bids, much less will do. `MAF_BID = 0` is a fine "do nothing" baseline.
 
@@ -266,7 +295,10 @@ MC absolute numbers are now trustworthy (not just relative deltas) — the sim m
 Post-round-close logs for R1/R2 are in `results/round{1,2}/` (portal sub id as filename). All backtest artifacts — MC dashboards, replay logs, ad-hoc outputs — go under `tmp/` (gitignored). Default MC output is `tmp/backtests/<timestamp>_monte_carlo/dashboard.json`; default CSV replay log is `tmp/backtests/<timestamp>.log`. Never write backtest output outside `tmp/`.
 
 ### Visualization
-- Local MC dashboard: `cd visualizer && npm install && npm run dev` then use `--vis` flag
+
+- Local dashboard: `./run.sh` (macOS/Linux) or `.\run.ps1` (Windows) — starts the Python data server, Vite frontend, and rebuilds WASM if stale. Dashboard at `http://localhost:5555/`.
+- Tabs: **Results** (MC dashboard from `tmp/backtests/`), **Run** (kick off backtests from the browser), **Workshop** (market-microstructure analysis on raw CSV data — see [DATA_WORKSHOP.md](DATA_WORKSHOP.md)).
+- The Workshop needs `wasm-pack` (`cargo install wasm-pack`) — its Rust kernels live in `wasm_compute/` and rebuild automatically when the source changes.
 - IMC Prosperity Visualizer: https://jmerle.github.io/imc-prosperity-visualizer/
 
 ## Coding Conventions

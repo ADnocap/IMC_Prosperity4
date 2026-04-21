@@ -1,6 +1,7 @@
 # IMC Prosperity 4 - Complete Wiki & Reference Guide
 
 ## Table of Contents
+
 1. [Competition Overview](#1-competition-overview)
 2. [Timeline & Round Structure](#2-timeline--round-structure)
 3. [Scoring & Prizes](#3-scoring--prizes)
@@ -32,18 +33,19 @@
 
 ## 2. Timeline & Round Structure
 
-| Phase | Dates | Duration |
-|-------|-------|----------|
-| **Registration Open** | March 16 - April 13, 2026 | |
-| **Tutorial Round** | March 16 - April 13, 2026 | ~28 days |
-| **Round 1** | April 14-17 | 72 hours |
-| **Round 2** | April 17-20 | 72 hours |
-| **Intermission** | April 20-24 | 4 days |
-| **Round 3** | April 24-26 | 48 hours |
-| **Round 4** | April 26-28 | 48 hours |
-| **Round 5** | April 28-30 | 48 hours |
+| Phase                 | Dates                     | Duration |
+| --------------------- | ------------------------- | -------- |
+| **Registration Open** | March 16 - April 13, 2026 |          |
+| **Tutorial Round**    | March 16 - April 13, 2026 | ~28 days |
+| **Round 1**           | April 14-17               | 72 hours |
+| **Round 2**           | April 17-20               | 72 hours |
+| **Intermission**      | April 20-24               | 4 days   |
+| **Round 3**           | April 24-26               | 48 hours |
+| **Round 4**           | April 26-28               | 48 hours |
+| **Round 5**           | April 28-30               | 48 hours |
 
 **Key Points**:
+
 - 5 active competition rounds total
 - Rounds 1-2 are 72 hours; Rounds 3-5 are 48 hours
 - 4-day intermission between Round 2 and Round 3
@@ -57,6 +59,7 @@
 ## 3. Scoring & Prizes
 
 ### Scoring Mechanics
+
 - **PnL (Profit and Loss)** calculated after each round closes
 - Scores delivered via email notification
 - Leaderboard updated when round results process
@@ -67,23 +70,25 @@
 
 ### Prize Pool: $50,000 USD
 
-| Place | Prize |
-|-------|-------|
+| Place                                       | Prize   |
+| ------------------------------------------- | ------- |
 | 1st (IMC Global Trading Talent of the Year) | $25,000 |
-| 2nd | $10,000 |
-| 3rd | $5,000 |
-| 4th | $3,500 |
-| 5th | $1,500 |
-| Best Manual Trader | $5,000 |
+| 2nd                                         | $10,000 |
+| 3rd                                         | $5,000  |
+| 4th                                         | $3,500  |
+| 5th                                         | $1,500  |
+| Best Manual Trader                          | $5,000  |
 
 ---
 
 ## 4. Algorithmic Challenge - How It Works
 
 ### Core Concept
+
 Teams write and upload a Python trading algorithm (a `Trader` class) that trades against a marketplace of bots on a virtual exchange. The goal is to earn as much profit as possible.
 
 ### Execution Flow
+
 1. At each **timestamp**, the simulation calls your `Trader.run()` method
 2. Your method receives a `TradingState` object containing all market data
 3. Your method returns orders, conversions, and optional persistent state
@@ -92,12 +97,14 @@ Teams write and upload a Python trading algorithm (a `Trader` class) that trades
 6. All orders expire after one timestep (no persistent orders)
 
 ### Submission
+
 - Upload a single Python `.py` file containing a `Trader` class
 - The class must have a `run()` method
 - At round close, the algorithm is evaluated against bot participants
 - The PnL from this evaluation determines your score/ranking
 
 ### Simulation Order (per timestep)
+
 1. Deep-liquidity market makers submit orders first
 2. Takers submit
 3. Competitor algorithms (your code) execute
@@ -223,6 +230,7 @@ class ProsperityEncoder(JSONEncoder):
 ```
 
 ### Key Data Types
+
 - `Time = int` - Timestamp (integer, increments each iteration)
 - `Symbol = str` - Trading symbol identifier
 - `Product = str` - Product name
@@ -231,27 +239,29 @@ class ProsperityEncoder(JSONEncoder):
 - `ObservationValue = int` - External observation value
 
 ### TradingState Fields Explained
-| Field | Type | Description |
-|-------|------|-------------|
-| `traderData` | `str` | The string you returned in the previous `run()` call. Use for persistent state (e.g., JSON-serialized data). Empty on first call. |
-| `timestamp` | `int` | Current simulation timestamp |
-| `listings` | `Dict[Symbol, Listing]` | All tradeable symbols with their product and denomination info |
-| `order_depths` | `Dict[Symbol, OrderDepth]` | Current order book for each symbol. `buy_orders`: price->positive qty. `sell_orders`: price->negative qty. |
-| `own_trades` | `Dict[Symbol, List[Trade]]` | Your trades that occurred since the last iteration |
-| `market_trades` | `Dict[Symbol, List[Trade]]` | All market trades (between any participants) since last iteration |
-| `position` | `Dict[Product, Position]` | Your current net position in each product |
-| `observations` | `Observation` | Contains `plainValueObservations` and `conversionObservations` for cross-market data |
+
+| Field           | Type                        | Description                                                                                                                       |
+| --------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `traderData`    | `str`                       | The string you returned in the previous `run()` call. Use for persistent state (e.g., JSON-serialized data). Empty on first call. |
+| `timestamp`     | `int`                       | Current simulation timestamp                                                                                                      |
+| `listings`      | `Dict[Symbol, Listing]`     | All tradeable symbols with their product and denomination info                                                                    |
+| `order_depths`  | `Dict[Symbol, OrderDepth]`  | Current order book for each symbol. `buy_orders`: price->positive qty. `sell_orders`: price->negative qty.                        |
+| `own_trades`    | `Dict[Symbol, List[Trade]]` | Your trades that occurred since the last iteration                                                                                |
+| `market_trades` | `Dict[Symbol, List[Trade]]` | All market trades (between any participants) since last iteration                                                                 |
+| `position`      | `Dict[Product, Position]`   | Your current net position in each product                                                                                         |
+| `observations`  | `Observation`               | Contains `plainValueObservations` and `conversionObservations` for cross-market data                                              |
 
 ### ConversionObservation Fields
-| Field | Type | Description |
-|-------|------|-------------|
-| `bidPrice` | `float` | Foreign market bid price |
-| `askPrice` | `float` | Foreign market ask price |
+
+| Field           | Type    | Description                             |
+| --------------- | ------- | --------------------------------------- |
+| `bidPrice`      | `float` | Foreign market bid price                |
+| `askPrice`      | `float` | Foreign market ask price                |
 | `transportFees` | `float` | Cost to transport goods between markets |
-| `exportTariff` | `float` | Tariff for exporting from local market |
-| `importTariff` | `float` | Tariff for importing to local market |
-| `sugarPrice` | `float` | External sugar commodity price (signal) |
-| `sunlightIndex` | `float` | Environmental sunlight index (signal) |
+| `exportTariff`  | `float` | Tariff for exporting from local market  |
+| `importTariff`  | `float` | Tariff for importing to local market    |
+| `sugarPrice`    | `float` | External sugar commodity price (signal) |
+| `sunlightIndex` | `float` | Environmental sunlight index (signal)   |
 
 ---
 
@@ -261,19 +271,22 @@ class ProsperityEncoder(JSONEncoder):
 
 ### Tutorial Products
 
-| Product | Position Limit | Fair Value | Behavior |
-|---------|---------------|------------|----------|
-| **EMERALDS** | 80 | ~10,000 | **Stationary** - Mid-price oscillates around 10,000 with ~16 spread. Classic market-making candidate. |
-| **TOMATOES** | 80 | Varies (drifts) | **Non-stationary / Drifting** - Shows directional drift. Requires adaptive strategies: drift-aware market making, trend following, or momentum models. |
+| Product      | Position Limit | Fair Value      | Behavior                                                                                                                                               |
+| ------------ | -------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **EMERALDS** | 80             | ~10,000         | **Stationary** - Mid-price oscillates around 10,000 with ~16 spread. Classic market-making candidate.                                                  |
+| **TOMATOES** | 80             | Varies (drifts) | **Non-stationary / Drifting** - Shows directional drift. Requires adaptive strategies: drift-aware market making, trend following, or momentum models. |
 
 ### Tutorial Data Files
+
 Historical CSV data capsules are provided:
+
 - `prices_round_0_day_-1.csv` - Price data for day -1
 - `prices_round_0_day_-2.csv` - Price data for day -2
 - `trades_round_0_day_-1.csv` - Trade data for day -1
 - `trades_round_0_day_-2.csv` - Trade data for day -2
 
 ### Purpose
+
 - Practice writing and submitting algorithms
 - Familiarize yourself with the platform GUI
 - Learn the datamodel and order matching
@@ -285,10 +298,10 @@ Historical CSV data capsules are provided:
 
 ### Prosperity 4 Tutorial Round (CONFIRMED)
 
-| Product | Position Limit |
-|---------|---------------|
-| EMERALDS | 80 |
-| TOMATOES | 80 |
+| Product  | Position Limit |
+| -------- | -------------- |
+| EMERALDS | 80             |
+| TOMATOES | 80             |
 
 ### Prosperity 3 Products (Reference - Similar Structure Expected)
 
@@ -328,6 +341,7 @@ Products were introduced progressively across rounds:
 **Round 5**: All previous products remain. Trader IDs become visible (copy-trading becomes possible). Additional complexity may be introduced.
 
 ### Expected Prosperity 4 Round Types (Based on Pattern)
+
 - **Round 1**: Market Making (stationary + moving fair value products)
 - **Round 2**: ETF/Basket Arbitrage (baskets vs. constituents)
 - **Round 3**: Options Trading (vouchers/options on underlying)
@@ -356,6 +370,7 @@ Products were introduced progressively across rounds:
 5. **All orders expire**: Every order expires at the end of its timestep. There are no persistent/GTC orders.
 
 ### Position Limit Enforcement Rule
+
 > "If for a product your position would exceed the limit, assuming ALL your orders would get filled, all your orders for that product get canceled."
 
 This means you must be careful: if you have position +40 in a product with limit 50, and you submit buy orders totaling 20 units, ALL your buy orders for that product are canceled (since 40+20=60 > 50), even if individually some would be fine.
@@ -368,13 +383,13 @@ Each round includes a manual trading challenge separate from the algorithmic cha
 
 ### Typical Manual Challenge Types (from Prosperity 3)
 
-| Round | Challenge | Description |
-|-------|-----------|-------------|
-| 1 | **FX/Currency Arbitrage** | Given a conversion matrix between currencies, find the optimal sequence of 5 trades to maximize profit. Approached as a graph traversal optimization problem. |
-| 2 | **Containers** | 10 containers available, can open up to 2 (first free, second costs 50,000). Each has a multiplier and some inhabitants. Payoff = (10,000 x multiplier) / (inhabitants + your share of all openings). Game theory + Nash equilibrium. |
-| 3 | **Reserve Price / Sealed-Bid Auction** | Bid on items across two stages with penalty scaling. Penalty formula: p = ((320 - avg_bid)/(320 - your_bid))^3 |
-| 4 | **Suitcases** | Similar to Containers. Select suitcases with multipliers. Strategy: pick high-multiplier, low-popularity options. |
-| 5 | **News Trading / Portfolio Optimization** | Make trading decisions based on news/sentiment. Fee structure with quadratic costs: Fee(x) = 120 * x^2 where x is portfolio allocation fraction. |
+| Round | Challenge                                 | Description                                                                                                                                                                                                                           |
+| ----- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | **FX/Currency Arbitrage**                 | Given a conversion matrix between currencies, find the optimal sequence of 5 trades to maximize profit. Approached as a graph traversal optimization problem.                                                                         |
+| 2     | **Containers**                            | 10 containers available, can open up to 2 (first free, second costs 50,000). Each has a multiplier and some inhabitants. Payoff = (10,000 x multiplier) / (inhabitants + your share of all openings). Game theory + Nash equilibrium. |
+| 3     | **Reserve Price / Sealed-Bid Auction**    | Bid on items across two stages with penalty scaling. Penalty formula: p = ((320 - avg_bid)/(320 - your_bid))^3                                                                                                                        |
+| 4     | **Suitcases**                             | Similar to Containers. Select suitcases with multipliers. Strategy: pick high-multiplier, low-popularity options.                                                                                                                     |
+| 5     | **News Trading / Portfolio Optimization** | Make trading decisions based on news/sentiment. Fee structure with quadratic costs: Fee(x) = 120 \* x^2 where x is portfolio allocation fraction.                                                                                     |
 
 **Note**: Prosperity 4 will have NEW manual challenges, but they will likely test similar skills (expected value, optimization, game theory, arbitrage detection).
 
@@ -385,23 +400,28 @@ Each round includes a manual trading challenge separate from the algorithmic cha
 In certain rounds, products can be traded across multiple exchanges (local vs. foreign). This involves:
 
 ### Conversion Costs
+
 - **Transport Fees**: Fixed cost per unit transported between markets
 - **Import Tariff**: Fee for bringing goods into local market
 - **Export Tariff**: Fee for sending goods to foreign market
 - **Storage Fees**: Per-timestamp holding cost (e.g., 0.1 per timestamp in Prosperity 3 for Macarons)
 
 ### Conversion Pricing
+
 - **Buying from foreign market**: Pay the ask price + transport fees + import tariff
 - **Selling to foreign market**: Receive the bid price - transport fees - export tariff
 
 ### Strategy
+
 Build effective conversion prices by:
+
 1. Foreign ask + transport + import tariff = effective buy price
 2. Foreign bid - transport - export tariff = effective sell price
 3. Compare these to local order book top-of-book
 4. Trade when local price diverges sufficiently from effective foreign price
 
 ### ConversionObservation Signals
+
 The `sugarPrice` and `sunlightIndex` fields in `ConversionObservation` provide additional signals that may correlate with product fair values (e.g., sunlight affecting crop yields for agricultural products).
 
 ---
@@ -488,10 +508,13 @@ class Trader:
 ```
 
 ### Run Method Return Value
+
 The `run()` method must return a **3-tuple**:
+
 ```python
 return result, conversions, traderData
 ```
+
 - `result`: `Dict[Symbol, List[Order]]` - Orders to place for each product
 - `conversions`: `int` - Number of cross-market conversions to execute (0 if not applicable)
 - `traderData`: `str` - Any string you want persisted and returned as `state.traderData` next iteration. Use `json.dumps()` / `json.loads()` or `jsonpickle` for complex state.
@@ -501,6 +524,7 @@ return result, conversions, traderData
 ## 12. Strategy Hints & Tips
 
 ### General Philosophy
+
 - Start from **generative assumptions** about how prices behave
 - Do proper **exploratory data analysis** on provided CSV data
 - Resist the temptation to **blindly overfit** to historical data
@@ -509,6 +533,7 @@ return result, conversions, traderData
 - Backtest result of ~35K historically correlated to ~9K live (top 10%)
 
 ### Five-Component Trading System Framework
+
 1. **Alpha Engine**: What's mispriced and why? (mid-price estimation, signal detection)
 2. **Risk Engine**: Control exposure, unrealized losses, concentration
 3. **Inventory Management**: Track positions with soft limits before hard caps
@@ -518,42 +543,50 @@ return result, conversions, traderData
 ### Per-Product-Type Strategies
 
 **Stationary Products** (like EMERALDS, RAINFOREST_RESIN):
+
 - Market making around a fixed or slowly-moving fair value
 - Buy below fair value, sell above
 - Manage inventory to stay near zero
 
 **Drifting Products** (like TOMATOES, KELP):
+
 - Adaptive fair value estimation (VWAP, EMA, regression)
 - Drift-aware market making
 - Short-horizon trend following
 
 **Volatile/Mean-Reverting Products** (like SQUID_INK):
+
 - Detect extreme moves (>3 standard deviations from rolling window)
 - Bet on reversion to mean
 - Use volatility thresholds and stop-losses
 
 **Basket/ETF Products** (like PICNIC_BASKETs):
+
 - Calculate synthetic basket value from constituent prices
 - Trade when basket price diverges from synthetic value (z-score based)
 - Consider hedging basket position with constituent orders
 
 **Options/Vouchers**:
+
 - Black-Scholes pricing with rolling implied volatility
 - Arbitrage between different strike prices
 - IV scalping, gamma scalping, mean reversion on IV
 
 **Cross-Market Arbitrage Products** (like MACARONS):
+
 - Compare local prices to effective foreign prices (including all fees/tariffs)
 - Execute conversions when profitable spread exists
 - Watch for storage costs eating into profits
 
 ### Round 5 Special: Copy Trading
+
 - In final rounds, trader IDs may become visible
 - Look for informed traders (e.g., "Olivia" in Prosperity 3) who consistently buy at lows and sell at highs
 - Statistical analysis of trade timing and profitability can identify these bots
 - Replicate their trades as regime signals
 
 ### Key Pitfalls
+
 - Position limits are checked assuming ALL orders fill simultaneously - be conservative
 - Orders expire every timestep - no persistent orders
 - The market doesn't care about your strategy labels - all orders combine into net exposure
@@ -565,6 +598,7 @@ return result, conversions, traderData
 ## 13. Tools & Resources
 
 ### Official Resources
+
 - **Prosperity Website**: https://prosperity.imc.com/
 - **Wiki**: https://imc-prosperity.notion.site/prosperity-4-wiki (requires login/JavaScript)
 - **Discord**: https://discord.gg/SABeB8uKxd
@@ -572,6 +606,7 @@ return result, conversions, traderData
 - **Contact**: prosperity@imc.com
 
 ### Community Backtesting Tools
+
 - **Prosperity 4 Backtester**: https://github.com/kevin-fu1/imc-prosperity-4-backtester
   - Install: `pip install prosperity4btx`
   - Run: `python -m prosperity4bt <algorithm_file> <round>`
@@ -580,11 +615,13 @@ return result, conversions, traderData
   - Install: `pip install prosperity3bt`
 
 ### Visualization Tools
+
 - **IMC Prosperity Visualizer**: https://jmerle.github.io/imc-prosperity-visualizer/
 - **IMC Prosperity 3 Visualizer**: https://jmerle.github.io/imc-prosperity-3-visualizer/
 - **Community Dashboard**: http://ctdash.xyz/vis/
 
 ### Reference Repositories (Previous Winners/Top Teams)
+
 - **2nd Place Prosperity 3**: https://github.com/TimoDiehm/imc-prosperity-3
 - **9th Place Prosperity 3**: https://github.com/CarterT27/imc-prosperity-3
 - **7th Place Prosperity 3**: https://github.com/chrispyroberts/imc-prosperity-3
@@ -594,6 +631,7 @@ return result, conversions, traderData
 - **Prosperity 4 Strategy Guide**: https://github.com/MarkBrezina/Ctrl-Alt-DefeatTheMarket
 
 ### Recommended IDEs
+
 - Visual Studio Code
 - Anaconda / Spyder
 
@@ -602,17 +640,20 @@ return result, conversions, traderData
 ## 14. Eligibility & Rules
 
 ### Who Can Participate
+
 - University students (undergraduate and postgraduate) worldwide
 - Engineering, management, medical, law, arts, commerce, science students
 - Must be 18+ (top 25 teams must prove enrollment)
 - Free to enter
 
 ### Who Cannot Participate
+
 - Previous Top 10 finishers from prior Prosperity editions
 - IMC employees or employees of competitor firms
 - Prize eligibility limited to residents of: EMEA, North America, South America, India, Australia, or Hong Kong
 
 ### Important Rules
+
 - Team composition locks after Round 2
 - Top 25 teams must provide proof of university enrollment
 - Terms & conditions: https://prosperity.imc.com/docs/terms-and-conditions.pdf
@@ -623,6 +664,7 @@ return result, conversions, traderData
 ## Appendix: Activity Log Format
 
 The submission environment generates activity logs that match the format produced by community backtesters. These logs contain:
+
 - Timestamp-by-timestamp execution records
 - Orders placed and matched
 - Position changes
@@ -633,4 +675,4 @@ The official visualizer tools can parse these logs for debugging and analysis.
 
 ---
 
-*This document compiled from the IMC Prosperity 4 wiki, official IMC announcements, community backtester repositories, and top-team writeups from Prosperity 2-3. Product details for Rounds 1-5 of Prosperity 4 will only be revealed when each round opens.*
+_This document compiled from the IMC Prosperity 4 wiki, official IMC announcements, community backtester repositories, and top-team writeups from Prosperity 2-3. Product details for Rounds 1-5 of Prosperity 4 will only be revealed when each round opens._

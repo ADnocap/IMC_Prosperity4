@@ -1,6 +1,6 @@
 # IMC Prosperity 4
 
-Algorithmic trading competition workspace with a Rust-backed Monte Carlo backtester.
+Algorithmic trading competition workspace with a Rust-backed Monte Carlo backtester and a browser-based market-microstructure analysis workshop.
 
 ## Quick Start
 
@@ -11,13 +11,20 @@ cd backtester && pip install -e . && cd ..
 # Run Monte Carlo backtest (active round's trader)
 prosperity4mcbt traders/round3/a.py --quick
 
-# Run with dashboard
+# Run with dashboard (includes the Data Analysis Workshop tab)
 prosperity4mcbt traders/round3/a.py --quick --vis
+
+# Or launch the full dashboard (frontend + data server + WASM compute) directly:
+./run.sh        # macOS / Linux
+.\run.ps1       # Windows
 ```
 
 Backtest artifacts default to `tmp/backtests/<timestamp>_monte_carlo/dashboard.json` (gitignored). Pass `--out path.json` only when you need a specific path — keep it under `tmp/`.
 
-See [BACKTEST.md](BACKTEST.md) for full backtesting guide and calibration methodology.
+See:
+
+- [BACKTEST.md](BACKTEST.md) — full backtesting guide, calibration methodology, flag reference.
+- [DATA_WORKSHOP.md](DATA_WORKSHOP.md) — the Workshop tab: 13 market-microstructure panels powered by Rust/WASM kernels. **Load P3 R5 to see every feature light up.**
 
 ## Repo Layout
 
@@ -36,22 +43,37 @@ IMC_trading_hack/
 │   └── prosperity3/round1-8/      #   P3 historical data (reference)
 ├── backtester/                    # Backtester package (prosperity3bt + prosperity4mcbt CLIs)
 ├── rust_simulator/                # Rust Monte Carlo simulation engine
-├── visualizer/                    # Local dashboard frontend (Vite/React)
+├── wasm_compute/                  # Rust/WASM kernels for the Workshop (13 microstructure kernels)
+├── visualizer/                    # Local dashboard frontend (Vite/React) — includes Workshop tab
 ├── calibration/                   # Bot reverse-engineering, one dir per asset (emeralds, tomatoes, ash_coated_osmium, intarian_pepper_root)
 ├── manual/                        # Manual trading challenges (round{1,2,3}/)
 ├── tmp/                           # All backtest artifacts (gitignored) — MC dashboards, replay logs
 ├── scripts/                       # Helper utilities (strategy worker, fill analytics)
 ├── BACKTEST.md                    # Backtesting & calibration guide
+├── DATA_WORKSHOP.md               # Data Analysis Workshop guide
 └── CLAUDE.md                      # Project context for Claude
 ```
 
+## Data Analysis Workshop
+
+Browser-based market-microstructure lab for any historical round (P3 and P4). Launch via `./run.sh` / `.\run.ps1` and click the **Workshop** tab. Features:
+
+- **Overview**: mid/microprice overlay, bid-ask spread with distribution
+- **LOB**: book-depth stacked area, queue imbalance → next-k-tick return (signal curve), Cont-Kukanov OFI
+- **MM Alpha**: mark-out by counterparty (THE Prosperity alpha), effective vs realized spread, trade offset from mid
+- **Cross-Asset**: return correlation matrix, lead-lag CCF, pair-spread with OU half-life
+- **Exogenous**: auto-line chart per observation column, lagged-β table
+- **Seasonality**: intraday spread + return-vol patterns
+
+All compute in Rust/WASM, dispatched to a Web Worker. Tabs schema-gate themselves — load a round and only the panels whose data is present light up. **Load P3 R5 for the full tour** — see [DATA_WORKSHOP.md](DATA_WORKSHOP.md) for the detailed guide.
+
 ## Backtesting Tools
 
-| Tool | Purpose | Speed |
-|------|---------|-------|
-| `prosperity4mcbt` | Monte Carlo simulation (primary) | ~6s quick, ~55s heavy |
-| `prosperity3bt` | Historical CSV replay | ~1s |
-| `scripts/bt_stats.py` | Fill analytics (maker vs taker) | ~1s |
+| Tool                  | Purpose                          | Speed                 |
+| --------------------- | -------------------------------- | --------------------- |
+| `prosperity4mcbt`     | Monte Carlo simulation (primary) | ~6s quick, ~55s heavy |
+| `prosperity3bt`       | Historical CSV replay            | ~1s                   |
+| `scripts/bt_stats.py` | Fill analytics (maker vs taker)  | ~1s                   |
 
 ## How the Monte Carlo Works
 

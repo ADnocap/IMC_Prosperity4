@@ -92,12 +92,12 @@ data/
 
 Active-round traders live in `traders/round<N>/`. Both CLIs auto-resolve bare filenames to the active round's trader.
 
-| File                              | Purpose                                                  |
-| --------------------------------- | -------------------------------------------------------- |
-| `traders/round3/a.py`             | ACTIVE submission (seeded from R2 final)                 |
-| `traders/round2/submission.py`    | R2 shipped (portal sub 360419)                           |
-| `traders/round1/submission.py`    | R1 shipped (portal sub 269599, OSMIUM MM + PEPPER long)  |
-| `traders/trader_hold1.py`         | Buy 1 unit, hold forever — used to extract server FV     |
+| File                           | Purpose                                                 |
+| ------------------------------ | ------------------------------------------------------- |
+| `traders/round3/a.py`          | ACTIVE submission (seeded from R2 final)                |
+| `traders/round2/submission.py` | R2 shipped (portal sub 360419)                          |
+| `traders/round1/submission.py` | R1 shipped (portal sub 269599, OSMIUM MM + PEPPER long) |
+| `traders/trader_hold1.py`      | Buy 1 unit, hold forever — used to extract server FV    |
 
 ---
 
@@ -183,23 +183,23 @@ The simulator splits flags into **global** and **per-asset**. Per-asset flags ar
 
 **Global flags**
 
-| Flag | Purpose |
-|---|---|
-| `--sessions N` | Number of Monte Carlo sessions (`--quick` = 100, `--heavy` = 1000). |
-| `--ticks-per-day N` | Default **10,000** (portal final-round eval scale). Pass `1000` for portal-UI-backtest scale. |
-| `--seed N` | Base RNG seed. |
-| `--quote-fraction f` | R2 quote overlay. `0.8` = loser (each level dropped w.p. 0.2). `1.25` = MAF winner (level volumes × 1.25). Default `1.0` untouched. |
-| `--maf-bid N` | Deducts N XIRECs from each session's total PnL. Use when modelling MAF-winner net PnL. |
-| `--fv-mode simulate\|replay` | Replay uses observed FV from historical CSVs. |
-| `--trade-mode simulate\|replay-times` | Replay-times uses observed taker-arrival times from historical CSVs. |
+| Flag                                  | Purpose                                                                                                                             |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `--sessions N`                        | Number of Monte Carlo sessions (`--quick` = 100, `--heavy` = 1000).                                                                 |
+| `--ticks-per-day N`                   | Default **10,000** (portal final-round eval scale). Pass `1000` for portal-UI-backtest scale.                                       |
+| `--seed N`                            | Base RNG seed.                                                                                                                      |
+| `--quote-fraction f`                  | R2 quote overlay. `0.8` = loser (each level dropped w.p. 0.2). `1.25` = MAF winner (level volumes × 1.25). Default `1.0` untouched. |
+| `--maf-bid N`                         | Deducts N XIRECs from each session's total PnL. Use when modelling MAF-winner net PnL.                                              |
+| `--fv-mode simulate\|replay`          | Replay uses observed FV from historical CSVs.                                                                                       |
+| `--trade-mode simulate\|replay-times` | Replay-times uses observed taker-arrival times from historical CSVs.                                                                |
 
 **Per-asset flags** — each asset exposes its own flags under `--<asset-kebab>-<flag>`:
 
-| Asset | Flag | Purpose |
-|---|---|---|
-| `INTARIAN_PEPPER_ROOT` | `--intarian-pepper-root-start-fv N` | Starting FV for day 0 of the sim. R2 day 1 = **13000**. |
-| `INTARIAN_PEPPER_ROOT` | `--intarian-pepper-root-replay-fv PATH` | Replay observed PEPPER FV path. Accepts a flat `[f64]` JSON array or an object with a `"pepper"` key. |
-| `ASH_COATED_OSMIUM` | `--ash-coated-osmium-replay-fv PATH` | Replay observed OSMIUM FV path. Accepts a flat `[f64]` JSON array or an object with an `"osmium"` key. |
+| Asset                  | Flag                                    | Purpose                                                                                                |
+| ---------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `INTARIAN_PEPPER_ROOT` | `--intarian-pepper-root-start-fv N`     | Starting FV for day 0 of the sim. R2 day 1 = **13000**.                                                |
+| `INTARIAN_PEPPER_ROOT` | `--intarian-pepper-root-replay-fv PATH` | Replay observed PEPPER FV path. Accepts a flat `[f64]` JSON array or an object with a `"pepper"` key.  |
+| `ASH_COATED_OSMIUM`    | `--ash-coated-osmium-replay-fv PATH`    | Replay observed OSMIUM FV path. Accepts a flat `[f64]` JSON array or an object with an `"osmium"` key. |
 
 The legacy alias `--ipr-start-fv` is translated to `--intarian-pepper-root-start-fv` by the Python wrapper for back-compat.
 
@@ -208,6 +208,7 @@ The legacy alias `--ipr-start-fv` is translated to `--intarian-pepper-root-start
 The sim is calibrated against portal reality on matched FV paths (within 0.8% total, 0.6σ on OSMIUM, 2.2σ on PEPPER). See `CLAUDE.md` "Sim calibration" section for the fix history — the last critical bug was matching-engine ordering (base takers now run BEFORE the strategy, per P4 spec). Absolute MC numbers are trustworthy, not just relative deltas.
 
 To validate on a fresh portal backtest, drop the `activitiesLog` into the extractor and regenerate `calibration/intarian_pepper_root/data/r2_day1_fv.json`, then:
+
 ```bash
 prosperity4mcbt traders/round3/a.py --sessions 200 --ticks-per-day 1000 \
   --intarian-pepper-root-replay-fv calibration/intarian_pepper_root/data/r2_day1_fv.json \
@@ -218,11 +219,11 @@ prosperity4mcbt traders/round3/a.py --sessions 200 --ticks-per-day 1000 \
 
 Run against `traders/round3/a.py` with `--intarian-pepper-root-start-fv 13000`:
 
-| `--quote-fraction` | Mean PnL per final eval | Std |
-|---|---|---|
-| 0.8 (R2 loser)  | **98,642** | 1,042 |
-| 1.25 (MAF winner) | **100,116** | 1,096 |
-| **Uplift (winner − loser)** | **+1,474** | |
+| `--quote-fraction`          | Mean PnL per final eval | Std   |
+| --------------------------- | ----------------------- | ----- |
+| 0.8 (R2 loser)              | **98,642**              | 1,042 |
+| 1.25 (MAF winner)           | **100,116**             | 1,096 |
+| **Uplift (winner − loser)** | **+1,474**              |       |
 
 **MAF bid guidance**: uplift is ~1,474 XIRECs per final eval — that's the absolute upper-bound bid. You only need to beat the median of all teams' bids, not buy the full uplift. Shade well below: **300-500** is a defensible opening, `MAF_BID = 0` is a fine do-nothing default.
 
@@ -276,13 +277,13 @@ py -3.13 scripts/bt_stats.py traders/round3/a.py 1
 
 ## When to use which
 
-| Scenario            | Tool                      | Command                                                                  |
-| ------------------- | ------------------------- | ------------------------------------------------------------------------ |
-| Dev iteration       | `prosperity4mcbt --quick` | `prosperity4mcbt traders/round3/a.py --quick --vis`                      |
-| Pre-submission eval | `prosperity4mcbt --heavy` | `prosperity4mcbt traders/round3/a.py --heavy`                            |
-| Quick sanity check  | `prosperity3bt`           | `prosperity3bt traders/round3/a.py 1`                                     |
-| Fill breakdown      | `bt_stats.py`             | `py -3.13 scripts/bt_stats.py traders/round3/a.py 1`                      |
-| Ground truth        | Portal                    | Submit on prosperity.imc.com                                             |
+| Scenario            | Tool                      | Command                                              |
+| ------------------- | ------------------------- | ---------------------------------------------------- |
+| Dev iteration       | `prosperity4mcbt --quick` | `prosperity4mcbt traders/round3/a.py --quick --vis`  |
+| Pre-submission eval | `prosperity4mcbt --heavy` | `prosperity4mcbt traders/round3/a.py --heavy`        |
+| Quick sanity check  | `prosperity3bt`           | `prosperity3bt traders/round3/a.py 1`                |
+| Fill breakdown      | `bt_stats.py`             | `py -3.13 scripts/bt_stats.py traders/round3/a.py 1` |
+| Ground truth        | Portal                    | Submit on prosperity.imc.com                         |
 
 ---
 
@@ -365,7 +366,7 @@ When a new product drops, the work splits cleanly between calibration (statistic
 5. Create `rust_simulator/src/assets/<asset_lower>.rs`. Copy the closer of the two existing files as a template:
    - `ash_coated_osmium.rs` → random-walk FV, fixed integer bot offsets
    - `intarian_pepper_root.rs` → deterministic drift, proportional bot offsets
-   Each file declares:
+     Each file declares:
    - `const SYMBOL: &str = "<YOUR_SYMBOL>";`
    - Trade probabilities (`BASE_TRADE_PROB`, `SECOND_TRADE_PROB`, `ELASTIC_TRADE_PROB`, `BUY_PROB`)
    - Position limit
