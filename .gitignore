@@ -34,6 +34,7 @@ rust_simulator/target/
 prosperity4mcbt.egg-info/
 
 *.log
+!results/**/*.log
 
 # Keep private local strategy/research tooling out of the public repo
 grab_token.py

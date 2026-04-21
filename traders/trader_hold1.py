@@ -37,26 +37,22 @@ class Logger:
 logger = Logger()
 
 class Trader:
-    # Products to skip (already calibrated / not needed)
-    SKIP = {"EMERALDS", "TOMATOES"}
+    # Asset-agnostic: at t=0 buy 1 unit of every product visible in the order book and hold forever.
+    # server_FV(t) = PnL(t) + buy_price, recoverable per product from the portal submission log.
 
     def run(self, state: TradingState):
         orders = {}
         for product in state.order_depths:
             orders[product] = []
 
-        # Buy 1 unit of every NEW product at t=0, then hold forever.
-        # server_FV(t) = PnL(t) + buy_price for each held product.
         if state.timestamp == 0:
             for product in state.order_depths:
-                if product in self.SKIP:
+                if state.position.get(product, 0) != 0:
                     continue
-                pos = state.position.get(product, 0)
-                if pos == 0:
-                    ob = state.order_depths.get(product)
-                    if ob and ob.sell_orders:
-                        best_ask = min(ob.sell_orders.keys())
-                        orders[product] = [Order(product, best_ask, 1)]
+                ob = state.order_depths.get(product)
+                if ob and ob.sell_orders:
+                    best_ask = min(ob.sell_orders.keys())
+                    orders[product] = [Order(product, best_ask, 1)]
 
         trader_data = ""
         logger.flush(state, orders, 0, trader_data)

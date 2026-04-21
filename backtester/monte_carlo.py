@@ -398,10 +398,16 @@ def load_sample_session(session_dir: Path) -> dict[str, Any]:
                 }
             ts = day_index * 1_000_000 + int(row["timestamp"])
             traces_by_product[product]["timestamps"].append(ts)
-            traces_by_product[product]["fair"].append(float(row["fair_value"]))
+            traces_by_product[product]["fair"].append(
+                float(row["fair_value"]) if row["fair_value"] not in ("", None) else math.nan
+            )
             traces_by_product[product]["position"].append(int(row["position"]))
-            traces_by_product[product]["cash"].append(float(row["cash"]))
-            traces_by_product[product]["mtmPnl"].append(float(row["mtm_pnl"]))
+            traces_by_product[product]["cash"].append(
+                float(row["cash"]) if row["cash"] not in ("", None) else math.nan
+            )
+            traces_by_product[product]["mtmPnl"].append(
+                float(row["mtm_pnl"]) if row["mtm_pnl"] not in ("", None) else math.nan
+            )
 
         for row in price_rows:
             product = row["product"]
@@ -414,7 +420,9 @@ def load_sample_session(session_dir: Path) -> dict[str, Any]:
                 }
             ts = day_index * 1_000_000 + int(row["timestamp"])
             prices_by_product[product]["timestamps"].append(ts)
-            prices_by_product[product]["mid"].append(float(row["mid_price"]))
+            prices_by_product[product]["mid"].append(
+                float(row["mid_price"]) if row["mid_price"] not in ("", None) else math.nan
+            )
             prices_by_product[product]["bid1"].append(
                 float(row["bid_price_1"]) if row["bid_price_1"] not in ("", None) else math.nan
             )

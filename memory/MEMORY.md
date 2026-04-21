@@ -1,2 +1,0 @@
-- [Backtester FV modes](backtester_fv_modes.md) — `--fv-mode simulate` has fixed FV=10000; use `replay` + `--heavy` to measure directional signals
-- [MC replay big-gain warning](mcbt_sim_artifact_warning.md) — 5x+ MC replay jumps are usually sim artifacts; trust simulate-mode regressions instead (confirmed by MrPing_v6 portal -628)

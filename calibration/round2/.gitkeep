@@ -1,4 +1,0 @@
-Round 2 calibration artifacts drop here. Mirror the round1/ layout:
-  data/        - extracted FV + book snapshots from hold-1 submission
-  scripts/     - analysis + bot-validation scripts
-  calibration_report.md

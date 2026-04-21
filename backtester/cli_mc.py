@@ -110,7 +110,7 @@ def cli(
 
     # Resolve algorithm: if not found, search newest-round first
     if not algorithm.exists():
-        for subdir in ["traders/round2", "traders/round1", "traders/round0", "traders"]:
+        for subdir in ["traders/round3", "traders/round2", "traders/round1", "traders"]:
             candidate = Path(subdir) / algorithm.name
             if candidate.exists():
                 algorithm = candidate.resolve()

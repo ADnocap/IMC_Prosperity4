@@ -11,47 +11,50 @@ This is our workspace for **IMC Prosperity 4** (2026), a multi-round algorithmic
 
 ## Current Round
 
-**Round 2** (April 17–20, 2026). Round 1 shipped; best R1 submission lives at `traders/round1/final_obi_v4.py`. The **active submission file** for R2 is `traders/round2/a.py` (seeded from the R1 final). Round 2 data will land in `data/prosperity4/round2/` once IMC publishes it.
+**Round 3** (active from 2026-04-21). R1 and R2 both passed. The shipped submissions live at `traders/round1/submission.py` (portal sub 269599 — R1 algo PnL 99,546) and `traders/round2/submission.py` (portal sub 360419). The **active submission file** for R3 is `traders/round3/a.py` (seeded from the R2 final). R3 products and rules will be confirmed when IMC publishes — CSVs drop into `data/prosperity4/round3/`.
 
 ## Directory Structure
 
 ```
 IMC_trading_hack/
-├── traders/                           # All trader algorithms
-│   ├── round2/                        #   Round 2 traders (ACTIVE — SUBMIT FROM HERE)
-│   │   └── a.py                       #     Main R2 trading algorithm
-│   ├── round1/                        #   Round 1 traders (shipped)
-│   │   ├── final_obi_v4.py            #     Best R1 submission
-│   │   ├── final_obi.py
-│   │   └── FINAL_SOLUTION_FR.py
-│   ├── round0/                        #   Round 0 / tutorial traders (archived)
-│   │   └── a.py, b.py, c.py, d.py, 22898.py
+├── traders/                           # Shipped submission per round (single file each)
+│   ├── round3/a.py                    #   ACTIVE — submit this
+│   ├── round2/submission.py           #   R2 final (portal sub 360419)
+│   ├── round1/submission.py           #   R1 final (portal sub 269599)
 │   ├── datamodel.py                   #   Official Prosperity 4 data model
 │   └── trader_hold1.py                #   Hold-1-unit strategy for FV extraction
+├── results/                           # Post-round-close submission snapshots
+│   ├── round1/                        #   round1_results.png + 269599.{log,json}
+│   ├── round2/                        #   round2_results.png + 360419.{log,json}
+│   └── round3/                        #   (ready for R3)
+├── analysis/                          # Market-data analysis scripts (by round)
+│   ├── round1/                        #   R1 OSMIUM/PEPPER EDA + FINDINGS.md
+│   ├── round2/                        #   (ready for R2 follow-up)
+│   └── round3/                        #   (ready for R3)
 ├── data/                              # Market data
-│   ├── prosperity4/round0/            #   P4 tutorial round (EMERALDS, TOMATOES)
-│   ├── prosperity4/round1/            #   P4 round 1 (ASH_COATED_OSMIUM, INTARIAN_PEPPER_ROOT)
-│   ├── prosperity4/round2/            #   P4 round 2 (placeholder — CSVs drop here)
+│   ├── prosperity4/round{0,1,2}/      #   P4 historical CSVs
+│   ├── prosperity4/round3/            #   placeholder — CSVs drop here
 │   └── prosperity3/round1-8/          #   P3 historical data (reference)
 ├── backtester/                        # Backtester package (install with pip install -e .)
 │   ├── prosperity4mcbt/               #   Monte Carlo CLI (primary backtester)
 │   └── prosperity3bt/                 #   Historical CSV replay CLI
 ├── rust_simulator/                    # Rust Monte Carlo simulation engine
 ├── visualizer/                        # Local dashboard frontend (Vite/React)
-├── calibration/                       # Bot reverse-engineering scripts & methodology
-│   ├── tomatoes/                      #   Tutorial calibration (reference)
-│   ├── ash_coated_osmium/             #   R1 OSMIUM calibration
-│   ├── intarian_pepper_root/          #   R1 PEPPER_ROOT calibration
-│   ├── round1/                        #   R1 aggregate scripts + report
-│   └── round2/                        #   R2 calibration (placeholder)
-├── manual/                            # Manual trading challenges
-│   ├── round1/                        #   R1 manual (Dryland Flax + Ember Mushroom)
-│   └── round2/                        #   R2 manual (placeholder)
-├── submission_results/                # Raw logs from portal submissions (by sub ID)
-├── scripts/                           # Helper scripts
+├── calibration/                       # Bot reverse-engineering, one dir per asset
+│   ├── ANALYSIS_PHILOSOPHY.md         #   Methodology (condition on everything, stat tests)
+│   ├── README.md                      #   Per-asset summary + new-asset workflow
+│   ├── validate.py                    #   Asset-agnostic stat-test harness
+│   ├── extract_fv_and_book.py         #   Asset-agnostic hold-1 FV extractor
+│   ├── audit_portal_log.py            #   Audit portal log vs Rust bot formulas
+│   ├── emeralds/                      #   Round 0 constant-FV
+│   ├── tomatoes/                      #   Round 0 random-walk reference
+│   ├── ash_coated_osmium/             #   R1/R2 random-walk
+│   └── intarian_pepper_root/          #   R1/R2 deterministic-drift
+├── manual/                            # Manual trading challenges (round1/, round2/, round3/)
+├── submission_results/                # Raw logs from intermediate portal submissions (by sub ID)
+├── scripts/                           # Helper utilities
 │   ├── python_strategy_worker.py      #   Rust sim ↔ Python bridge
-│   ├── bt_stats.py                    #   Fill analytics wrapper
-│   └── grid_search.py                 #   Parameter grid search
+│   └── bt_stats.py                    #   Fill analytics wrapper
 ├── CLAUDE.md                          # This file - project context
 ├── BACKTEST.md                        # Backtesting & calibration guide
 └── PROSPERITY_4_WIKI_COMPLETE.md      # Full game reference
@@ -60,7 +63,7 @@ IMC_trading_hack/
 ## Architecture & Constraints
 
 ### Submission Format
-- **Single Python file** (currently `traders/round2/a.py`) containing a `Trader` class with a `run()` method
+- **Single Python file** (currently `traders/round3/a.py`) containing a `Trader` class with a `run()` method
 - No external file access, no network, no pip installs at runtime
 - Available: standard library + numpy + jsonpickle
 - Memory limit: ~100 MB (AWS Lambda)
@@ -108,24 +111,15 @@ If the sum of ALL your outstanding orders for a product could push your position
 | ASH_COATED_OSMIUM | 80 | Gaussian random walk, σ=0.312/tick, starts ~10,000 | MM + OBI quote-skew + Bot1-asym adaptive signal |
 | INTARIAN_PEPPER_ROOT | 80 | Deterministic drift +0.1/tick, starts ~10,000 → ~13,000 | Long-biased: aggressive take, tiered asks to unload at high inventory |
 
-Bot calibration for R1 is fully solved — see `calibration/round1_calibration.md`. Key finding: **PEPPER bots use proportional offsets** (`bid = floor(FV*(1 - K))`, `ask = ceil(FV*(1 + K))`) with Bot1 K=3/4000 and Bot2 K=1/2000.
+Bot calibration for R1 is fully solved — see `calibration/ash_coated_osmium/calibration.md` and `calibration/intarian_pepper_root/calibration.md`. Key finding: **PEPPER bots use proportional offsets** (`bid = floor(FV*(1 - K))`, `ask = ceil(FV*(1 + K))`) with Bot1 K=3/4000 and Bot2 K=1/2000.
 
-### Round 2 — Apr 17–20, 2026 (ACTIVE, "Growing Your Outpost")
-**No new products.** Same symbols, same limits (`ASH_COATED_OSMIUM` 80, `INTARIAN_PEPPER_ROOT` 80). The R2 challenge is a **Market Access Fee (MAF)** sealed-bid auction layered on top.
+### Round 2 — shipped (Apr 17–20, 2026, "Growing Your Outpost")
+**No new products.** Same symbols, same limits (`ASH_COATED_OSMIUM` 80, `INTARIAN_PEPPER_ROOT` 80). Challenge was a **Market Access Fee (MAF)** sealed-bid auction — `bid()` method on the Trader, top 50% won +25% quote volume. We shipped `MAF_BID = 0` (defensible default) and still cleared the round comfortably. Final submission: `traders/round2/submission.py` (portal sub 360419). Result snapshot in `results/round2/`.
 
-**MAF mechanic:**
-- Add a `bid(self) -> int` method to the `Trader` class, returning XIRECs
-- Top 50% of bids across all participants (strictly above median) win: they pay their bid once and get **+25% quote volume** during the final R2 simulation
-- Losers pay nothing, get default flow
-- Blind auction — bids are only compared at the final sim. During testing IMC serves all teams a randomized 80% subset of quotes, so you **cannot test whether you'd win**
-- Scope: R2 only. `bid()` is ignored in R1 and R3–R5
-- Currently set to `MAF_BID = 0` in `traders/round2/a.py` — tune before final submit
+Manual challenge was "Invest & Expand" (allocate % across Research/Scale/Speed; `PnL = Research × Scale × Speed − Budget_Used`). See `manual/round2/` for notes.
 
-**Manual challenge ("Invest & Expand"):** allocate % of budget across Research/Scale/Speed. `PnL = Research × Scale × Speed − Budget_Used`. Research is log-scaled, Scale is linear, Speed is rank-based. Spec has a **50K vs 100K budget ambiguity** — verify on portal. See `manual/round2/01_challenge_explanation.md` for the full solver notes.
-
-**Prep that's still relevant:**
-- Re-analyze R1 PnL by product to find regressions worth fixing in `traders/round2/a.py`
-- If we want to simulate +25% flow, extend `rust_simulator/src/main.rs` with an `--extra-flow` mode (bot quote volumes × 1.25)
+### Round 3 — ACTIVE (2026-04-21 →)
+Products and rules pending IMC publishing. The active submission file is `traders/round3/a.py`, seeded from the R2 final. OSMIUM and PEPPER_ROOT handlers remain live (prior-round products remain tradeable). New-round data will drop into `data/prosperity4/round3/`.
 
 ### Data Format (CSV, semicolon-delimited)
 - **prices**: day;timestamp;product;bid_price_1-3;bid_volume_1-3;ask_price_1-3;ask_volume_1-3;mid_price;profit_and_loss
@@ -138,7 +132,7 @@ Bot calibration for R1 is fully solved — see `calibration/round1_calibration.m
 
 Note: Prosperity 4 breaks the P3 pattern. R1 and R2 both trade only OSMIUM + PEPPER_ROOT — R2 adds the MAF auction instead of new products. Unclear yet how many rounds P4 has in total; the wiki top-level timeline lists 5 rounds but the R2 page calls itself the "final trading round on Intara", suggesting later rounds may be off-planet with new products.
 
-All prior-round products remain tradeable in later rounds, so OSMIUM and PEPPER_ROOT handlers must stay live in `traders/round2/a.py` and any future round's trader.
+All prior-round products remain tradeable in later rounds, so OSMIUM and PEPPER_ROOT handlers must stay live in `traders/round3/a.py` and any future round's trader.
 
 ## Strategy Framework
 
@@ -198,40 +192,44 @@ R2 backtests must pass `--ipr-start-fv 13000` because PEPPER's drift continues f
 
 ```bash
 # R2 dev iteration (matches portal final-eval scale)
-prosperity4mcbt traders/round2/a.py --quick --ipr-start-fv 13000 --out tmp/results/r2_quick.json
-prosperity4mcbt traders/round2/a.py --heavy --ipr-start-fv 13000 --out tmp/results/r2_heavy.json
+prosperity4mcbt traders/round3/a.py --quick --ipr-start-fv 13000 --out tmp/results/r2_quick.json
+prosperity4mcbt traders/round3/a.py --heavy --ipr-start-fv 13000 --out tmp/results/r2_heavy.json
 
 # Match portal-UI backtest (1,000 ticks) for apples-to-apples with portal submissions
-prosperity4mcbt traders/round2/a.py --heavy --ipr-start-fv 13000 --ticks-per-day 1000 --out tmp/results/r2_portal_bt.json
+prosperity4mcbt traders/round3/a.py --heavy --ipr-start-fv 13000 --ticks-per-day 1000 --out tmp/results/r2_portal_bt.json
 
 # R2 MAF analysis (at portal final scale)
-prosperity4mcbt traders/round2/a.py --sessions 200 --ipr-start-fv 13000 --quote-fraction 0.8 --out tmp/results/r2_loser.json
-prosperity4mcbt traders/round2/a.py --sessions 200 --ipr-start-fv 13000 --quote-fraction 1.25 --out tmp/results/r2_winner.json
-prosperity4mcbt traders/round2/a.py --sessions 200 --ipr-start-fv 13000 --quote-fraction 1.25 --maf-bid 500 --out tmp/results/r2_maf500.json
+prosperity4mcbt traders/round3/a.py --sessions 200 --ipr-start-fv 13000 --quote-fraction 0.8 --out tmp/results/r2_loser.json
+prosperity4mcbt traders/round3/a.py --sessions 200 --ipr-start-fv 13000 --quote-fraction 1.25 --out tmp/results/r2_winner.json
+prosperity4mcbt traders/round3/a.py --sessions 200 --ipr-start-fv 13000 --quote-fraction 1.25 --maf-bid 500 --out tmp/results/r2_maf500.json
 ```
 
 See [BACKTEST.md#running-a-round-2-backtest](BACKTEST.md#running-a-round-2-backtest) for the full flag reference, MAF-uplift table, and tradeoffs.
 
 ### CSV Replay (sanity checks)
 ```bash
-prosperity3bt traders/round2/a.py 1                    # historical replay on R1 data
-py -3.13 scripts/bt_stats.py traders/round2/a.py 1     # fill analytics
+prosperity3bt traders/round3/a.py 1                    # historical replay on R1 data
+py -3.13 scripts/bt_stats.py traders/round3/a.py 1     # fill analytics
 ```
 **Warning**: `--match-trades all` (default) over-reports PnL for market making. Use for relative A/B comparison only.
 
 ### Portal Submission Results
 
-**Round 1 (final, `traders/round1/final_obi_v4.py`):**
+Both R1 and R2 cleared the advancement threshold. Post-round-close snapshots (portal `.png`, `.log`, `.json`) live in `results/round{1,2}/`.
+
+**Round 1 (final, `traders/round1/submission.py`, portal sub 269599):**
 - Algorithmic Challenge: **99,546 XIRECs**
 - Manual Challenge ("An Intarian Welcome"): **87,995 XIRECs**
-- **Total: 187,541** (94% of the 200,000 threshold to advance)
-- Need ≥ **12,459** more in R2 to clear the threshold
+- Total: 187,541 (94% of the 200k advance threshold)
+
+**Round 2 (final, `traders/round2/submission.py`, portal sub 360419):**
+- Shipped with `MAF_BID = 0`. Passed to R3. Specifics in `results/round2/round2_results.png`.
 
 **Sim calibration (final, validated on matched FV paths):**
 
 Three portal submissions drove the calibration:
 - **226828** (R1 MM backtest, 1K ticks): total trade-rate observations
-- **274082** (R2 hold-1, 1K ticks): pure base-rate takers (no elastic) — extracted server FV to `data/prosperity4/round2/r2_day1_fv.json` for replay
+- **274082** (R2 hold-1, 1K ticks): pure base-rate takers (no elastic) — extracted server FV to `calibration/intarian_pepper_root/data/r2_day1_fv.json` for replay
 - **274250 + 274468** (R2 a.py identical-code repeats): confirmed portal backtest runs a single fixed FV path (only 80% quote subset is randomized)
 
 **Bugs found and fixed:**
@@ -260,7 +258,7 @@ Total gap **+73 XIRECs (0.8%)** — sim is now calibrated against portal reality
 
 MC absolute numbers are now trustworthy (not just relative deltas) — the sim matches portal reality within 1% on matched FV paths.
 
-Raw tutorial submission logs live in `submission_results/<sub_id>/` (R0 products only — the R1 portal final log isn't downloadable per user).
+Raw tutorial submission logs live in `submission_results/<sub_id>/` (R0 products only). R1/R2 post-round-close logs are in `results/round{1,2}/` (portal sub id as filename).
 
 ### Visualization
 - Local MC dashboard: `cd visualizer && npm install && npm run dev` then use `--vis` flag
@@ -268,7 +266,7 @@ Raw tutorial submission logs live in `submission_results/<sub_id>/` (R0 products
 
 ## Coding Conventions
 
-- All trading logic in a single file (currently `traders/round2/a.py`) — submission constraint
+- All trading logic in a single file (currently `traders/round3/a.py`) — submission constraint
 - Use `json.dumps()`/`json.loads()` for traderData serialization
 - Keep strategies modular within the single file using helper methods
 - Price is always `int`, quantity is `int` (positive = buy, negative = sell)

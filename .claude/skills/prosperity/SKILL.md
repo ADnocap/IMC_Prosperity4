@@ -12,8 +12,8 @@ You are helping with the IMC Prosperity 4 algorithmic trading competition. The p
 - **Python**: Use `py -3.13` (Python 3.13)
 - **Monte Carlo backtester**: `prosperity4mcbt` CLI (install: `cd backtester && pip install -e .`)
 - **CSV replay**: `prosperity3bt` CLI (same package)
-- **Active trader file**: lives under `traders/round<N>/a.py` where N is the current round. Determine N by listing `traders/` — the highest-numbered `roundN/` directory is the active round. Round 2 is active as of 2026-04-17.
-- **Data**: per-round CSVs in `data/prosperity4/round<N>/` (semicolon-delimited). R0 (tutorial) and R1 data are present; R2 lands when IMC publishes.
+- **Active trader file**: lives under `traders/round<N>/a.py` where N is the current round. Determine N by listing `traders/` — the highest-numbered `roundN/` directory is the active round. Round 3 is active as of 2026-04-21 (R1 and R2 shipped — results in `results/round{1,2}/`).
+- **Data**: per-round CSVs in `data/prosperity4/round<N>/` (semicolon-delimited). R0–R2 data are present; R3 lands when IMC publishes.
 - **Unicode output**: Prefix commands with `PYTHONIOENCODING=utf-8` when needed
 
 ## Determining the active round
@@ -45,11 +45,11 @@ Format output as a concise dashboard:
 
 ```
 ## Prosperity Status
-**Active round**: 2 (traders/round2/a.py)
-**Products**: ASH_COATED_OSMIUM, INTARIAN_PEPPER_ROOT  (R2 products pending data)
+**Active round**: 3 (traders/round3/a.py)
+**Products**: ASH_COATED_OSMIUM, INTARIAN_PEPPER_ROOT  (R3 products pending data)
 **Last Backtest**: MC heavy -- Mean: 10,600 XIRECs (std: 820, P05: 9,200, P95: 12,000)
-**Data available**: round0, round1   |   round2 EMPTY (waiting on IMC)
-**Recent submissions**: 71060, 70344 (see submission_results/)
+**Data available**: round0, round1, round2   |   round3 EMPTY (waiting on IMC)
+**Recent submissions**: 360419 (R2 final), 269599 (R1 final) — see results/round{1,2}/
 ```
 
 ---
@@ -88,7 +88,7 @@ Run exploratory data analysis on the specified round (defaults to active round):
    - Are spreads tight enough to capture edge?
    - Trade frequency and typical volume?
    - Drift patterns / autocorrelation / regime changes?
-4. If analyzing a brand-new round right after IMC publishes, FIRST check whether calibration exists. If not, point the user at `calibration/round1/scripts/` as templates.
+4. If analyzing a brand-new round right after IMC publishes, FIRST check whether calibration exists under `calibration/<asset_name>/`. If not, point the user at `calibration/intarian_pepper_root/scripts/calibrate.py` (drift process) or `calibration/ash_coated_osmium/scripts/calibrate.py` (random walk) as templates.
 
 ---
 

@@ -9,10 +9,10 @@ Algorithmic trading competition workspace with a Rust-backed Monte Carlo backtes
 cd backtester && pip install -e . && cd ..
 
 # Run Monte Carlo backtest (active round's trader)
-prosperity4mcbt traders/round2/a.py --quick --out tmp/results/dashboard.json
+prosperity4mcbt traders/round3/a.py --quick --out tmp/results/dashboard.json
 
 # Run with dashboard
-prosperity4mcbt traders/round2/a.py --quick --vis --out tmp/results/dashboard.json
+prosperity4mcbt traders/round3/a.py --quick --vis --out tmp/results/dashboard.json
 ```
 
 See [BACKTEST.md](BACKTEST.md) for full backtesting guide and calibration methodology.
@@ -21,22 +21,24 @@ See [BACKTEST.md](BACKTEST.md) for full backtesting guide and calibration method
 
 ```
 IMC_trading_hack/
-├── traders/                       # All trader algorithms
-│   ├── round2/a.py                #   Active round (SUBMIT THIS)
-│   ├── round1/                    #   Round 1 shipped (best: final_obi_v4.py)
-│   ├── round0/                    #   Tutorial variants (archived)
+├── traders/                       # Shipped submission per round (single file each)
+│   ├── round3/a.py                #   ACTIVE — submit this
+│   ├── round2/submission.py       #   R2 final (portal sub 360419)
+│   ├── round1/submission.py       #   R1 final (portal sub 269599)
 │   ├── datamodel.py               #   Official Prosperity 4 data model
-│   └── trader_hold1.py            #   Hold-1-unit strategy for FV extraction
-├── data/                          # Market data
-│   ├── prosperity4/round{0,1,2}/  #   P4 round data (R2 placeholder until IMC drops CSVs)
+│   └── trader_hold1.py            #   Hold-1-unit FV-extraction strategy
+├── results/round{1,2,3}/          # Post-round-close submission snapshots (.png / .log / .json)
+├── analysis/round{1,2,3}/         # Market-data analysis scripts + findings per round
+├── data/
+│   ├── prosperity4/round{0,1,2}/  #   P4 CSVs (R3 placeholder until IMC drops data)
 │   └── prosperity3/round1-8/      #   P3 historical data (reference)
 ├── backtester/                    # Backtester package (prosperity3bt + prosperity4mcbt CLIs)
 ├── rust_simulator/                # Rust Monte Carlo simulation engine
 ├── visualizer/                    # Local dashboard frontend (Vite/React)
-├── calibration/                   # Bot reverse-engineering scripts & docs (round1/, round2/, ...)
-├── manual/                        # Manual trading challenges (round1/, round2/, ...)
-├── submission_results/            # Portal submission logs by sub ID
-├── scripts/                       # Helper scripts (strategy worker, fill analytics, grid search)
+├── calibration/                   # Bot reverse-engineering, one dir per asset (emeralds, tomatoes, ash_coated_osmium, intarian_pepper_root)
+├── manual/                        # Manual trading challenges (round{1,2,3}/)
+├── submission_results/            # Raw logs from intermediate portal submissions
+├── scripts/                       # Helper utilities (strategy worker, fill analytics)
 ├── BACKTEST.md                    # Backtesting & calibration guide
 └── CLAUDE.md                      # Project context for Claude
 ```
@@ -62,9 +64,9 @@ Parameters were extracted by submitting a hold-1-unit strategy to recover true s
 
 ## Competition
 
-- **IMC Prosperity 4** (2026): April 14-30 (5 rounds). Round 2 active April 17-20.
+- **IMC Prosperity 4** (2026): April 14-30 (5 rounds). Round 3 active from 2026-04-21; R1 and R2 cleared.
 - **Wiki**: https://imc-prosperity.notion.site/prosperity-4-wiki
-- **Submission**: Single Python file (currently `traders/round2/a.py`) with `Trader.run(state)` method
+- **Submission**: Single Python file (currently `traders/round3/a.py`) with `Trader.run(state)` method
 - **Constraints**: stdlib + numpy + jsonpickle only, ~100MB memory, no file/network access
 
 ## Attribution
