@@ -38,7 +38,7 @@ IMC_trading_hack/
 ├── backtester/                        # Backtester package (install with pip install -e .)
 │   ├── prosperity4mcbt/               #   Monte Carlo CLI (primary backtester)
 │   └── prosperity3bt/                 #   Historical CSV replay CLI
-├── rust_simulator/                    # Rust Monte Carlo simulation engine
+├── rust_simulator/                    # Rust Monte Carlo simulation engine (one file per asset under src/assets/)
 ├── visualizer/                        # Local dashboard frontend (Vite/React)
 ├── calibration/                       # Bot reverse-engineering, one dir per asset
 │   ├── ANALYSIS_PHILOSOPHY.md         #   Methodology (condition on everything, stat tests)
@@ -186,25 +186,29 @@ Rust-backed Monte Carlo using calibrated bot models reverse-engineered from tuto
 - Portal final-round eval: **10,000 ticks** per day (actual scoring at round close)
 - MC default `--ticks-per-day` is **10,000** (matches final eval). Pass `--ticks-per-day 1000` for portal-UI-backtest comparisons.
 
-#### Round 2 specifics
+#### Flag scheme — global vs per-asset
 
-R2 backtests must pass `--ipr-start-fv 13000` because PEPPER's drift continues from the end of R1 day 0 (confirmed by hold-1 submission 274082). Also available: `--quote-fraction` (MAF overlay) and `--maf-bid` (bid bookkeeping).
+The sim parses CLI flags into two categories:
+- **Global** (`--sessions`, `--ticks-per-day`, `--seed`, `--fv-mode`, `--trade-mode`, `--quote-fraction`, `--maf-bid`, `--strategy`, `--output`, …) apply to the whole run.
+- **Per-asset** flags are prefixed by the asset's lowercased-kebab symbol: `--<asset-kebab>-<flag>`. Example: PEPPER's starting-FV override is `--intarian-pepper-root-start-fv 13000`. Passing a flag for an asset the trader doesn't declare is a hard error.
+
+The Python CLI accepts `--ipr-start-fv` as a legacy alias and translates it. Every other per-asset flag must use the full form.
 
 ```bash
-# R2 dev iteration (matches portal final-eval scale)
-prosperity4mcbt traders/round3/a.py --quick --ipr-start-fv 13000 --out tmp/results/r2_quick.json
-prosperity4mcbt traders/round3/a.py --heavy --ipr-start-fv 13000 --out tmp/results/r2_heavy.json
+# R2-style dev iteration (PEPPER start FV = 13000)
+prosperity4mcbt traders/round3/a.py --quick --intarian-pepper-root-start-fv 13000 --out tmp/results/r2_quick.json
+prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000 --out tmp/results/r2_heavy.json
 
 # Match portal-UI backtest (1,000 ticks) for apples-to-apples with portal submissions
-prosperity4mcbt traders/round3/a.py --heavy --ipr-start-fv 13000 --ticks-per-day 1000 --out tmp/results/r2_portal_bt.json
+prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000 --ticks-per-day 1000 --out tmp/results/r2_portal_bt.json
 
-# R2 MAF analysis (at portal final scale)
-prosperity4mcbt traders/round3/a.py --sessions 200 --ipr-start-fv 13000 --quote-fraction 0.8 --out tmp/results/r2_loser.json
-prosperity4mcbt traders/round3/a.py --sessions 200 --ipr-start-fv 13000 --quote-fraction 1.25 --out tmp/results/r2_winner.json
-prosperity4mcbt traders/round3/a.py --sessions 200 --ipr-start-fv 13000 --quote-fraction 1.25 --maf-bid 500 --out tmp/results/r2_maf500.json
+# MAF analysis (at portal final scale)
+prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 0.8 --out tmp/results/r2_loser.json
+prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 1.25 --out tmp/results/r2_winner.json
+prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 1.25 --maf-bid 500 --out tmp/results/r2_maf500.json
 ```
 
-See [BACKTEST.md#running-a-round-2-backtest](BACKTEST.md#running-a-round-2-backtest) for the full flag reference, MAF-uplift table, and tradeoffs.
+See [BACKTEST.md](BACKTEST.md) for the full flag reference, MAF-uplift table, and the workflow for adding a new asset (one Rust file per asset under `rust_simulator/src/assets/`).
 
 ### CSV Replay (sanity checks)
 ```bash

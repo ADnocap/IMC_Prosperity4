@@ -32,5 +32,7 @@ calibration/
 2. Run `calibration/extract_fv_and_book.py <submission_id> <PRODUCT>` to build `<asset>/data/fv_and_book.json`
 3. Clone `ash_coated_osmium/scripts/calibrate.py` or `intarian_pepper_root/scripts/calibrate.py` as a template, adapt for the new asset
 4. Validate with `calibration/validate.py` (add the new product to its `PRODUCTS` list)
-5. Port the formulas into `rust_simulator/src/main.rs`
+5. Port the formulas into a new `rust_simulator/src/assets/<asset_lower>.rs` module (copy one of the existing files as a template) and register it in `rust_simulator/src/assets/mod.rs`. `cargo build --release` and you're done — the trader's `NEW = "YOUR_SYMBOL"` declaration auto-activates the asset.
 6. Run `calibration/audit_portal_log.py <portal_log>` against a fresh portal submission to verify match-rates hold
+
+See `BACKTEST.md` for the full asset-integration workflow and the `AssetSim` trait contract (in `rust_simulator/src/asset.rs`).

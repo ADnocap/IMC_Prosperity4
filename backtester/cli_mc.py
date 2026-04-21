@@ -1,8 +1,8 @@
 import sys
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated, List, Optional
 
-from typer import Argument, Option, Typer
+from typer import Argument, Context, Option, Typer
 
 from backtester.monte_carlo import default_dashboard_path, normalize_dashboard_path, run_monte_carlo_mode
 from backtester.open import open_dashboard
@@ -16,11 +16,47 @@ def format_path(path: Path) -> str:
         return str(path)
 
 
-app = Typer(context_settings={"help_option_names": ["--help", "-h"]})
+app = Typer(context_settings={"help_option_names": ["--help", "-h"], "allow_extra_args": True, "ignore_unknown_options": True})
 
 
-@app.command()
+# Back-compat aliases. Keys: user-facing short flag, values: full asset-prefixed flag.
+# These let existing workflows keep using --ipr-start-fv etc. without churn.
+LEGACY_ALIASES: dict[str, str] = {
+    "--ipr-start-fv": "--intarian-pepper-root-start-fv",
+}
+
+
+def translate_legacy(args: List[str]) -> List[str]:
+    """Rewrite legacy flag names to their asset-prefixed equivalents."""
+    out: List[str] = []
+    for a in args:
+        if a in LEGACY_ALIASES:
+            out.append(LEGACY_ALIASES[a])
+        else:
+            out.append(a)
+    return out
+
+
+def resolve_path_flags(args: List[str]) -> List[str]:
+    """Resolve relative paths for any `*-replay-fv` flag to absolute — Rust runs
+    from a different cwd (cargo), so relative paths would break otherwise."""
+    out: List[str] = []
+    i = 0
+    while i < len(args):
+        out.append(args[i])
+        if args[i].endswith("-replay-fv") and i + 1 < len(args):
+            value = args[i + 1]
+            resolved = Path(value).resolve()
+            out.append(str(resolved))
+            i += 2
+        else:
+            i += 1
+    return out
+
+
+@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def cli(
+    ctx: Context,
     algorithm: Annotated[
         Path,
         Argument(
@@ -61,9 +97,8 @@ def cli(
         Option("--heavy", help="Preset for a full run: 1000 sessions and 100 sample sessions."),
     ] = False,
     sessions: Annotated[int, Option("--sessions", help="Number of Monte Carlo sessions to run.")] = 100,
-    fv_mode: Annotated[str, Option("--fv-mode", help="Fair-value mode for the Rust simulator.")] = "simulate",
-    trade_mode: Annotated[str, Option("--trade-mode", help="Trade-arrival mode for the Rust simulator.")] = "simulate",
-    ipr_support: Annotated[str, Option("--ipr-support", help="Latent fair support for IPR in simulate mode.")] = "quarter",
+    fv_mode: Annotated[str, Option("--fv-mode", help="Fair-value mode for the Rust simulator ('simulate' or 'replay').")] = "simulate",
+    trade_mode: Annotated[str, Option("--trade-mode", help="Trade-arrival mode for the Rust simulator ('simulate' or 'replay-times').")] = "simulate",
     seed: Annotated[int, Option("--seed", help="RNG seed for the Rust simulator.")] = 20260401,
     python_bin: Annotated[
         str,
@@ -85,15 +120,11 @@ def cli(
         int,
         Option("--maf-bid", help="R2 Market Access Fee bid in XIRECs. Subtracted from each session's reported total PnL (bookkeeping)."),
     ] = 0,
-    ipr_start_fv: Annotated[
-        float,
-        Option("--ipr-start-fv", help="PEPPER starting FV for the first sim day. R1 default 10000. For R2 day 1 use 13000 (portal hold-1 274082 confirmed PEPPER drift continues from R1 end)."),
-    ] = 10000.0,
-    replay_fv_json: Annotated[
-        Optional[Path],
-        Option("--replay-fv-json", help="JSON file with observed server-FV arrays for OSMIUM + PEPPER (e.g. extracted from a hold-1 portal submission). When set, overrides all FV generation so every MC session replays the exact same portal path — used for sim calibration against portal backtests."),
-    ] = None,
 ) -> None:
+    # Asset-specific flags (e.g. --intarian-pepper-root-start-fv 13000) are
+    # passed through verbatim to the Rust binary. The Rust side validates them.
+    passthrough = resolve_path_flags(translate_legacy(list(ctx.args)))
+
     if no_out:
         print("Error: Monte Carlo mode always writes a dashboard bundle, so --no-out is not supported")
         raise SystemExit(1)
@@ -108,7 +139,6 @@ def cli(
         sessions = 1000
         sample_sessions = 100
 
-    # Resolve algorithm: if not found, search newest-round first
     if not algorithm.exists():
         for subdir in ["traders/round3", "traders/round2", "traders/round1", "traders"]:
             candidate = Path(subdir) / algorithm.name
@@ -128,15 +158,13 @@ def cli(
         sessions=sessions,
         fv_mode=fv_mode,
         trade_mode=trade_mode,
-        ipr_support=ipr_support,
         seed=seed,
         python_bin=python_bin,
         sample_sessions=sample_sessions,
         ticks_per_day=ticks_per_day,
         quote_fraction=quote_fraction,
         maf_bid=maf_bid,
-        ipr_start_fv=ipr_start_fv,
-        replay_fv_json=replay_fv_json,
+        passthrough_flags=passthrough,
     )
 
     total_stats = dashboard["overall"]["totalPnl"]

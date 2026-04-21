@@ -129,7 +129,7 @@ prosperity4mcbt traders/round3/a.py --sessions 3000 --sample-sessions 150 --out 
 
 R2 uses the same products as R1, but two things changed that affect the sim:
 
-1. **PEPPER FV continues from R1's end.** R1 day 0 ended at FV ≈ 13,000. Hold-1 submission 274082 confirmed R2 day 1 starts at 13,000 (not 10,000). Pass `--ipr-start-fv 13000`.
+1. **PEPPER FV continues from R1's end.** R1 day 0 ended at FV ≈ 13,000. Hold-1 submission 274082 confirmed R2 day 1 starts at 13,000 (not 10,000). Pass `--intarian-pepper-root-start-fv 13000` (or the legacy alias `--ipr-start-fv 13000`).
 2. **MAF auction.** Add a `bid()` method to your `Trader` class and use the MAF flags below to simulate the +25% quote uplift a winner would see.
 
 ### Portal tick counts (important!)
@@ -144,26 +144,26 @@ Use `--ticks-per-day 1000` when you want MC numbers comparable to the portal UI 
 
 ```bash
 # Quick iteration (100 sessions, 10,000 ticks each)
-prosperity4mcbt traders/round3/a.py --quick --ipr-start-fv 13000 --out tmp/results/r2_quick.json
+prosperity4mcbt traders/round3/a.py --quick --intarian-pepper-root-start-fv 13000 --out tmp/results/r2_quick.json
 
 # Pre-submission eval (1000 sessions, 10,000 ticks each — matches final-eval scale)
-prosperity4mcbt traders/round3/a.py --heavy --ipr-start-fv 13000 --out tmp/results/r2_heavy.json
+prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000 --out tmp/results/r2_heavy.json
 
 # Match portal UI backtest (1,000 ticks) for apples-to-apples with portal submissions
-prosperity4mcbt traders/round3/a.py --heavy --ipr-start-fv 13000 --ticks-per-day 1000 --out tmp/results/r2_portal_bt.json
+prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000 --ticks-per-day 1000 --out tmp/results/r2_portal_bt.json
 ```
 
 ### R2 MAF analysis
 
 ```bash
 # Loser (R2 testing default: 80% of generated quotes visible)
-prosperity4mcbt traders/round3/a.py --sessions 200 --ipr-start-fv 13000 --quote-fraction 0.8 --out tmp/results/r2_loser.json
+prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 0.8 --out tmp/results/r2_loser.json
 
 # Winner (MAF accepted: +25% quote-volume uplift)
-prosperity4mcbt traders/round3/a.py --sessions 200 --ipr-start-fv 13000 --quote-fraction 1.25 --out tmp/results/r2_winner.json
+prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 1.25 --out tmp/results/r2_winner.json
 
 # Net PnL if we bid 500 XIRECs and win (subtracts bid from reported total)
-prosperity4mcbt traders/round3/a.py --sessions 200 --ipr-start-fv 13000 --quote-fraction 1.25 --maf-bid 500 --out tmp/results/r2_maf500.json
+prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 1.25 --maf-bid 500 --out tmp/results/r2_maf500.json
 ```
 
 ### CSV replay against R1 historical data
@@ -173,28 +173,47 @@ prosperity3bt traders/round3/a.py 1                    # replay against R1 days
 py -3.13 scripts/bt_stats.py traders/round3/a.py 1     # fill breakdown
 ```
 
-### R2 flag reference
+### Flag reference
+
+The simulator splits flags into **global** and **per-asset**. Per-asset flags are prefixed by the asset's lowercased-kebab symbol (e.g. `--intarian-pepper-root-start-fv`). Passing a flag for an asset the trader doesn't declare is a hard error.
+
+**Global flags**
 
 | Flag | Purpose |
 |---|---|
-| `--ticks-per-day 10000` | **Default.** Matches portal final-round eval. Use `1000` for portal-UI-backtest scale. |
-| `--ipr-start-fv 13000` | **R2 required.** PEPPER starting FV for day 1 of the sim. |
+| `--sessions N` | Number of Monte Carlo sessions (`--quick` = 100, `--heavy` = 1000). |
+| `--ticks-per-day N` | Default **10,000** (portal final-round eval scale). Pass `1000` for portal-UI-backtest scale. |
+| `--seed N` | Base RNG seed. |
 | `--quote-fraction f` | R2 quote overlay. `0.8` = loser (each level dropped w.p. 0.2). `1.25` = MAF winner (level volumes × 1.25). Default `1.0` untouched. |
 | `--maf-bid N` | Deducts N XIRECs from each session's total PnL. Use when modelling MAF-winner net PnL. |
+| `--fv-mode simulate\|replay` | Replay uses observed FV from historical CSVs. |
+| `--trade-mode simulate\|replay-times` | Replay-times uses observed taker-arrival times from historical CSVs. |
+
+**Per-asset flags** — each asset exposes its own flags under `--<asset-kebab>-<flag>`:
+
+| Asset | Flag | Purpose |
+|---|---|---|
+| `INTARIAN_PEPPER_ROOT` | `--intarian-pepper-root-start-fv N` | Starting FV for day 0 of the sim. R2 day 1 = **13000**. |
+| `INTARIAN_PEPPER_ROOT` | `--intarian-pepper-root-replay-fv PATH` | Replay observed PEPPER FV path. Accepts a flat `[f64]` JSON array or an object with a `"pepper"` key. |
+| `ASH_COATED_OSMIUM` | `--ash-coated-osmium-replay-fv PATH` | Replay observed OSMIUM FV path. Accepts a flat `[f64]` JSON array or an object with an `"osmium"` key. |
+
+The legacy alias `--ipr-start-fv` is translated to `--intarian-pepper-root-start-fv` by the Python wrapper for back-compat.
 
 ### Sim calibration status
 
-The sim is now calibrated against portal reality on matched FV paths (within 0.8% total, 0.6σ on OSMIUM, 2.2σ on PEPPER). See `CLAUDE.md` "Sim calibration" section for the fix history — the last critical bug was matching-engine ordering (base takers now run BEFORE the strategy, per P4 spec). Absolute MC numbers are trustworthy, not just relative deltas.
+The sim is calibrated against portal reality on matched FV paths (within 0.8% total, 0.6σ on OSMIUM, 2.2σ on PEPPER). See `CLAUDE.md` "Sim calibration" section for the fix history — the last critical bug was matching-engine ordering (base takers now run BEFORE the strategy, per P4 spec). Absolute MC numbers are trustworthy, not just relative deltas.
 
-To validate on a new portal backtest, drop the `activitiesLog` into an extractor and regenerate `calibration/intarian_pepper_root/data/r2_day1_fv.json`, then:
+To validate on a fresh portal backtest, drop the `activitiesLog` into the extractor and regenerate `calibration/intarian_pepper_root/data/r2_day1_fv.json`, then:
 ```bash
 prosperity4mcbt traders/round3/a.py --sessions 200 --ticks-per-day 1000 \
-  --replay-fv-json calibration/intarian_pepper_root/data/r2_day1_fv.json --out tmp/results/r2_replay.json
+  --intarian-pepper-root-replay-fv calibration/intarian_pepper_root/data/r2_day1_fv.json \
+  --ash-coated-osmium-replay-fv   calibration/intarian_pepper_root/data/r2_day1_fv.json \
+  --out tmp/results/r2_replay.json
 ```
 
 ### R2 MAF uplift sensitivity (post-calibration, 200 sessions × 10,000 ticks = portal final scale)
 
-Run against `traders/round3/a.py` with `--ipr-start-fv 13000`:
+Run against `traders/round3/a.py` with `--intarian-pepper-root-start-fv 13000`:
 
 | `--quote-fraction` | Mean PnL per final eval | Std |
 |---|---|---|
@@ -327,15 +346,33 @@ def bot3_quote(fv):
 
 Simpler: fixed fair value at 10,000, outer wall at +/-10, inner wall at +/-8. Same volume distributions as TOMATOES bots.
 
-### Recalibrating for new rounds
+### Recalibrating + adding a new asset to the sim
 
-When new round data arrives (e.g. Round 2):
+When a new product drops, the work splits cleanly between calibration (statistical) and simulator integration (Rust).
 
-1. Submit `traders/trader_hold1.py` (buy 1 unit, hold forever) on each new product to extract server fair value from PnL
-2. Run `calibration/extract_fv_and_book.py <submission_id> <PRODUCT>` to produce `calibration/<asset_lower>/data/fv_and_book.json`
-3. Clone `calibration/ash_coated_osmium/scripts/calibrate.py` (random-walk asset) or `calibration/intarian_pepper_root/scripts/calibrate.py` (deterministic-drift asset) into the new asset dir and adapt the formula search
-4. Add the new product to `calibration/validate.py`'s `PRODUCTS` list — target >95% exact match before trusting the sim
-5. Update the Rust simulator parameters in `rust_simulator/src/main.rs` with the new products + bot rules
-6. Extend `traders/round3/a.py` with the new product handlers (keep prior-round handlers intact — legacy products remain tradeable)
+**Calibration pipeline:**
 
-See `calibration/ash_coated_osmium/calibration.md` and `calibration/intarian_pepper_root/calibration.md` for the output format to aim for.
+1. Submit `traders/trader_hold1.py` — it's asset-agnostic and will hold 1 unit of every product in the book, letting you recover server FV from PnL.
+2. `py -3.13 calibration/extract_fv_and_book.py <submission_id> <PRODUCT>` → writes `calibration/<asset_lower>/data/fv_and_book.json`.
+3. Clone `calibration/ash_coated_osmium/scripts/calibrate.py` (random-walk asset) or `calibration/intarian_pepper_root/scripts/calibrate.py` (deterministic-drift asset) into the new asset dir, adapt the formula search.
+4. Add a `(NAME, path)` entry to `calibration/validate.py`'s `PRODUCTS` list and run it — target >95% exact match before trusting the sim.
+
+**Simulator integration (one file per asset):**
+
+5. Create `rust_simulator/src/assets/<asset_lower>.rs`. Copy the closer of the two existing files as a template:
+   - `ash_coated_osmium.rs` → random-walk FV, fixed integer bot offsets
+   - `intarian_pepper_root.rs` → deterministic drift, proportional bot offsets
+   Each file declares:
+   - `const SYMBOL: &str = "<YOUR_SYMBOL>";`
+   - Trade probabilities (`BASE_TRADE_PROB`, `SECOND_TRADE_PROB`, `ELASTIC_TRADE_PROB`, `BUY_PROB`)
+   - Position limit
+   - Bot formulas via `make_book()`
+   - FV process via `simulate_fv()`
+   - CLI flags via `flag_specs()` + consumed in `build()`
+6. Register the asset in `rust_simulator/src/assets/mod.rs` by adding an entry to the `REGISTRY` constant.
+7. `cargo build --release` (from `rust_simulator/`).
+8. Extend `traders/round<N>/a.py` with handlers for the new product, and declare the symbol near the top: `NEW = "YOUR_SYMBOL"`. The simulator scans the first 40 lines of the trader for `NAME = "SYMBOL"` patterns and activates the matching assets from the registry automatically — no other wiring needed.
+
+Prior-round products remain tradeable in later rounds, so keep existing handlers intact in the trader.
+
+See `calibration/ash_coated_osmium/calibration.md` and `calibration/intarian_pepper_root/calibration.md` for the output format to aim for, and `rust_simulator/src/asset.rs` for the `AssetSim` trait contract.

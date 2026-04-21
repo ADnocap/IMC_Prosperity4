@@ -324,51 +324,74 @@ def svg_escape(value: str) -> str:
 
 
 
-def load_session_summaries(output_dir: Path) -> list[dict[str, Any]]:
-    rows = read_csv_dicts(output_dir / "session_summary.csv", ",")
-    parsed = []
-    for row in rows:
-        parsed.append(
-            {
-                "sessionId": int(row["session_id"]),
-                "totalPnl": float(row["total_pnl"]),
-                "ashPnl": float(row["ash_pnl"]),
-                "iprPnl": float(row["ipr_pnl"]),
-                "ashPosition": int(row["ash_position"]),
-                "iprPosition": int(row["ipr_position"]),
-                "ashCash": float(row["ash_cash"]),
-                "iprCash": float(row["ipr_cash"]),
-                "totalSlopePerStep": float(row.get("total_slope_per_step", 0.0) or 0.0),
-                "totalR2": float(row.get("total_r2", 0.0) or 0.0),
-                "ashSlopePerStep": float(row.get("ash_slope_per_step", 0.0) or 0.0),
-                "ashR2": float(row.get("ash_r2", 0.0) or 0.0),
-                "iprSlopePerStep": float(row.get("ipr_slope_per_step", 0.0) or 0.0),
-                "iprR2": float(row.get("ipr_r2", 0.0) or 0.0),
-            }
-        )
-    return parsed
+def _detect_symbols(fieldnames: list[str]) -> list[str]:
+    """Find active asset symbols from per-asset `<SYMBOL>_pnl` columns in a CSV header."""
+    symbols: list[str] = []
+    seen: set[str] = set()
+    for name in fieldnames:
+        if name.endswith("_pnl") and name != "total_pnl":
+            symbol = name[: -len("_pnl")]
+            if symbol and symbol not in seen:
+                seen.add(symbol)
+                symbols.append(symbol)
+    return symbols
 
 
-def load_run_summaries(output_dir: Path) -> list[dict[str, Any]]:
-    rows = read_csv_dicts(output_dir / "run_summary.csv", ",")
+def load_session_summaries(output_dir: Path) -> tuple[list[dict[str, Any]], list[str]]:
+    path = output_dir / "session_summary.csv"
+    with path.open("r", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle, delimiter=",")
+        fieldnames = list(reader.fieldnames or [])
+        rows = list(reader)
+    symbols = _detect_symbols(fieldnames)
     parsed = []
     for row in rows:
-        parsed.append(
-            {
-                "sessionId": int(row["session_id"]),
-                "day": int(row["day"]),
-                "totalPnl": float(row["total_pnl"]),
-                "ashPnl": float(row["ash_pnl"]),
-                "iprPnl": float(row["ipr_pnl"]),
-                "totalSlopePerStep": float(row.get("total_slope_per_step", 0.0) or 0.0),
-                "totalR2": float(row.get("total_r2", 0.0) or 0.0),
-                "ashSlopePerStep": float(row.get("ash_slope_per_step", 0.0) or 0.0),
-                "ashR2": float(row.get("ash_r2", 0.0) or 0.0),
-                "iprSlopePerStep": float(row.get("ipr_slope_per_step", 0.0) or 0.0),
-                "iprR2": float(row.get("ipr_r2", 0.0) or 0.0),
+        entry: dict[str, Any] = {
+            "sessionId": int(row["session_id"]),
+            "totalPnl": float(row["total_pnl"]),
+            "totalSlopePerStep": float(row.get("total_slope_per_step", 0.0) or 0.0),
+            "totalR2": float(row.get("total_r2", 0.0) or 0.0),
+        }
+        per_asset: dict[str, dict[str, float]] = {}
+        for symbol in symbols:
+            per_asset[symbol] = {
+                "pnl": float(row.get(f"{symbol}_pnl", 0.0) or 0.0),
+                "position": int(float(row.get(f"{symbol}_position", 0.0) or 0.0)),
+                "cash": float(row.get(f"{symbol}_cash", 0.0) or 0.0),
+                "slopePerStep": float(row.get(f"{symbol}_slope_per_step", 0.0) or 0.0),
+                "r2": float(row.get(f"{symbol}_r2", 0.0) or 0.0),
             }
-        )
-    return parsed
+        entry["perAsset"] = per_asset
+        parsed.append(entry)
+    return parsed, symbols
+
+
+def load_run_summaries(output_dir: Path) -> tuple[list[dict[str, Any]], list[str]]:
+    path = output_dir / "run_summary.csv"
+    with path.open("r", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle, delimiter=",")
+        fieldnames = list(reader.fieldnames or [])
+        rows = list(reader)
+    symbols = _detect_symbols(fieldnames)
+    parsed = []
+    for row in rows:
+        entry: dict[str, Any] = {
+            "sessionId": int(row["session_id"]),
+            "day": int(row["day"]),
+            "totalPnl": float(row["total_pnl"]),
+            "totalSlopePerStep": float(row.get("total_slope_per_step", 0.0) or 0.0),
+            "totalR2": float(row.get("total_r2", 0.0) or 0.0),
+        }
+        per_asset: dict[str, dict[str, float]] = {}
+        for symbol in symbols:
+            per_asset[symbol] = {
+                "pnl": float(row.get(f"{symbol}_pnl", 0.0) or 0.0),
+                "slopePerStep": float(row.get(f"{symbol}_slope_per_step", 0.0) or 0.0),
+                "r2": float(row.get(f"{symbol}_r2", 0.0) or 0.0),
+            }
+        entry["perAsset"] = per_asset
+        parsed.append(entry)
+    return parsed, symbols
 
 
 def load_sample_session(session_dir: Path) -> dict[str, Any]:
@@ -444,7 +467,9 @@ def load_sample_session(session_dir: Path) -> dict[str, Any]:
             "mtmPnl": trace["mtmPnl"],
         }
 
-    timestamps = products["ASH_COATED_OSMIUM"]["timestamps"]
+    # Use the first product's timeline as the canonical timestamps axis.
+    first_product = next(iter(products))
+    timestamps = products[first_product]["timestamps"]
     total_pnl = []
     for idx in range(len(timestamps)):
         total_pnl.append(sum(products[product]["mtmPnl"][idx] for product in products))
@@ -678,32 +703,28 @@ def path_chart_svg(
     return "".join(svg_parts)
 
 
-def write_static_chart_svgs(output_dir: Path, sampled_paths: list[dict[str, Any]]) -> dict[str, list[dict[str, str]]]:
-    if not sampled_paths:
+def write_static_chart_svgs(output_dir: Path, sampled_paths: list[dict[str, Any]], symbols: list[str]) -> dict[str, list[dict[str, str]]]:
+    if not sampled_paths or not symbols:
         return {}
 
     charts_dir = output_dir / "static_charts"
     charts_dir.mkdir(parents=True, exist_ok=True)
 
-    chart_specs = {
-        "ASH_COATED_OSMIUM": [
-            ("fair_bands", "Fair Price Bands", lambda path: path["products"]["ASH_COATED_OSMIUM"]["fair"]),
-            ("mtm_bands", "MTM PnL Bands", lambda path: path["products"]["ASH_COATED_OSMIUM"]["mtmPnl"]),
-            ("position_bands", "Position Bands", lambda path: path["products"]["ASH_COATED_OSMIUM"]["position"]),
-        ],
-        "INTARIAN_PEPPER_ROOT": [
-            ("fair_bands", "Fair Price Bands", lambda path: path["products"]["INTARIAN_PEPPER_ROOT"]["fair"]),
-            ("mtm_bands", "MTM PnL Bands", lambda path: path["products"]["INTARIAN_PEPPER_ROOT"]["mtmPnl"]),
-            ("position_bands", "Position Bands", lambda path: path["products"]["INTARIAN_PEPPER_ROOT"]["position"]),
-        ],
-    }
+    spec_template = [
+        ("fair_bands", "Fair Price Bands", "fair"),
+        ("mtm_bands", "MTM PnL Bands", "mtmPnl"),
+        ("position_bands", "Position Bands", "position"),
+    ]
 
     refs: dict[str, list[dict[str, str]]] = {}
-    for product, specs in chart_specs.items():
+    for product in symbols:
+        if product not in sampled_paths[0]["products"]:
+            continue
         product_refs: list[dict[str, str]] = []
         product_dir = charts_dir / product.lower()
         product_dir.mkdir(parents=True, exist_ok=True)
-        for slug, title, getter in specs:
+        for slug, title, key in spec_template:
+            getter = (lambda path, p=product, k=key: path["products"][p][k])
             bands = quantile_series(sampled_paths, getter)
             overlays = overlay_series(sampled_paths, getter)["overlays"]
             svg = path_chart_svg(
@@ -722,51 +743,58 @@ def write_static_chart_svgs(output_dir: Path, sampled_paths: list[dict[str, Any]
     return refs
 
 
-def build_band_series(sampled_paths: list[dict[str, Any]]) -> dict[str, dict[str, dict[str, list[float]]]]:
-    if not sampled_paths:
+def build_band_series(sampled_paths: list[dict[str, Any]], symbols: list[str]) -> dict[str, dict[str, dict[str, list[float]]]]:
+    if not sampled_paths or not symbols:
         return {}
 
-    return {
-        "ASH_COATED_OSMIUM": {
-            "fair": mean_std_band_series(sampled_paths, lambda path: path["products"]["ASH_COATED_OSMIUM"]["fair"]),
-            "mtmPnl": mean_std_band_series(sampled_paths, lambda path: path["products"]["ASH_COATED_OSMIUM"]["mtmPnl"]),
-            "position": mean_std_band_series(sampled_paths, lambda path: path["products"]["ASH_COATED_OSMIUM"]["position"]),
-        },
-        "INTARIAN_PEPPER_ROOT": {
-            "fair": mean_std_band_series(sampled_paths, lambda path: path["products"]["INTARIAN_PEPPER_ROOT"]["fair"]),
-            "mtmPnl": mean_std_band_series(sampled_paths, lambda path: path["products"]["INTARIAN_PEPPER_ROOT"]["mtmPnl"]),
-            "position": mean_std_band_series(sampled_paths, lambda path: path["products"]["INTARIAN_PEPPER_ROOT"]["position"]),
-        },
-    }
+    result: dict[str, dict[str, dict[str, list[float]]]] = {}
+    for symbol in symbols:
+        # Skip symbols not present in the sampled paths (safety).
+        if symbol not in sampled_paths[0]["products"]:
+            continue
+        result[symbol] = {
+            "fair": mean_std_band_series(sampled_paths, lambda path, s=symbol: path["products"][s]["fair"]),
+            "mtmPnl": mean_std_band_series(sampled_paths, lambda path, s=symbol: path["products"][s]["mtmPnl"]),
+            "position": mean_std_band_series(sampled_paths, lambda path, s=symbol: path["products"][s]["position"]),
+        }
+    return result
 
 
 def build_dashboard(output_dir: Path, algorithm: Path, sessions: int, config: dict[str, Any]) -> dict[str, Any]:
-    session_rows = load_session_summaries(output_dir)
-    run_rows = load_run_summaries(output_dir)
+    session_rows, symbols = load_session_summaries(output_dir)
+    run_rows, _ = load_run_summaries(output_dir)
+
     total = [row["totalPnl"] for row in session_rows]
-    emerald = [row["ashPnl"] for row in session_rows]
-    tomato = [row["iprPnl"] for row in session_rows]
-    emerald_pos = [row["ashPosition"] for row in session_rows]
-    tomato_pos = [row["iprPosition"] for row in session_rows]
-    ash_cash = [row["ashCash"] for row in session_rows]
-    ipr_cash = [row["iprCash"] for row in session_rows]
     total_profitability = [row["totalSlopePerStep"] for row in run_rows]
     total_stability = [row["totalR2"] for row in run_rows]
-    emerald_profitability = [row["ashSlopePerStep"] for row in run_rows]
-    emerald_stability = [row["ashR2"] for row in run_rows]
-    tomato_profitability = [row["iprSlopePerStep"] for row in run_rows]
-    tomato_stability = [row["iprR2"] for row in run_rows]
     session_total_profitability = [row["totalSlopePerStep"] for row in session_rows]
     session_total_stability = [row["totalR2"] for row in session_rows]
-    session_emerald_profitability = [row["ashSlopePerStep"] for row in session_rows]
-    session_emerald_stability = [row["ashR2"] for row in session_rows]
-    session_tomato_profitability = [row["iprSlopePerStep"] for row in session_rows]
-    session_tomato_stability = [row["iprR2"] for row in session_rows]
+
+    # Per-asset series — extracted from each row's `perAsset[symbol]` sub-dict.
+    per_asset_pnl: dict[str, list[float]] = {s: [] for s in symbols}
+    per_asset_position: dict[str, list[float]] = {s: [] for s in symbols}
+    per_asset_cash: dict[str, list[float]] = {s: [] for s in symbols}
+    run_per_asset_profitability: dict[str, list[float]] = {s: [] for s in symbols}
+    run_per_asset_stability: dict[str, list[float]] = {s: [] for s in symbols}
+    session_per_asset_profitability: dict[str, list[float]] = {s: [] for s in symbols}
+    session_per_asset_stability: dict[str, list[float]] = {s: [] for s in symbols}
+
+    for row in session_rows:
+        for s in symbols:
+            per_asset_pnl[s].append(row["perAsset"][s]["pnl"])
+            per_asset_position[s].append(float(row["perAsset"][s]["position"]))
+            per_asset_cash[s].append(row["perAsset"][s]["cash"])
+            session_per_asset_profitability[s].append(row["perAsset"][s]["slopePerStep"])
+            session_per_asset_stability[s].append(row["perAsset"][s]["r2"])
+    for row in run_rows:
+        for s in symbols:
+            run_per_asset_profitability[s].append(row["perAsset"][s]["slopePerStep"])
+            run_per_asset_stability[s].append(row["perAsset"][s]["r2"])
 
     sample_session_dirs = sorted((output_dir / "sessions").glob("session_*")) if (output_dir / "sessions").exists() else []
     sample_path_refs, sampled_paths = write_sample_path_sidecars(output_dir, sample_session_dirs) if sample_session_dirs else ([], [])
-    band_chart_refs = write_static_chart_svgs(output_dir, sampled_paths) if sampled_paths else {}
-    band_series = build_band_series(sampled_paths) if sampled_paths else {}
+    band_chart_refs = write_static_chart_svgs(output_dir, sampled_paths, symbols) if sampled_paths else {}
+    band_series = build_band_series(sampled_paths, symbols) if sampled_paths else {}
 
     runs_by_session: dict[int, list[dict[str, Any]]] = {}
     for run in run_rows:
@@ -782,10 +810,65 @@ def build_dashboard(output_dir: Path, algorithm: Path, sessions: int, config: di
 
     top_sessions = sorted(session_rows, key=lambda row: row["totalPnl"], reverse=True)[:10]
     bottom_sessions = sorted(session_rows, key=lambda row: row["totalPnl"])[:10]
-    scatter_fit = linear_regression(emerald, tomato)
-    total_normal_fit = normal_fit(total)
-    emerald_normal_fit = normal_fit(emerald)
-    tomato_normal_fit = normal_fit(tomato)
+
+    # If exactly two assets are active, emit a scatter fit between them.
+    scatter_fit: dict[str, Any]
+    if len(symbols) == 2:
+        scatter_fit = linear_regression(per_asset_pnl[symbols[0]], per_asset_pnl[symbols[1]])
+    else:
+        scatter_fit = linear_regression([], [])
+
+    overall: dict[str, Any] = {"totalPnl": summarize_distribution(total)}
+    for s in symbols:
+        overall[f"{s}_pnl"] = summarize_distribution(per_asset_pnl[s])
+    if len(symbols) == 2:
+        overall["pairCorrelation"] = correlation(per_asset_pnl[symbols[0]], per_asset_pnl[symbols[1]])
+
+    trend_fits: dict[str, Any] = {
+        "TOTAL": {
+            "profitability": summarize_distribution(total_profitability),
+            "stability": summarize_distribution(total_stability),
+        },
+    }
+    for s in symbols:
+        trend_fits[s] = {
+            "profitability": summarize_distribution(run_per_asset_profitability[s]),
+            "stability": summarize_distribution(run_per_asset_stability[s]),
+        }
+
+    aggregate_trend_fits: dict[str, Any] = {
+        "TOTAL": {
+            "profitability": summarize_distribution(session_total_profitability),
+            "stability": summarize_distribution(session_total_stability),
+        },
+    }
+    for s in symbols:
+        aggregate_trend_fits[s] = {
+            "profitability": summarize_distribution(session_per_asset_profitability[s]),
+            "stability": summarize_distribution(session_per_asset_stability[s]),
+        }
+
+    normal_fits: dict[str, Any] = {"totalPnl": normal_fit(total)}
+    for s in symbols:
+        normal_fits[f"{s}_pnl"] = normal_fit(per_asset_pnl[s])
+
+    products: dict[str, Any] = {}
+    for s in symbols:
+        products[s] = {
+            "pnl": summarize_distribution(per_asset_pnl[s]),
+            "finalPosition": summarize_distribution(per_asset_position[s]),
+            "cash": summarize_distribution(per_asset_cash[s]),
+        }
+
+    histograms: dict[str, Any] = {
+        "totalPnl": histogram(total),
+        "totalProfitability": histogram(total_profitability),
+        "totalStability": histogram(total_stability),
+    }
+    for s in symbols:
+        histograms[f"{s}_pnl"] = histogram(per_asset_pnl[s])
+        histograms[f"{s}_profitability"] = histogram(run_per_asset_profitability[s])
+        histograms[f"{s}_stability"] = histogram(run_per_asset_stability[s])
 
     return {
         "kind": "monte_carlo_dashboard",
@@ -793,89 +876,16 @@ def build_dashboard(output_dir: Path, algorithm: Path, sessions: int, config: di
             "algorithmPath": str(algorithm),
             "sessionCount": sessions,
             "bandSessionCount": len(sample_session_dirs),
+            "activeAssets": symbols,
             **config,
         },
-        "overall": {
-            "totalPnl": summarize_distribution(total),
-            "ashPnl": summarize_distribution(emerald),
-            "iprPnl": summarize_distribution(tomato),
-            "emeraldTomatoCorrelation": correlation(emerald, tomato),
-        },
-        "trendFits": {
-            "TOTAL": {
-                "profitability": summarize_distribution(total_profitability),
-                "stability": summarize_distribution(total_stability),
-            },
-            "ASH_COATED_OSMIUM": {
-                "profitability": summarize_distribution(emerald_profitability),
-                "stability": summarize_distribution(emerald_stability),
-            },
-            "INTARIAN_PEPPER_ROOT": {
-                "profitability": summarize_distribution(tomato_profitability),
-                "stability": summarize_distribution(tomato_stability),
-            },
-        },
-        "aggregateTrendFits": {
-            "TOTAL": {
-                "profitability": summarize_distribution(session_total_profitability),
-                "stability": summarize_distribution(session_total_stability),
-            },
-            "ASH_COATED_OSMIUM": {
-                "profitability": summarize_distribution(session_emerald_profitability),
-                "stability": summarize_distribution(session_emerald_stability),
-            },
-            "INTARIAN_PEPPER_ROOT": {
-                "profitability": summarize_distribution(session_tomato_profitability),
-                "stability": summarize_distribution(session_tomato_stability),
-            },
-        },
-        "normalFits": {
-            "totalPnl": total_normal_fit,
-            "ashPnl": emerald_normal_fit,
-            "iprPnl": tomato_normal_fit,
-        },
+        "overall": overall,
+        "trendFits": trend_fits,
+        "aggregateTrendFits": aggregate_trend_fits,
+        "normalFits": normal_fits,
         "scatterFit": scatter_fit,
-        "generatorModel": {
-            "ASH_COATED_OSMIUM": {
-                "name": "Fixed Fair Value",
-                "formula": "F_t = 10000",
-                "notes": [
-                    "No stochastic component",
-                    "Bots quote directly around the fixed fair value",
-                ],
-            },
-            "INTARIAN_PEPPER_ROOT": {
-                "name": "Latent Fair Random Walk",
-                "formula": "x_{t+1} = x_t + ε_t",
-                "notes": [
-                    "Zero-drift latent fair process used by the quoting bots",
-                    "Visible book states emerge after deterministic quote rounding",
-                ],
-            },
-        },
-        "products": {
-            "ASH_COATED_OSMIUM": {
-                "pnl": summarize_distribution(emerald),
-                "finalPosition": summarize_distribution([float(value) for value in emerald_pos]),
-                "cash": summarize_distribution(ash_cash),
-            },
-            "INTARIAN_PEPPER_ROOT": {
-                "pnl": summarize_distribution(tomato),
-                "finalPosition": summarize_distribution([float(value) for value in tomato_pos]),
-                "cash": summarize_distribution(ipr_cash),
-            },
-        },
-        "histograms": {
-            "totalPnl": histogram(total),
-            "ashPnl": histogram(emerald),
-            "iprPnl": histogram(tomato),
-            "totalProfitability": histogram(total_profitability),
-            "totalStability": histogram(total_stability),
-            "emeraldProfitability": histogram(emerald_profitability),
-            "emeraldStability": histogram(emerald_stability),
-            "tomatoProfitability": histogram(tomato_profitability),
-            "tomatoStability": histogram(tomato_stability),
-        },
+        "products": products,
+        "histograms": histograms,
         "sessions": session_rows,
         "runs": run_rows,
         "topSessions": top_sessions,
@@ -894,15 +904,13 @@ def run_rust_monte_carlo(
     sessions: int,
     fv_mode: str,
     trade_mode: str,
-    ipr_support: str,
     seed: int,
     python_bin: str,
     sample_sessions: int,
     ticks_per_day: int = 10000,
     quote_fraction: float = 1.0,
     maf_bid: int = 0,
-    ipr_start_fv: float = 10000.0,
-    replay_fv_json: Optional[Path] = None,
+    passthrough_flags: Optional[list[str]] = None,
 ) -> None:
     actual_dir = resolve_actual_dir(data_root)
     simulator_dir = rust_dir()
@@ -926,8 +934,6 @@ def run_rust_monte_carlo(
         fv_mode,
         "--trade-mode",
         trade_mode,
-        "--ipr-support",
-        ipr_support,
         "--seed",
         str(seed),
         "--python-bin",
@@ -942,11 +948,9 @@ def run_rust_monte_carlo(
         str(quote_fraction),
         "--maf-bid",
         str(maf_bid),
-        "--ipr-start-fv",
-        str(ipr_start_fv),
     ]
-    if replay_fv_json is not None:
-        cmd.extend(["--replay-fv-json", str(Path(replay_fv_json).resolve())])
+    if passthrough_flags:
+        cmd.extend(passthrough_flags)
     env = {**os.environ, "PROSPERITY4MCBT_ROOT": str(project_root().resolve())}
     subprocess.run(cmd, cwd=simulator_dir, env=env, check=True)
 
@@ -958,15 +962,13 @@ def run_monte_carlo_mode(
     sessions: int,
     fv_mode: str,
     trade_mode: str,
-    ipr_support: str,
     seed: int,
     python_bin: str,
     sample_sessions: int,
     ticks_per_day: int = 10000,
     quote_fraction: float = 1.0,
     maf_bid: int = 0,
-    ipr_start_fv: float = 10000.0,
-    replay_fv_json: Optional[Path] = None,
+    passthrough_flags: Optional[list[str]] = None,
 ) -> dict[str, Any]:
     output_dir = dashboard_path.parent
     if output_dir.exists():
@@ -987,15 +989,13 @@ def run_monte_carlo_mode(
         sessions=sessions,
         fv_mode=fv_mode,
         trade_mode=trade_mode,
-        ipr_support=ipr_support,
         seed=seed,
         python_bin=python_bin,
         sample_sessions=sample_sessions,
         ticks_per_day=ticks_per_day,
         quote_fraction=quote_fraction,
         maf_bid=maf_bid,
-        ipr_start_fv=ipr_start_fv,
-        replay_fv_json=replay_fv_json,
+        passthrough_flags=passthrough_flags,
     )
 
     dashboard = build_dashboard(
@@ -1005,7 +1005,6 @@ def run_monte_carlo_mode(
         {
             "fvMode": fv_mode,
             "tradeMode": trade_mode,
-            "iprSupport": ipr_support,
             "seed": seed,
             "sampleSessions": sample_sessions,
         },
