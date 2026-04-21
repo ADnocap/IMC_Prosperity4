@@ -86,7 +86,7 @@ def parse_out(out: Optional[Path], no_out: bool) -> Optional[Path]:
         return None
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    return Path.cwd() / "backtests" / f"{timestamp}.log"
+    return Path.cwd() / "tmp" / "backtests" / f"{timestamp}.log"
 
 
 def print_day_summary(result: BacktestResult) -> None:
@@ -198,7 +198,7 @@ def cli(
     days: Annotated[list[str], Argument(help="The days to backtest on. <round>-<day> for a single day, <round> for all days in a round.", show_default=False)],
     merge_pnl: Annotated[bool, Option("--merge-pnl", help="Merge profit and loss across days.")] = False,
     vis: Annotated[bool, Option("--vis", help="Open results in the local dashboard when done.")] = False,
-    out: Annotated[Optional[Path], Option(help="File to save output log to (defaults to backtests/<timestamp>.log).", show_default=False, dir_okay=False, resolve_path=True)] = None,
+    out: Annotated[Optional[Path], Option(help="File to save output log to (defaults to tmp/backtests/<timestamp>.log).", show_default=False, dir_okay=False, resolve_path=True)] = None,
     no_out: Annotated[bool, Option("--no-out", help="Skip saving output log.")] = False,
     data: Annotated[Optional[Path], Option(help="Path to data directory (defaults to data/prosperity4).", show_default=False, exists=True, file_okay=False, dir_okay=True, resolve_path=True)] = None,
     print_output: Annotated[bool, Option("--print", help="Print the trader's output to stdout while it's running.")] = False,

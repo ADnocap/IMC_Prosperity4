@@ -158,18 +158,21 @@ export interface MonteCarloTrendFitGroup {
   stability: MonteCarloDistributionStats;
 }
 
+export interface MonteCarloPerAssetSession {
+  pnl: number;
+  position?: number;
+  cash?: number;
+  slopePerStep: number;
+  r2: number;
+}
+
 export interface MonteCarloRunSummary {
   sessionId: number;
   day: number;
   totalPnl: number;
-  emeraldPnl: number;
-  tomatoPnl: number;
   totalSlopePerStep: number;
   totalR2: number;
-  emeraldSlopePerStep: number;
-  emeraldR2: number;
-  tomatoSlopePerStep: number;
-  tomatoR2: number;
+  perAsset: Record<string, MonteCarloPerAssetSession>;
 }
 
 export interface MonteCarloBandSeries {
@@ -184,18 +187,9 @@ export interface MonteCarloBandSeries {
 export interface MonteCarloSessionSummary {
   sessionId: number;
   totalPnl: number;
-  emeraldPnl: number;
-  tomatoPnl: number;
-  emeraldPosition: number;
-  tomatoPosition: number;
-  emeraldCash: number;
-  tomatoCash: number;
   totalSlopePerStep: number;
   totalR2: number;
-  emeraldSlopePerStep: number;
-  emeraldR2: number;
-  tomatoSlopePerStep: number;
-  tomatoR2: number;
+  perAsset: Record<string, MonteCarloPerAssetSession>;
   runMeanTotalSlopePerStep?: number;
   runMeanTotalR2?: number;
 }
@@ -243,25 +237,21 @@ export interface MonteCarloDashboard {
     sessionCount: number;
     fvMode: string;
     tradeMode: string;
-    tomatoSupport: string;
     seed: number;
     sampleSessions: number;
     bandSessionCount?: number;
+    activeAssets: string[];
   };
-  overall: {
+  overall: Record<string, MonteCarloDistributionStats | number> & {
     totalPnl: MonteCarloDistributionStats;
-    emeraldPnl: MonteCarloDistributionStats;
-    tomatoPnl: MonteCarloDistributionStats;
-    emeraldTomatoCorrelation: number;
+    pairCorrelation?: number;
   };
   trendFits: Record<string, MonteCarloTrendFitGroup>;
   aggregateTrendFits?: Record<string, MonteCarloTrendFitGroup>;
-  normalFits: {
+  normalFits: Record<string, MonteCarloNormalFit> & {
     totalPnl: MonteCarloNormalFit;
-    emeraldPnl: MonteCarloNormalFit;
-    tomatoPnl: MonteCarloNormalFit;
   };
-  scatterFit: MonteCarloScatterFit;
+  scatterFit?: MonteCarloScatterFit;
   generatorModel: Record<string, MonteCarloGeneratorModel>;
   products: Record<
     string,

@@ -10,7 +10,7 @@ pip install -e .
 # Download from https://rustup.rs
 
 # Run Monte Carlo backtest with dashboard (points at the active round's trader)
-prosperity4mcbt traders/round3/a.py --quick --vis --out tmp/results/dashboard.json
+prosperity4mcbt traders/round3/a.py --quick --vis
 ```
 
 Both CLIs auto-resolve bare filenames — e.g. `a.py` → `traders/round3/a.py` (active round). Pass a full path like `traders/round1/submission.py` to backtest a historical submission.
@@ -59,7 +59,9 @@ From the repo root, run the PowerShell script, or just run the first one and you
 .\run.ps1
 ```
 
-This starts the Vite frontend + data server and opens the dashboard in your browser. Run backtests from the **Run** tab -- pick a trader, set sessions, and click Simulate. Results are saved to `backtests/` and appear in the Run dropdown.
+This starts the Vite frontend + data server and opens the dashboard in your browser. Run backtests from the **Run** tab -- pick a trader, set sessions, and click Simulate. Results are saved to `tmp/backtests/` and appear in the Run dropdown.
+
+**All backtest artifacts live under `tmp/` (gitignored).** CLI runs default to `tmp/backtests/<timestamp>_monte_carlo/dashboard.json` (MC) or `tmp/backtests/<timestamp>.log` (CSV replay). Always write custom `--out` paths inside `tmp/` so the repo stays clean.
 
 #### Manual launch (two terminals)
 
@@ -68,10 +70,10 @@ This starts the Vite frontend + data server and opens the dashboard in your brow
 cd visualizer && npm run dev
 
 # Terminal 2: backtester
-prosperity4mcbt a.py --quick --vis --out tmp/results/dashboard.json
+prosperity4mcbt a.py --quick --vis
 ```
 
-Dashboard runs at `http://localhost:5555/`. The `--vis` flag starts the data server on port 8001 and opens the browser.
+Dashboard runs at `http://localhost:5555/`. The `--vis` flag starts the data server on port 8001 and opens the browser. Backtest output defaults to `tmp/backtests/<timestamp>_monte_carlo/dashboard.json`.
 
 ---
 
@@ -105,22 +107,24 @@ Rust-backed Monte Carlo simulator. Generates hundreds/thousands of synthetic mar
 
 ```bash
 # Quick (100 sessions, ~6s) -- good for iteration
-prosperity4mcbt traders/round3/a.py --quick --out tmp/results/dashboard.json
+prosperity4mcbt traders/round3/a.py --quick
 
 # Heavy (1000 sessions, ~55s) -- final eval before submission
-prosperity4mcbt traders/round3/a.py --heavy --out tmp/results/dashboard.json
+prosperity4mcbt traders/round3/a.py --heavy
 
 # With dashboard auto-open
-prosperity4mcbt traders/round3/a.py --quick --vis --out tmp/results/dashboard.json
+prosperity4mcbt traders/round3/a.py --quick --vis
 ```
+
+Output defaults to `tmp/backtests/<timestamp>_monte_carlo/dashboard.json`. Pass `--out path.json` only when you need a specific path — and keep it under `tmp/`.
 
 ### Advanced options
 
 ```bash
-prosperity4mcbt traders/round3/a.py --quick --seed 42 --out tmp/results/dashboard.json
-prosperity4mcbt traders/round3/a.py --quick --fv-mode simulate --out tmp/results/dashboard.json
-prosperity4mcbt traders/round3/a.py --quick --trade-mode simulate --out tmp/results/dashboard.json
-prosperity4mcbt traders/round3/a.py --sessions 3000 --sample-sessions 150 --out tmp/results/dashboard.json
+prosperity4mcbt traders/round3/a.py --quick --seed 42
+prosperity4mcbt traders/round3/a.py --quick --fv-mode simulate
+prosperity4mcbt traders/round3/a.py --quick --trade-mode simulate
+prosperity4mcbt traders/round3/a.py --sessions 3000 --sample-sessions 150
 ```
 
 ---
@@ -144,26 +148,26 @@ Use `--ticks-per-day 1000` when you want MC numbers comparable to the portal UI 
 
 ```bash
 # Quick iteration (100 sessions, 10,000 ticks each)
-prosperity4mcbt traders/round3/a.py --quick --intarian-pepper-root-start-fv 13000 --out tmp/results/r2_quick.json
+prosperity4mcbt traders/round3/a.py --quick --intarian-pepper-root-start-fv 13000
 
 # Pre-submission eval (1000 sessions, 10,000 ticks each — matches final-eval scale)
-prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000 --out tmp/results/r2_heavy.json
+prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000
 
 # Match portal UI backtest (1,000 ticks) for apples-to-apples with portal submissions
-prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000 --ticks-per-day 1000 --out tmp/results/r2_portal_bt.json
+prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000 --ticks-per-day 1000
 ```
 
 ### R2 MAF analysis
 
 ```bash
 # Loser (R2 testing default: 80% of generated quotes visible)
-prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 0.8 --out tmp/results/r2_loser.json
+prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 0.8
 
 # Winner (MAF accepted: +25% quote-volume uplift)
-prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 1.25 --out tmp/results/r2_winner.json
+prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 1.25
 
 # Net PnL if we bid 500 XIRECs and win (subtracts bid from reported total)
-prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 1.25 --maf-bid 500 --out tmp/results/r2_maf500.json
+prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 1.25 --maf-bid 500
 ```
 
 ### CSV replay against R1 historical data
@@ -207,8 +211,7 @@ To validate on a fresh portal backtest, drop the `activitiesLog` into the extrac
 ```bash
 prosperity4mcbt traders/round3/a.py --sessions 200 --ticks-per-day 1000 \
   --intarian-pepper-root-replay-fv calibration/intarian_pepper_root/data/r2_day1_fv.json \
-  --ash-coated-osmium-replay-fv   calibration/intarian_pepper_root/data/r2_day1_fv.json \
-  --out tmp/results/r2_replay.json
+  --ash-coated-osmium-replay-fv   calibration/intarian_pepper_root/data/r2_day1_fv.json
 ```
 
 ### R2 MAF uplift sensitivity (post-calibration, 200 sessions × 10,000 ticks = portal final scale)
@@ -230,7 +233,7 @@ Sanity vs R1 portal final (99,546): MC loser mean 98,642 — within 1% ✓.
 ### Output bundle
 
 ```
-tmp/results/
+tmp/backtests/<timestamp>_monte_carlo/
 ├── dashboard.json       # Load in visualizer
 ├── session_summary.csv  # Per-session PnL stats
 ├── run_summary.csv      # Aggregate stats
@@ -248,7 +251,7 @@ The previous strategy-comparison table was R1-specific and has been removed. R2 
 When iterating on R2 changes, re-baseline with:
 
 ```bash
-prosperity4mcbt traders/round3/a.py --heavy --out tmp/results/r2_baseline.json
+prosperity4mcbt traders/round3/a.py --heavy
 ```
 
 Record mean / std / P5–P95 to track regressions, but **do not trust absolute numbers** — only relative A/B deltas.
@@ -275,8 +278,8 @@ py -3.13 scripts/bt_stats.py traders/round3/a.py 1
 
 | Scenario            | Tool                      | Command                                                                  |
 | ------------------- | ------------------------- | ------------------------------------------------------------------------ |
-| Dev iteration       | `prosperity4mcbt --quick` | `prosperity4mcbt traders/round3/a.py --quick --vis --out tmp/r/d.json`   |
-| Pre-submission eval | `prosperity4mcbt --heavy` | `prosperity4mcbt traders/round3/a.py --heavy --out tmp/r/d.json`         |
+| Dev iteration       | `prosperity4mcbt --quick` | `prosperity4mcbt traders/round3/a.py --quick --vis`                      |
+| Pre-submission eval | `prosperity4mcbt --heavy` | `prosperity4mcbt traders/round3/a.py --heavy`                            |
 | Quick sanity check  | `prosperity3bt`           | `prosperity3bt traders/round3/a.py 1`                                     |
 | Fill breakdown      | `bt_stats.py`             | `py -3.13 scripts/bt_stats.py traders/round3/a.py 1`                      |
 | Ground truth        | Portal                    | Submit on prosperity.imc.com                                             |

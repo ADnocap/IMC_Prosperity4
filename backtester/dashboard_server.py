@@ -67,7 +67,7 @@ def _list_traders() -> list[dict[str, object]]:
 
 
 def _backtests_dir() -> Path:
-    return _project_root() / "backtests"
+    return _project_root() / "tmp" / "backtests"
 
 
 def _run_backtest_worker(
@@ -340,7 +340,8 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
                 return
 
             ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            run_id = f"{trader_name.replace('.py', '')}_{ts}"
+            safe_trader = trader_name.replace(".py", "").replace("/", "_").replace("\\", "_")
+            run_id = f"{safe_trader}_{ts}"
             output_dir = _backtests_dir() / run_id
             output_dir.mkdir(parents=True, exist_ok=True)
 

@@ -38,7 +38,7 @@ def rust_dir() -> Path:
 
 def default_dashboard_path() -> Path:
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    return Path.cwd() / "backtests" / f"{timestamp}_monte_carlo" / "dashboard.json"
+    return Path.cwd() / "tmp" / "backtests" / f"{timestamp}_monte_carlo" / "dashboard.json"
 
 
 def normalize_dashboard_path(out: Optional[Path], no_out: bool) -> Optional[Path]:

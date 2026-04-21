@@ -71,7 +71,7 @@ def cli(
     out: Annotated[
         Optional[Path],
         Option(
-            help="Path to dashboard JSON file (defaults to backtests/<timestamp>_monte_carlo/dashboard.json).",
+            help="Path to dashboard JSON file (defaults to tmp/backtests/<timestamp>_monte_carlo/dashboard.json).",
             show_default=False,
             resolve_path=True,
         ),

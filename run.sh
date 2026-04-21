@@ -16,7 +16,7 @@ fi
 
 # Use absolute paths
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
-BACKTESTS_DIR="$PROJECT_ROOT/backtests"
+BACKTESTS_DIR="$PROJECT_ROOT/tmp/backtests"
 mkdir -p "$BACKTESTS_DIR"
 
 # Kill any leftover data server from a previous run

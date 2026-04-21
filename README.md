@@ -9,11 +9,13 @@ Algorithmic trading competition workspace with a Rust-backed Monte Carlo backtes
 cd backtester && pip install -e . && cd ..
 
 # Run Monte Carlo backtest (active round's trader)
-prosperity4mcbt traders/round3/a.py --quick --out tmp/results/dashboard.json
+prosperity4mcbt traders/round3/a.py --quick
 
 # Run with dashboard
-prosperity4mcbt traders/round3/a.py --quick --vis --out tmp/results/dashboard.json
+prosperity4mcbt traders/round3/a.py --quick --vis
 ```
+
+Backtest artifacts default to `tmp/backtests/<timestamp>_monte_carlo/dashboard.json` (gitignored). Pass `--out path.json` only when you need a specific path — keep it under `tmp/`.
 
 See [BACKTEST.md](BACKTEST.md) for full backtesting guide and calibration methodology.
 
@@ -37,7 +39,7 @@ IMC_trading_hack/
 ├── visualizer/                    # Local dashboard frontend (Vite/React)
 ├── calibration/                   # Bot reverse-engineering, one dir per asset (emeralds, tomatoes, ash_coated_osmium, intarian_pepper_root)
 ├── manual/                        # Manual trading challenges (round{1,2,3}/)
-├── submission_results/            # Raw logs from intermediate portal submissions
+├── tmp/                           # All backtest artifacts (gitignored) — MC dashboards, replay logs
 ├── scripts/                       # Helper utilities (strategy worker, fill analytics)
 ├── BACKTEST.md                    # Backtesting & calibration guide
 └── CLAUDE.md                      # Project context for Claude

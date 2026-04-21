@@ -51,7 +51,8 @@ IMC_trading_hack/
 │   ├── ash_coated_osmium/             #   R1/R2 random-walk
 │   └── intarian_pepper_root/          #   R1/R2 deterministic-drift
 ├── manual/                            # Manual trading challenges (round1/, round2/, round3/)
-├── submission_results/                # Raw logs from intermediate portal submissions (by sub ID)
+├── tmp/                               # All backtest artifacts (gitignored) — MC dashboards, replay logs, ad-hoc outputs
+│   └── backtests/                     #   Default output dir for prosperity4mcbt / prosperity3bt runs
 ├── scripts/                           # Helper utilities
 │   ├── python_strategy_worker.py      #   Rust sim ↔ Python bridge
 │   └── bt_stats.py                    #   Fill analytics wrapper
@@ -175,11 +176,11 @@ See [BACKTEST.md](BACKTEST.md) for the full guide including calibration methodol
 ### Monte Carlo Backtester (PRIMARY -- use this)
 ```bash
 # Install (one-time): pip install -e .
-prosperity4mcbt a.py --quick --out tmp/results/dashboard.json    # dev iteration (~6s)
-prosperity4mcbt a.py --heavy --out tmp/results/dashboard.json    # pre-submission (~55s)
-prosperity4mcbt a.py --quick --vis --out tmp/results/dashboard.json  # with dashboard
+prosperity4mcbt a.py --quick              # dev iteration (~6s)
+prosperity4mcbt a.py --heavy              # pre-submission (~55s)
+prosperity4mcbt a.py --quick --vis        # with dashboard
 ```
-Rust-backed Monte Carlo using calibrated bot models reverse-engineered from tutorial data. Produces distributional PnL stats (mean, std, percentiles) across hundreds/thousands of synthetic sessions.
+Output defaults to `tmp/backtests/<timestamp>_monte_carlo/dashboard.json` — only pass `--out` when you need a specific path. Rust-backed Monte Carlo using calibrated bot models reverse-engineered from tutorial data. Produces distributional PnL stats (mean, std, percentiles) across hundreds/thousands of synthetic sessions.
 
 #### Portal tick counts
 - Portal UI backtest: **1,000 ticks** per day (what the "Run" button shows you)
@@ -196,16 +197,16 @@ The Python CLI accepts `--ipr-start-fv` as a legacy alias and translates it. Eve
 
 ```bash
 # R2-style dev iteration (PEPPER start FV = 13000)
-prosperity4mcbt traders/round3/a.py --quick --intarian-pepper-root-start-fv 13000 --out tmp/results/r2_quick.json
-prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000 --out tmp/results/r2_heavy.json
+prosperity4mcbt traders/round3/a.py --quick --intarian-pepper-root-start-fv 13000
+prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000
 
 # Match portal-UI backtest (1,000 ticks) for apples-to-apples with portal submissions
-prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000 --ticks-per-day 1000 --out tmp/results/r2_portal_bt.json
+prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000 --ticks-per-day 1000
 
 # MAF analysis (at portal final scale)
-prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 0.8 --out tmp/results/r2_loser.json
-prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 1.25 --out tmp/results/r2_winner.json
-prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 1.25 --maf-bid 500 --out tmp/results/r2_maf500.json
+prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 0.8
+prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 1.25
+prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 1.25 --maf-bid 500
 ```
 
 See [BACKTEST.md](BACKTEST.md) for the full flag reference, MAF-uplift table, and the workflow for adding a new asset (one Rust file per asset under `rust_simulator/src/assets/`).
@@ -262,7 +263,7 @@ Total gap **+73 XIRECs (0.8%)** — sim is now calibrated against portal reality
 
 MC absolute numbers are now trustworthy (not just relative deltas) — the sim matches portal reality within 1% on matched FV paths.
 
-Raw tutorial submission logs live in `submission_results/<sub_id>/` (R0 products only). R1/R2 post-round-close logs are in `results/round{1,2}/` (portal sub id as filename).
+Post-round-close logs for R1/R2 are in `results/round{1,2}/` (portal sub id as filename). All backtest artifacts — MC dashboards, replay logs, ad-hoc outputs — go under `tmp/` (gitignored). Default MC output is `tmp/backtests/<timestamp>_monte_carlo/dashboard.json`; default CSV replay log is `tmp/backtests/<timestamp>.log`. Never write backtest output outside `tmp/`.
 
 ### Visualization
 - Local MC dashboard: `cd visualizer && npm install && npm run dev` then use `--vis` flag

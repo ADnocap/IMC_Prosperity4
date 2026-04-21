@@ -11,9 +11,7 @@ __pycache__/
 .pytest_cache/
 
 backtester/.venv/
-backtests/
 tmp/
-submission_results/
 submissions/
 analysis_plots/
 probes/

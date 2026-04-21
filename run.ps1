@@ -15,8 +15,8 @@ if ($env:PATH -notlike "*$cargoPath*") {
 
 # Use absolute paths
 $projectRoot = $PSScriptRoot
-$backtestsDir = Join-Path $projectRoot "backtests"
-if (-not (Test-Path $backtestsDir)) { New-Item -ItemType Directory -Path $backtestsDir | Out-Null }
+$backtestsDir = Join-Path $projectRoot "tmp\backtests"
+if (-not (Test-Path $backtestsDir)) { New-Item -ItemType Directory -Path $backtestsDir -Force | Out-Null }
 
 # Kill any leftover data server from a previous run
 $existingPid = Get-Content "$env:USERPROFILE\.prosperity4mcbt\dashboard_server.pid" -ErrorAction SilentlyContinue

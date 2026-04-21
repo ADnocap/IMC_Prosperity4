@@ -37,9 +37,9 @@ Parse the user's input to determine which subcommand to run. If no subcommand is
 Show a status overview:
 
 1. Resolve the active round and read `traders/round<N>/a.py`. Extract class-level constants / `PARAMS` dict to list all products and their key parameters.
-2. List the most recent results in `tmp/results/` and `backtests/` directories. Report the best-available PnL stats if present.
+2. List the most recent results in `tmp/backtests/` and `tmp/results/`. Report the best-available PnL stats if present.
 3. List all available data directories (`data/prosperity4/round*/`). Flag any round whose directory exists but is empty — that means we're waiting on IMC to publish.
-4. Peek at `submission_results/` for the most recent portal submission IDs.
+4. Peek at `results/round{1,2}/` for post-round-close portal logs (portal sub id as filename).
 
 Format output as a concise dashboard:
 
@@ -59,9 +59,9 @@ Format output as a concise dashboard:
 Run the Monte Carlo backtester and report results:
 
 1. Default to the **active round's trader**. If the user passes a round number, target that round's trader instead.
-2. Run: `cd "C:/Users/alexa/OneDrive/Documents/IMC_trading_hack" && prosperity4mcbt traders/round<N>/a.py --quick --out tmp/results/dashboard.json` — use `--quick` for iteration, `--heavy` for final eval.
+2. Run: `cd "C:/Users/alexa/OneDrive/Documents/IMC_trading_hack" && prosperity4mcbt traders/round<N>/a.py --quick` — use `--quick` for iteration, `--heavy` for final eval. Output defaults to `tmp/backtests/<timestamp>_monte_carlo/dashboard.json` — only pass `--out` if you need a specific path.
 3. Parse the output for per-product PnL statistics (mean, std, percentiles).
-4. Compare against previous backtest results in `tmp/results/` or `backtests/` if available.
+4. Compare against previous backtest results in `tmp/backtests/` if available.
 5. Report results with clear comparison showing improvement or regression.
 
 For a quick sanity check, use CSV replay instead (pass a round number whose data exists):

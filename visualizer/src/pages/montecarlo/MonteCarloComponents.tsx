@@ -1,4 +1,5 @@
-import { Container, Group, Loader, Table, Text } from '@mantine/core';
+import { Button, Container, Group, Loader, Stack, Table, Text } from '@mantine/core';
+import { Link } from 'react-router-dom';
 import Highcharts from 'highcharts';
 import HighchartsMore from 'highcharts/highcharts-more';
 import HighchartsAccessibility from 'highcharts/modules/accessibility';
@@ -311,9 +312,11 @@ export function SummaryTable({ title, stats }: { title: string; stats: MonteCarl
 export function SessionRankingTable({
   title,
   rows,
+  assets,
 }: {
   title: string;
   rows: MonteCarloDashboard['sessions'];
+  assets: string[];
 }): ReactNode {
   return (
     <VisualizerCard title={title}>
@@ -322,8 +325,9 @@ export function SessionRankingTable({
           <Table.Tr>
             <Table.Th>Session</Table.Th>
             <Table.Th>Total</Table.Th>
-            <Table.Th>EMERALDS</Table.Th>
-            <Table.Th>TOMATOES</Table.Th>
+            {assets.map(asset => (
+              <Table.Th key={`${title}-head-${asset}`}>{asset}</Table.Th>
+            ))}
             <Table.Th>Total $/step</Table.Th>
             <Table.Th>Total R²</Table.Th>
           </Table.Tr>
@@ -333,8 +337,11 @@ export function SessionRankingTable({
             <Table.Tr key={`${title}-${row.sessionId}`}>
               <Table.Td>{row.sessionId}</Table.Td>
               <Table.Td>{formatNumber(row.totalPnl, 2)}</Table.Td>
-              <Table.Td>{formatNumber(row.emeraldPnl, 2)}</Table.Td>
-              <Table.Td>{formatNumber(row.tomatoPnl, 2)}</Table.Td>
+              {assets.map(asset => (
+                <Table.Td key={`${title}-${row.sessionId}-${asset}`}>
+                  {formatNumber(row.perAsset?.[asset]?.pnl ?? 0, 2)}
+                </Table.Td>
+              ))}
               <Table.Td>{formatNumber(row.runMeanTotalSlopePerStep ?? row.totalSlopePerStep, 4)}</Table.Td>
               <Table.Td>{formatNumber(row.runMeanTotalR2 ?? row.totalR2, 3)}</Table.Td>
             </Table.Tr>
@@ -363,6 +370,29 @@ export function ErrorMonteCarloView({ error }: { error: Error }): ReactNode {
     <Container size="md" py="xl">
       <VisualizerCard title="Failed to load Monte Carlo dashboard">
         <ErrorAlert error={error} />
+      </VisualizerCard>
+    </Container>
+  );
+}
+
+export function EmptyMonteCarloView(): ReactNode {
+  return (
+    <Container size="md" py="xl">
+      <VisualizerCard title="No backtests yet">
+        <Stack gap="sm">
+          <Text>
+            Nothing has been written to <Text span fw={600}>tmp/backtests/</Text> yet. Kick off a run to populate the Results tab.
+          </Text>
+          <Text size="sm" c="dimmed">
+            Either start one from the Run tab below, or from a terminal run{' '}
+            <Text span ff="monospace">prosperity4mcbt traders/round3/a.py --quick</Text>.
+          </Text>
+          <Group>
+            <Button component={Link} to="/run">
+              Open Run tab
+            </Button>
+          </Group>
+        </Stack>
       </VisualizerCard>
     </Container>
   );
