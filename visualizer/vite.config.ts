@@ -29,6 +29,7 @@ export default defineConfig({
   optimizeDeps: {
     include: [
       'papaparse',
+      'hyparquet',
       'arquero',
       'simple-statistics',
       'mantine-react-table',

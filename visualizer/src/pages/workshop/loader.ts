@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { parquetReadObjects } from 'hyparquet';
 import Papa from 'papaparse';
 import { inferShape } from './schema.ts';
 import { ParsedTable, Row, TreeEntry } from './types.ts';
@@ -23,6 +24,14 @@ async function fetchCsv(path: string): Promise<string> {
     params: { path },
     responseType: 'text',
     transformResponse: [(raw: string) => raw],
+  });
+  return response.data;
+}
+
+async function fetchParquetBytes(path: string): Promise<ArrayBuffer> {
+  const response = await axios.get<ArrayBuffer>(FILE_URL, {
+    params: { path },
+    responseType: 'arraybuffer',
   });
   return response.data;
 }
@@ -64,15 +73,31 @@ function parseCsvInWorker(text: string, delimiter: string): Promise<Row[]> {
   });
 }
 
+async function parseParquet(buffer: ArrayBuffer): Promise<Row[]> {
+  // hyparquet returns Array<Record<string, number | bigint | string | null>>.
+  // Our downstream coercions (`Number(v)`, `String(v)`) handle bigint natively,
+  // and `schema.ts::looksNumeric` treats bigint as numeric, so we skip any
+  // normalization pass and hand the rows through unchanged.
+  const raw = (await parquetReadObjects({ file: buffer })) as Row[];
+  return raw;
+}
+
 const tableCache = new Map<string, Promise<ParsedTable>>();
 
 export function loadTable(entry: TreeEntry): Promise<ParsedTable> {
   const cached = tableCache.get(entry.path);
   if (cached !== undefined) return cached;
+  const isParquet = entry.path.toLowerCase().endsWith('.parquet');
   const promise = (async (): Promise<ParsedTable> => {
-    const text = await fetchCsv(entry.path);
-    const delimiter = detectDelimiter(text);
-    const rows = await parseCsvInWorker(text, delimiter);
+    let rows: Row[];
+    if (isParquet) {
+      const buffer = await fetchParquetBytes(entry.path);
+      rows = await parseParquet(buffer);
+    } else {
+      const text = await fetchCsv(entry.path);
+      const delimiter = detectDelimiter(text);
+      rows = await parseCsvInWorker(text, delimiter);
+    }
     const shape = inferShape(rows);
     return { entry, rows, shape };
   })();

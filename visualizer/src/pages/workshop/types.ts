@@ -44,7 +44,10 @@ export interface TableShape {
   quantityColumn: string | null;
 }
 
-export type Row = Record<string, string | number | null>;
+// bigint shows up for parquet int64 columns (see loader.ts). Downstream code
+// coerces via Number(v) / String(v) which both handle bigint natively; the
+// schema inference also treats bigint as numeric.
+export type Row = Record<string, string | number | bigint | null>;
 
 export interface ParsedTable {
   entry: TreeEntry;

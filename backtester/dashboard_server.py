@@ -213,9 +213,18 @@ def _workshop_tree() -> list[dict[str, object]]:
         for round_dir in sorted(version_dir.iterdir()):
             if not round_dir.is_dir():
                 continue
+            # Group by stem so we can prefer .parquet when both exist.
+            by_stem: dict[str, Path] = {}
             for f in sorted(round_dir.iterdir()):
-                if not f.is_file() or f.suffix.lower() != ".csv":
+                if not f.is_file():
                     continue
+                suffix = f.suffix.lower()
+                if suffix not in (".csv", ".parquet"):
+                    continue
+                existing = by_stem.get(f.stem)
+                if existing is None or (suffix == ".parquet" and existing.suffix.lower() == ".csv"):
+                    by_stem[f.stem] = f
+            for f in sorted(by_stem.values(), key=lambda p: p.name):
                 round_num, day_num = _parse_round_day(f.name)
                 rel = f.relative_to(root)
                 out.append(
@@ -227,6 +236,7 @@ def _workshop_tree() -> list[dict[str, object]]:
                         "filename": f.name,
                         "path": str(rel).replace("\\", "/"),
                         "role": _classify_data_file(f.name),
+                        "format": f.suffix.lower().lstrip("."),
                         "sizeBytes": f.stat().st_size,
                     }
                 )
@@ -398,8 +408,12 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
                 self.send_error(404)
                 return
             body = resolved.read_bytes()
+            if resolved.suffix.lower() == ".parquet":
+                content_type = "application/octet-stream"
+            else:
+                content_type = "text/csv; charset=utf-8"
             self.send_response(200)
-            self.send_header("Content-Type", "text/csv; charset=utf-8")
+            self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -504,6 +518,10 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
 def serve_dashboard(root: Path, port: int = 8001) -> None:
     root = root.resolve()
     handler = partial(DashboardRequestHandler, directory=str(root))
+    # allow_reuse_address avoids WinError 10048 when a prior listener on the
+    # same port was SIGKILLed (port sticks in TIME_WAIT for ~60s). run.ps1 / run.sh
+    # force-kill any previous server on startup so rebinding must always succeed.
+    ThreadingHTTPServer.allow_reuse_address = True
     server = ThreadingHTTPServer(("127.0.0.1", port), handler)
 
     try:

@@ -20,6 +20,7 @@ The Workshop ships with the rest of the dashboard; there's no separate install, 
 | Node 18+ / npm | Vite frontend                                 | https://nodejs.org        |
 | Rust (stable)  | Already required for `rust_simulator`         | https://rustup.rs         |
 | `wasm-pack`    | Compiles the workshop compute kernels to WASM | `cargo install wasm-pack` |
+| `pyarrow`      | Parquet cache for faster in-browser loads     | `pip install -e .`        |
 
 One-time from the repo root:
 
@@ -264,9 +265,18 @@ Worst case when IMC adds a new round with a new schema: the Schema tab still sho
 
 ## Performance notes
 
-For the biggest round we have (P3 R7, 580 k rows × 15 products, "all days" concat):
+### Parquet cache
 
-- CSV parse: ~300 ms (off main thread via PapaParse worker mode).
+CSVs under `data/prosperity{3,4}/round*/` are transparently mirrored to Parquet by `scripts/csv_to_parquet.py`. `run.ps1` / `run.sh` invoke it on startup — it's a no-op when every `.parquet` is newer than its `.csv`. The server's workshop tree prefers the parquet when both exist, and `loader.ts` decodes it via [`hyparquet`](https://github.com/hyparam/hyparquet) straight into the same `Row[]` shape the CSV path produces.
+
+- **4× smaller on the wire**: snappy-compressed columnar vs. text (~10.6 MB → 2.4 MB on the biggest file, P3 R7 day 5).
+- **Already typed**: `toFloat64`'s inner `Number(raw)` is a no-op on parquet values (they're already `number`); on CSV values it parses strings. The projection step is the main beneficiary.
+- **int64 → int32 on write**: all Prosperity integer fields fit comfortably in int32, and this avoids hyparquet boxing values as `BigInt` (3–5× slower to iterate than plain numbers).
+- Fallback: if a `.csv` has no sibling `.parquet`, the loader just uses PapaParse — nothing breaks.
+
+### Timing (biggest round: P3 R7, 580 k rows × 15 products, "all days" concat)
+
+- Parquet fetch + decode: ~300–400 ms (hyparquet, main-thread, v8-warm).
 - Projection: ~80 ms (hoisted to WorkshopPage; panels share one result).
 - Per-panel compute: 5–50 ms in WASM.
 - Total visible freeze from switching tabs or products: **none** — tabs are `keepMounted`, compute runs in the worker, Highcharts boost handles dense scatter via canvas/WebGL, dense scatter markers have `enableMouseTracking: false` so hover doesn't hit-test thousands of points.
@@ -280,6 +290,10 @@ If you see a freeze, the first thing to check is the Schema tab — unusually-sh
 ### "Failed to load data tree" / 404 on Workshop tab
 
 The Python data server isn't running or isn't serving the workshop endpoints. Check `tmp/backtests/dashboard_server.log`. Usually fixed by re-running `./run.ps1` / `./run.sh` (they force-kill stale :8001 listeners at start-up).
+
+### Workshop loads slowly / stale data after editing a CSV by hand
+
+`run.ps1` / `run.sh` rebuild the parquet cache on startup, but only when the CSV is newer. If you edit a CSV without bumping its mtime, force a rebuild with `py -3.13 scripts/csv_to_parquet.py --force`. The converter log lives at `tmp/backtests/csv_to_parquet.log`.
 
 ### Heatmap cells only painting on hover
 

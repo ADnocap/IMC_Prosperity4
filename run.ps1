@@ -64,10 +64,38 @@ if ($needsWasmBuild) {
     } finally { Pop-Location }
 }
 
+# Convert any new/updated Workshop CSVs to Parquet (no-op when fresh).
+$parquetScript = Join-Path $projectRoot "scripts\csv_to_parquet.py"
+if (Test-Path $parquetScript) {
+    Write-Host "Refreshing Workshop parquet cache..." -ForegroundColor Cyan
+    $parquetLog = Join-Path $backtestsDir "csv_to_parquet.log"
+    & python $parquetScript --quiet 2>&1 | Tee-Object -FilePath $parquetLog | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "csv_to_parquet returned $LASTEXITCODE -- see $parquetLog" -ForegroundColor DarkYellow
+    }
+}
+
 # Start data server in background (stdout/stderr surfaced so import errors aren't hidden)
 Write-Host "Starting data server on :8001..." -ForegroundColor Cyan
 $serverLog = Join-Path $backtestsDir "dashboard_server.log"
 $serverProcess = Start-Process -FilePath "python" -ArgumentList "-m", "backtester.dashboard_server", $backtestsDir, "8001" -WorkingDirectory $projectRoot -PassThru -WindowStyle Hidden -RedirectStandardOutput $serverLog -RedirectStandardError "$serverLog.err"
+
+# Poll until the server is actually listening -- Start-Process silently swallows
+# immediate crashes (e.g. bind failures, import errors), so without this the
+# browser just spins on every API call.
+$serverReady = $false
+for ($i = 0; $i -lt 20; $i++) {
+    Start-Sleep -Milliseconds 200
+    try {
+        $null = Invoke-WebRequest -Uri "http://localhost:8001/__prosperity4mcbt__/status.json" -UseBasicParsing -TimeoutSec 1 -ErrorAction Stop
+        $serverReady = $true
+        break
+    } catch {}
+}
+if (-not $serverReady) {
+    Write-Host "Data server did not come up on :8001 -- see $serverLog and $serverLog.err" -ForegroundColor Red
+    Write-Host "Common cause: port still in TIME_WAIT from a previous run. Wait 30s and retry." -ForegroundColor DarkYellow
+}
 
 # Start Vite frontend in background
 Write-Host "Starting frontend on :5555 (first run pre-bundles deps -- may take 20-30s)..." -ForegroundColor Cyan

@@ -30,6 +30,7 @@
     "dayjs": "^1.11.20",
     "highcharts": "^11.4.8",
     "highcharts-react-official": "^3.2.1",
+    "hyparquet": "^1.25.6",
     "lodash": "^4.17.21",
     "mantine-react-table": "^2.0.0-beta.9",
     "papaparse": "^5.5.3",

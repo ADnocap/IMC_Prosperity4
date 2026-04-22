@@ -56,11 +56,41 @@ if [[ ! -f "$WASM_PKG" ]] || [[ "$WASM_SRC" -nt "$WASM_PKG" ]]; then
     (cd "$PROJECT_ROOT/wasm_compute" && wasm-pack build --release --target web --out-dir "$PROJECT_ROOT/visualizer/wasm_compute" 2>&1 | tee "$BACKTESTS_DIR/wasm_build.log") || echo "wasm-pack failed -- see $BACKTESTS_DIR/wasm_build.log"
 fi
 
+# Convert any new/updated Workshop CSVs to Parquet (no-op when fresh).
+PARQUET_SCRIPT="$PROJECT_ROOT/scripts/csv_to_parquet.py"
+if [[ -f "$PARQUET_SCRIPT" ]]; then
+    echo "Refreshing Workshop parquet cache..."
+    PARQUET_LOG="$BACKTESTS_DIR/csv_to_parquet.log"
+    # set +e so a non-zero exit doesn't kill the whole script under `set -e`.
+    set +e
+    python "$PARQUET_SCRIPT" --quiet >"$PARQUET_LOG" 2>&1
+    PARQUET_EXIT=$?
+    set -e
+    if [[ $PARQUET_EXIT -ne 0 ]]; then
+        echo "  csv_to_parquet returned $PARQUET_EXIT -- see $PARQUET_LOG"
+    fi
+fi
+
 # Start data server in background (stdout/stderr captured so import errors aren't silent)
 echo "Starting data server on :8001..."
 SERVER_LOG="$BACKTESTS_DIR/dashboard_server.log"
 python -m backtester.dashboard_server "$BACKTESTS_DIR" 8001 >"$SERVER_LOG" 2>"${SERVER_LOG}.err" &
 SERVER_PID=$!
+
+# Poll until the server actually responds -- silent crashes (bind failures,
+# import errors) otherwise leave the browser spinning on every API call.
+server_ready=0
+for i in $(seq 1 20); do
+    if curl -sSf --max-time 1 "http://localhost:8001/__prosperity4mcbt__/status.json" > /dev/null 2>&1; then
+        server_ready=1
+        break
+    fi
+    sleep 0.2
+done
+if [[ $server_ready -eq 0 ]]; then
+    echo "Data server did not come up on :8001 -- see $SERVER_LOG and ${SERVER_LOG}.err"
+    echo "  Common cause: port still in TIME_WAIT from a previous run. Wait 30s and retry."
+fi
 
 # Start Vite frontend in background
 echo "Starting frontend on :5555 (first run pre-bundles deps -- may take 20-30s)..."

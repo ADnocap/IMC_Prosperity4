@@ -14,15 +14,16 @@ const PRICE_NAMES = new Set(['price']);
 const QUANTITY_NAMES = new Set(['quantity', 'qty', 'size']);
 const MID_NAMES = new Set(['mid_price', 'mid', 'midprice']);
 
-function looksNumeric(value: string | number | null): boolean {
+function looksNumeric(value: string | number | bigint | null): boolean {
   if (value === null || value === undefined) return false;
   if (typeof value === 'number') return Number.isFinite(value);
+  if (typeof value === 'bigint') return true;
   const trimmed = value.trim();
   if (trimmed === '') return false;
   return Number.isFinite(Number(trimmed));
 }
 
-function classifyColumn(name: string, samples: Array<string | number | null>): ColumnKind {
+function classifyColumn(name: string, samples: Array<string | number | bigint | null>): ColumnKind {
   const lower = name.toLowerCase();
   if (TIME_NAMES.has(lower)) return 'time';
   if (DAY_NAMES.has(lower)) return 'day';
@@ -68,11 +69,10 @@ export function inferShape(rows: Row[]): TableShape {
     const samples = rows.slice(0, sampleSize).map(r => r[name] ?? null);
     const kind = classifyColumn(name, samples);
     const firstValue = samples.find(v => v !== null && v !== '');
-    return {
-      name,
-      kind,
-      sample: firstValue === undefined ? null : firstValue,
-    };
+    // ColumnSpec.sample is serialized for the Schema tab — coerce bigint to
+    // number (Prosperity ints fit comfortably in a 53-bit Number).
+    const sample = typeof firstValue === 'bigint' ? Number(firstValue) : firstValue ?? null;
+    return { name, kind, sample };
   });
   const columnByName = Object.fromEntries(columns.map(col => [col.name, col]));
 
