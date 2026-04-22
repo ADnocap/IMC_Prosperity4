@@ -81,7 +81,7 @@ SERVER_PID=$!
 # import errors) otherwise leave the browser spinning on every API call.
 server_ready=0
 for i in $(seq 1 20); do
-    if curl -sSf --max-time 1 "http://localhost:8001/__prosperity4mcbt__/status.json" > /dev/null 2>&1; then
+    if curl -sSf --max-time 1 "http://127.0.0.1:8001/__prosperity4mcbt__/status.json" > /dev/null 2>&1; then
         server_ready=1
         break
     fi
@@ -101,7 +101,7 @@ VIZ_PID=$!
 # Wait for Vite to actually be ready
 vite_ready=0
 for i in $(seq 1 60); do
-    if curl -sSf --max-time 1 http://localhost:5555/ > /dev/null 2>&1; then
+    if curl -sSf --max-time 1 http://127.0.0.1:5555/ > /dev/null 2>&1; then
         vite_ready=1
         break
     fi

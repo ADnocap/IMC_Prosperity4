@@ -10,6 +10,7 @@ import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterP
 import { BasePage } from './pages/base/BasePage.tsx';
 import { MonteCarloPage } from './pages/montecarlo/MonteCarloPage.tsx';
 import { RunnerPage } from './pages/runner/RunnerPage.tsx';
+import { SubmissionsPage } from './pages/submissions/SubmissionsPage.tsx';
 import { WorkshopPage } from './pages/workshop/WorkshopPage.tsx';
 import { useStore } from './store.ts';
 
@@ -40,6 +41,7 @@ const router = createBrowserRouter(
         <Route index element={<MonteCarloPage />} />
         <Route path="run" element={<RunnerPage />} />
         <Route path="workshop" element={<WorkshopPage />} />
+        <Route path="submissions" element={<SubmissionsPage />} />
       </Route>
       <Route path="prosperity4mcbt/*" element={<Navigate to="/" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />

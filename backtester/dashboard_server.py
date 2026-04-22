@@ -9,6 +9,7 @@ import time
 import contextlib
 import json
 import threading
+import zipfile
 from datetime import datetime
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -26,6 +27,7 @@ STATUS_PATH = "/__prosperity4mcbt__/status.json"
 RUN_DASHBOARD_PREFIX = "/__prosperity4mcbt__/runs/"
 RUNNER_PREFIX = "/__prosperity4mcbt__/runner/"
 WORKSHOP_PREFIX = "/__prosperity4mcbt__/workshop/"
+SUBMISSIONS_PREFIX = "/__prosperity4mcbt__/submissions/"
 
 # ── Runner state (single backtest at a time) ────────────────────────
 _runner_lock = threading.Lock()
@@ -258,6 +260,167 @@ def _resolve_data_file(rel_path: str) -> Path | None:
     return candidate
 
 
+# ── Submissions (portal-backtester zips) ────────────────────────────
+
+
+def _submissions_dir() -> Path:
+    return _project_root() / "submissions"
+
+
+def _list_submission_zips() -> list[Path]:
+    root = _submissions_dir()
+    if not root.is_dir():
+        return []
+    return sorted(
+        (p for p in root.iterdir() if p.is_file() and p.suffix.lower() == ".zip"),
+        key=lambda p: p.stat().st_mtime_ns,
+        reverse=True,
+    )
+
+
+def _resolve_submission_zip(name: str) -> Path | None:
+    if not name or "/" in name or "\\" in name or name.startswith(".."):
+        return None
+    root = _submissions_dir().resolve()
+    if not root.is_dir():
+        return None
+    candidate = (root / name).resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        return None
+    if not candidate.is_file() or candidate.suffix.lower() != ".zip":
+        return None
+    return candidate
+
+
+def _zip_member(zf: zipfile.ZipFile, suffix: str) -> str | None:
+    """Return the decoded text of the first member ending with `suffix` (e.g. '.json')."""
+    for info in zf.infolist():
+        if info.filename.lower().endswith(suffix):
+            return zf.read(info.filename).decode("utf-8", errors="replace")
+    return None
+
+
+def _parse_activities_csv(raw: str) -> list[dict]:
+    """Parse the portal's semicolon-delimited activitiesLog into row dicts."""
+    out: list[dict] = []
+    if not raw:
+        return out
+    lines = raw.split("\n")
+    if not lines:
+        return out
+    for line in lines[1:]:  # skip header
+        if not line:
+            continue
+        cols = line.split(";")
+        if len(cols) < 17:
+            continue
+
+        def _f(idx: int) -> float | None:
+            v = cols[idx]
+            return float(v) if v else None
+
+        out.append(
+            {
+                "day": int(cols[0]) if cols[0] else 0,
+                "timestamp": int(cols[1]) if cols[1] else 0,
+                "product": cols[2],
+                "bidPrices": [v for v in (_f(3), _f(5), _f(7)) if v is not None],
+                "bidVolumes": [v for v in (_f(4), _f(6), _f(8)) if v is not None],
+                "askPrices": [v for v in (_f(9), _f(11), _f(13)) if v is not None],
+                "askVolumes": [v for v in (_f(10), _f(12), _f(14)) if v is not None],
+                "midPrice": _f(15),
+                "profitLoss": _f(16),
+            }
+        )
+    return out
+
+
+def _parse_graph_log(raw: str) -> list[dict]:
+    """Parse `timestamp;value` total-PnL series."""
+    out: list[dict] = []
+    if not raw:
+        return out
+    for line in raw.split("\n")[1:]:
+        if not line:
+            continue
+        parts = line.split(";")
+        if len(parts) != 2:
+            continue
+        try:
+            out.append({"timestamp": int(parts[0]), "value": float(parts[1])})
+        except ValueError:
+            continue
+    return out
+
+
+def _summarize_submission(zip_path: Path) -> dict:
+    """Cheap summary parse for the listing — only reads the small `.json` header."""
+    info: dict = {
+        "name": zip_path.name,
+        "sizeBytes": zip_path.stat().st_size,
+        "mtimeMs": int(zip_path.stat().st_mtime_ns // 1_000_000),
+        "round": None,
+        "status": None,
+        "profit": None,
+        "submissionId": None,
+        "traderName": None,
+    }
+    try:
+        with zipfile.ZipFile(zip_path) as zf:
+            json_text = _zip_member(zf, ".json")
+            if json_text:
+                meta = json.loads(json_text)
+                info["round"] = meta.get("round")
+                info["status"] = meta.get("status")
+                info["profit"] = meta.get("profit")
+            log_text = _zip_member(zf, ".log")
+            if log_text:
+                # only read the prefix to grab submissionId — full log is large
+                head = log_text[:512]
+                m = re.search(r'"submissionId"\s*:\s*"([^"]+)"', head)
+                if m:
+                    info["submissionId"] = m.group(1)
+            for member in zf.infolist():
+                if member.filename.lower().endswith(".py"):
+                    info["traderName"] = member.filename
+                    break
+    except (zipfile.BadZipFile, json.JSONDecodeError, KeyError):
+        pass
+    return info
+
+
+def _load_submission(zip_path: Path) -> dict:
+    """Full parse for the detail view."""
+    with zipfile.ZipFile(zip_path) as zf:
+        json_text = _zip_member(zf, ".json") or "{}"
+        log_text = _zip_member(zf, ".log") or "{}"
+        code_text = _zip_member(zf, ".py") or ""
+
+    meta = json.loads(json_text) if json_text.strip() else {}
+    log = json.loads(log_text) if log_text.strip() else {}
+
+    activities_raw = meta.get("activitiesLog") or log.get("activitiesLog") or ""
+    return {
+        "name": zip_path.name,
+        "summary": {
+            "submissionId": log.get("submissionId"),
+            "round": meta.get("round"),
+            "status": meta.get("status"),
+            "profit": meta.get("profit"),
+            "positions": meta.get("positions", []),
+            "sizeBytes": zip_path.stat().st_size,
+            "mtimeMs": int(zip_path.stat().st_mtime_ns // 1_000_000),
+        },
+        "activities": _parse_activities_csv(activities_raw),
+        "trades": log.get("tradeHistory", []),
+        "pnlSeries": _parse_graph_log(meta.get("graphLog", "")),
+        "ticks": log.get("logs", []),
+        "code": code_text,
+    }
+
+
 class DashboardRequestHandler(SimpleHTTPRequestHandler):
     def translate_path(self, path: str) -> str:
         """Resolve file paths: try the server root first, then the latest run directory."""
@@ -287,6 +450,9 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
             return
         if path.startswith(WORKSHOP_PREFIX):
             self._handle_workshop_get(parsed)
+            return
+        if path.startswith(SUBMISSIONS_PREFIX):
+            self._handle_submissions_get(parsed)
             return
         super().do_GET()
 
@@ -417,6 +583,32 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+            return
+        self.send_error(404)
+
+    # ── Submissions endpoints ───────────────────────────────────────
+
+    def _handle_submissions_get(self, parsed) -> None:
+        route = parsed.path[len(SUBMISSIONS_PREFIX):]
+        if route == "list":
+            self._send_json({"submissions": [_summarize_submission(p) for p in _list_submission_zips()]})
+            return
+        if route == "file":
+            params = parse_qs(parsed.query)
+            name_list = params.get("name", [])
+            if not name_list:
+                self.send_error(400, "missing name")
+                return
+            resolved = _resolve_submission_zip(unquote(name_list[0]))
+            if resolved is None:
+                self.send_error(404)
+                return
+            try:
+                payload = _load_submission(resolved)
+            except (zipfile.BadZipFile, json.JSONDecodeError) as exc:
+                self._send_json({"error": str(exc)}, 500)
+                return
+            self._send_json(payload)
             return
         self.send_error(404)
 

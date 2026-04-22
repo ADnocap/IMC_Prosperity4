@@ -1,8 +1,8 @@
 .DS_Store
+.env.local
 .browser_session/
 .prosperity_token
 .prosperity_refresh
-.env.local
 
 __pycache__/
 *.pyc
@@ -12,18 +12,6 @@ __pycache__/
 
 backtester/.venv/
 tmp/
-submissions/
-analysis_plots/
-probes/
-PRESENTATION_CHECKLIST.md
-zscore_gridsearch.png
-
-gridsearch.py
-gridsearch_fine.py
-tomato_trades_analysis.py
-tutorial_analysis.py
-tutorial_experiments.md
-zscore_gridsearch.py
 
 visualizer/node_modules/
 visualizer/dist/
@@ -36,13 +24,3 @@ prosperity4mcbt.egg-info/
 
 *.log
 !results/**/*.log
-
-# Keep private local strategy/research tooling out of the public repo
-grab_token.py
-submit.py
-DATA_GENERATING_DISTRIBUTIONS.md
-bot_summary.md
-bot_3_maybe_informed.md
-.git_backup_*
-
-*.zip

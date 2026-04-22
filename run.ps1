@@ -87,7 +87,7 @@ $serverReady = $false
 for ($i = 0; $i -lt 20; $i++) {
     Start-Sleep -Milliseconds 200
     try {
-        $null = Invoke-WebRequest -Uri "http://localhost:8001/__prosperity4mcbt__/status.json" -UseBasicParsing -TimeoutSec 1 -ErrorAction Stop
+        $null = Invoke-WebRequest -Uri "http://127.0.0.1:8001/__prosperity4mcbt__/status.json" -UseBasicParsing -TimeoutSec 1 -ErrorAction Stop
         $serverReady = $true
         break
     } catch {}
@@ -108,7 +108,7 @@ $viteReady = $false
 for ($i = 0; $i -lt 60; $i++) {
     Start-Sleep -Seconds 1
     try {
-        $null = Invoke-WebRequest -Uri "http://localhost:5555/" -UseBasicParsing -TimeoutSec 1 -ErrorAction Stop
+        $null = Invoke-WebRequest -Uri "http://127.0.0.1:5555/" -UseBasicParsing -TimeoutSec 1 -ErrorAction Stop
         $viteReady = $true
         break
     } catch {}
