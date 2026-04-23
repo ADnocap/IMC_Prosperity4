@@ -281,9 +281,12 @@ py -3.13 scripts/bt_stats.py traders/round3/a.py 1
 | ------------------- | ------------------------- | ---------------------------------------------------- |
 | Dev iteration       | `prosperity4mcbt --quick` | `prosperity4mcbt traders/round3/a.py --quick --vis`  |
 | Pre-submission eval | `prosperity4mcbt --heavy` | `prosperity4mcbt traders/round3/a.py --heavy`        |
+| Tune params         | `prosperity4opt`          | `prosperity4opt studies/<name>.yaml --fresh`         |
 | Quick sanity check  | `prosperity3bt`           | `prosperity3bt traders/round3/a.py 1`                |
 | Fill breakdown      | `bt_stats.py`             | `py -3.13 scripts/bt_stats.py traders/round3/a.py 1` |
 | Ground truth        | Portal                    | Submit on prosperity.imc.com                         |
+
+For parameter tuning, see [optimizer/README.md](optimizer/README.md) — Bayesian optimization on top of the MC sim with train/val/test seed splits, Deflated Sharpe Ratio, PBO, and fANOVA importance.
 
 ---
 

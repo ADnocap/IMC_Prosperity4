@@ -40,7 +40,17 @@ IMC_trading_hack/
 │   └── prosperity3bt/                 #   Historical CSV replay CLI
 ├── rust_simulator/                    # Rust Monte Carlo simulation engine (one file per asset under src/assets/)
 ├── wasm_compute/                      # Rust/WASM kernels for the Workshop tab (microstructure analytics)
-├── visualizer/                        # Local dashboard frontend (Vite/React) — includes Workshop tab
+├── visualizer/                        # Local dashboard frontend (Vite/React) — Workshop + Optimize tabs
+├── optimizer/                         # Study-based parameter optimization on top of MC
+│   ├── space.py                       #   ParamSpace, constraints, YAML schema
+│   ├── runner.py                      #   MC subprocess orchestration, per-trial PnL arrays
+│   ├── objective.py                   #   Metric registry (mean_pnl, sharpe, cvar_5, ...)
+│   ├── samplers.py                    #   Optuna sampler wrappers (random/TPE/CMA-ES/QMC)
+│   ├── validators.py                  #   DSR, PBO (CSCV), cluster stability, fANOVA importance
+│   ├── study.py                       #   Lifecycle: sample → run → retest → validate → report
+│   ├── cli.py                         #   `prosperity4opt` entry point
+│   └── README.md                      #   Trader contract, YAML schema, interpretation guide
+├── studies/                           # Declarative YAML studies (one per tuning campaign)
 ├── calibration/                       # Bot reverse-engineering, one dir per asset
 │   ├── ANALYSIS_PHILOSOPHY.md         #   Methodology (condition on everything, stat tests)
 │   ├── README.md                      #   Per-asset summary + new-asset workflow
@@ -52,14 +62,16 @@ IMC_trading_hack/
 │   ├── ash_coated_osmium/             #   R1/R2 random-walk
 │   └── intarian_pepper_root/          #   R1/R2 deterministic-drift
 ├── manual/                            # Manual trading challenges (round1/, round2/, round3/)
-├── tmp/                               # All backtest artifacts (gitignored) — MC dashboards, replay logs, ad-hoc outputs
-│   └── backtests/                     #   Default output dir for prosperity4mcbt / prosperity3bt runs
+├── tmp/                               # Backtest + optimizer artifacts
+│   ├── backtests/                     #   Default output dir for prosperity4mcbt / prosperity3bt runs
+│   └── optimizer/                     #   Per-study SQLite + parquet + validators.json (prosperity4opt)
 ├── scripts/                           # Helper utilities
 │   ├── python_strategy_worker.py      #   Rust sim ↔ Python bridge
 │   └── bt_stats.py                    #   Fill analytics wrapper
 ├── CLAUDE.md                          # This file - project context
 ├── BACKTEST.md                        # Backtesting & calibration guide
 ├── DATA_WORKSHOP.md                   # Browser-based data analysis workshop guide
+├── optimizer/README.md                # Parameter-optimization framework guide
 └── PROSPERITY_4_WIKI_COMPLETE.md      # Full game reference
 ```
 
@@ -297,9 +309,31 @@ Post-round-close logs for R1/R2 are in `results/round{1,2}/` (portal sub id as f
 ### Visualization
 
 - Local dashboard: `./run.sh` (macOS/Linux) or `.\run.ps1` (Windows) — starts the Python data server, Vite frontend, and rebuilds WASM if stale. Dashboard at `http://localhost:5555/`.
-- Tabs: **Results** (MC dashboard from `tmp/backtests/`), **Run** (kick off backtests from the browser), **Workshop** (market-microstructure analysis on raw CSV data — see [DATA_WORKSHOP.md](DATA_WORKSHOP.md)).
+- Tabs: **Results** (MC dashboard from `tmp/backtests/`), **Run** (kick off backtests from the browser), **Workshop** (market-microstructure analysis on raw CSV data — see [DATA_WORKSHOP.md](DATA_WORKSHOP.md)), **Calibration** (9-stage bot-calibration discovery pipeline), **Optimize** (parameter-optimization study browser), **Submissions** (portal submission log viewer).
 - The Workshop needs `wasm-pack` (`cargo install wasm-pack`) — its Rust kernels live in `wasm_compute/` and rebuild automatically when the source changes.
 - IMC Prosperity Visualizer: https://jmerle.github.io/imc-prosperity-visualizer/
+
+## Parameter Optimization
+
+See [optimizer/README.md](optimizer/README.md) for the full guide.
+
+TL;DR: declare a study in `studies/<name>.yaml`, point it at a trader that follows the env-var override contract, run `prosperity4opt studies/<name>.yaml --fresh`, and browse results in the Optimize tab. Built on Optuna with honest out-of-sample retest, Deflated Sharpe Ratio multiple-testing correction, Probability of Backtest Overfitting (CSCV), cluster stability, and fANOVA param importance.
+
+```bash
+# Tune a trader.
+prosperity4opt studies/round2_signal_tuning.yaml --fresh
+
+# Outputs under tmp/optimizer/<study_name>/:
+#   study.db           — Optuna SQLite (resumable)
+#   results.parquet    — per-trial params + metrics
+#   validators.json    — DSR / PBO / cluster / importance diagnostics
+#   retest.json        — top-K fresh-seed OOS scores
+#   top_trials.csv     — ranked summary
+```
+
+Trader contract (copy-paste snippet in `optimizer/README.md`): every tunable trader reads its params from a `PARAMS` dict merged with `os.environ["PROSPERITY_PARAMS"]`. Portal submission is unaffected — the env var is never set there, so defaults apply.
+
+`studies/round2_tunable.py` is a reference trader (identical trading logic to the shipped R2, with the contract layered on). Study it before writing a new tunable trader for R3+.
 
 ## Coding Conventions
 

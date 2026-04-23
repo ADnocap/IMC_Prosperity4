@@ -1,17 +1,20 @@
 # IMC Prosperity 4
 
-Algorithmic trading competition workspace with a Rust-backed Monte Carlo backtester and a browser-based market-microstructure analysis workshop.
+Algorithmic trading competition workspace with a Rust-backed Monte Carlo backtester, an Optuna-based parameter optimizer, and a browser-based market-microstructure analysis workshop.
 
 ## Quick Start
 
 ```bash
-# Install backtester
+# Install backtester + optimizer
 cd backtester && pip install -e . && cd ..
 
 # Run Monte Carlo backtest (active round's trader)
 prosperity4mcbt traders/round3/a.py --quick
 
-# Run with dashboard (includes the Data Analysis Workshop tab)
+# Tune trader params via Bayesian optimization
+prosperity4opt studies/round2_signal_tuning.yaml --fresh
+
+# Run with dashboard (Workshop + Optimize + Calibration + Submissions tabs)
 prosperity4mcbt traders/round3/a.py --quick --vis
 
 # Or launch the full dashboard (frontend + data server + WASM compute) directly:
@@ -19,11 +22,14 @@ prosperity4mcbt traders/round3/a.py --quick --vis
 .\run.ps1       # Windows
 ```
 
-Backtest artifacts default to `tmp/backtests/<timestamp>_monte_carlo/dashboard.json` (gitignored). Pass `--out path.json` only when you need a specific path — keep it under `tmp/`.
+Artifacts:
+- Backtest runs → `tmp/backtests/<timestamp>_monte_carlo/dashboard.json`
+- Optimizer studies → `tmp/optimizer/<study_name>/` (SQLite + parquet + validators.json)
 
 See:
 
 - [BACKTEST.md](BACKTEST.md) — full backtesting guide, calibration methodology, flag reference.
+- [optimizer/README.md](optimizer/README.md) — parameter-optimization framework (Optuna + TPE/CMA-ES + anti-overfitting validators).
 - [DATA_WORKSHOP.md](DATA_WORKSHOP.md) — the Workshop tab: 13 market-microstructure panels powered by Rust/WASM kernels. **Load P3 R5 to see every feature light up.**
 
 ## Repo Layout
@@ -44,13 +50,16 @@ IMC_trading_hack/
 ├── backtester/                    # Backtester package (prosperity3bt + prosperity4mcbt CLIs)
 ├── rust_simulator/                # Rust Monte Carlo simulation engine
 ├── wasm_compute/                  # Rust/WASM kernels for the Workshop (13 microstructure kernels)
-├── visualizer/                    # Local dashboard frontend (Vite/React) — includes Workshop tab
+├── visualizer/                    # Local dashboard frontend (Vite/React) — Workshop + Optimize tabs
+├── optimizer/                     # Parameter-optimization framework (Optuna + validators)
+├── studies/                       # Declarative YAML studies (one per tuning campaign)
 ├── calibration/                   # Bot reverse-engineering, one dir per asset (emeralds, tomatoes, ash_coated_osmium, intarian_pepper_root)
 ├── manual/                        # Manual trading challenges (round{1,2,3}/)
-├── tmp/                           # All backtest artifacts (gitignored) — MC dashboards, replay logs
+├── tmp/                           # Backtest + optimizer artifacts (MC dashboards, study DBs)
 ├── scripts/                       # Helper utilities (strategy worker, fill analytics)
 ├── BACKTEST.md                    # Backtesting & calibration guide
 ├── DATA_WORKSHOP.md               # Data Analysis Workshop guide
+├── optimizer/README.md            # Parameter-optimization framework guide
 └── CLAUDE.md                      # Project context for Claude
 ```
 
@@ -69,11 +78,30 @@ All compute in Rust/WASM, dispatched to a Web Worker. Tabs schema-gate themselve
 
 ## Backtesting Tools
 
-| Tool                  | Purpose                          | Speed                 |
-| --------------------- | -------------------------------- | --------------------- |
-| `prosperity4mcbt`     | Monte Carlo simulation (primary) | ~6s quick, ~55s heavy |
-| `prosperity3bt`       | Historical CSV replay            | ~1s                   |
-| `scripts/bt_stats.py` | Fill analytics (maker vs taker)  | ~1s                   |
+| Tool                  | Purpose                                                 | Speed                                       |
+| --------------------- | ------------------------------------------------------- | ------------------------------------------- |
+| `prosperity4mcbt`     | Monte Carlo simulation (primary)                        | ~6s quick, ~55s heavy                       |
+| `prosperity4opt`      | Parameter optimization via Optuna (TPE/CMA-ES/QMC)      | per-study, ~5-60 min depending on scale     |
+| `prosperity3bt`       | Historical CSV replay                                   | ~1s                                         |
+| `scripts/bt_stats.py` | Fill analytics (maker vs taker)                         | ~1s                                         |
+
+## Parameter Optimization
+
+Study-based hyperparameter tuning on top of the Monte Carlo sim. Declare a search space + objective in `studies/<name>.yaml`, point at a trader that reads `os.environ["PROSPERITY_PARAMS"]`, and run:
+
+```bash
+prosperity4opt studies/<name>.yaml --fresh
+```
+
+Features:
+- Samplers: random / TPE (Bayesian) / CMA-ES / QMC (Sobol)
+- Seed splits: per-trial train/val slice + end-of-study retest on fresh test seeds
+- Objectives: `mean_pnl`, `sharpe`, `cvar_5/10`, per-symbol PnL, composable with weights
+- Anti-overfitting validators: Deflated Sharpe Ratio, Probability of Backtest Overfitting (CSCV), cluster stability, fANOVA importance
+- Outputs: resumable SQLite + parquet export + validators.json + top-K CSV
+- Optimize tab in the visualizer: study picker, convergence, importance bar chart, 1D param effects, 2D slice scatter, top-K table
+
+Full schema + interpretation guide in [optimizer/README.md](optimizer/README.md).
 
 ## How the Monte Carlo Works
 
