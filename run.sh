@@ -48,6 +48,15 @@ cleanup() {
 }
 trap cleanup INT TERM
 
+# Millisecond-resolution timestamp. GNU `date +%N` works on Linux/Git Bash but
+# macOS `date` treats %N literally, so fall back to Python (already a project
+# dep) there. Probe once at startup and bind the right implementation.
+if [[ "$(date +%3N 2>/dev/null)" =~ ^[0-9]+$ ]]; then
+    now_ms() { date +%s%3N; }
+else
+    now_ms() { python3 -c 'import time; print(int(time.time() * 1000))'; }
+fi
+
 # Build WASM compute module if stale
 WASM_PKG="$PROJECT_ROOT/visualizer/wasm_compute/wasm_compute_bg.wasm"
 WASM_SRC="$PROJECT_ROOT/wasm_compute/src/lib.rs"
@@ -80,16 +89,19 @@ SERVER_PID=$!
 # Poll until the server actually responds -- silent crashes (bind failures,
 # import errors) otherwise leave the browser spinning on every API call.
 server_ready=0
-for i in $(seq 1 20); do
+server_start_ms=$(now_ms)
+for i in $(seq 1 60); do
     if curl -sSf --max-time 1 "http://127.0.0.1:8001/__prosperity4mcbt__/status.json" > /dev/null 2>&1; then
         server_ready=1
         break
     fi
-    sleep 0.2
+    sleep 0.1
 done
 if [[ $server_ready -eq 0 ]]; then
     echo "Data server did not come up on :8001 -- see $SERVER_LOG and ${SERVER_LOG}.err"
     echo "  Common cause: port still in TIME_WAIT from a previous run. Wait 30s and retry."
+else
+    echo "  data server ready in $(( $(now_ms) - server_start_ms ))ms"
 fi
 
 # Start Vite frontend in background
@@ -98,24 +110,34 @@ VIZ_LOG="$BACKTESTS_DIR/vite.log"
 (cd "$PROJECT_ROOT/visualizer" && npm run dev >"$VIZ_LOG" 2>"${VIZ_LOG}.err") &
 VIZ_PID=$!
 
-# Wait for Vite to actually be ready
+# Wait for Vite to actually be ready. 100ms poll -- warm starts (~600ms) open
+# the browser within a second; cold starts get a 60s budget.
+# Milestones are iteration-based (every ~10s) so macOS doesn't pay the
+# python-now_ms cost on every iteration.
 vite_ready=0
-for i in $(seq 1 60); do
+vite_start_ms=$(now_ms)
+for i in $(seq 1 600); do
     if curl -sSf --max-time 1 http://127.0.0.1:5555/ > /dev/null 2>&1; then
         vite_ready=1
         break
     fi
-    [[ $i -eq 6 ]] && echo "  still waiting on Vite..."
-    sleep 1
+    # Approx every 10s (100 iters * 100ms). First message at ~5s.
+    if (( i == 50 || (i > 50 && (i - 50) % 100 == 0) )); then
+        printf '  still waiting on Vite... (~%ds)\n' $(( i / 10 ))
+    fi
+    sleep 0.1
 done
 if [[ $vite_ready -eq 0 ]]; then
-    echo "Vite did not come up within 60s. Check $VIZ_LOG / ${VIZ_LOG}.err"
-fi
-
-if command -v open &>/dev/null; then
-    open "http://localhost:5555/#/mc?tab=run"
-elif command -v xdg-open &>/dev/null; then
-    xdg-open "http://localhost:5555/#/mc?tab=run"
+    elapsed_s=$(( ($(now_ms) - vite_start_ms) / 1000 ))
+    echo "Vite did not come up within ${elapsed_s}s. Check $VIZ_LOG / ${VIZ_LOG}.err"
+    echo "  Not opening the browser -- Vite isn't listening, so the page will just spin."
+else
+    echo "  vite ready in $(( $(now_ms) - vite_start_ms ))ms"
+    if command -v open &>/dev/null; then
+        open "http://localhost:5555/"
+    elif command -v xdg-open &>/dev/null; then
+        xdg-open "http://localhost:5555/"
+    fi
 fi
 
 echo "Dashboard open at http://localhost:5555/"

@@ -7,6 +7,30 @@ $ErrorActionPreference = "Stop"
 $env:PYTHONIOENCODING = "utf-8"
 $env:PYTHONDONTWRITEBYTECODE = "1"
 
+# TCP socket probe. Much faster + quieter than Invoke-WebRequest on PS 5.1,
+# which has a 2-5s first-call warmup even with -UseBasicParsing and prints
+# to the error stream on timeout. Returns $true iff something is accepting
+# connections on $Port within $TimeoutMs.
+#
+# Dual-stack: tries both IPv4 and IPv6 loopback because Node on Windows 10+
+# resolves "localhost" to `::1` by default, so a process reachable via
+# `localhost` in a browser may not be reachable via `127.0.0.1`.
+function Test-PortOpen {
+    param([int]$Port, [int]$TimeoutMs = 150)
+    foreach ($addr in @('127.0.0.1', '::1')) {
+        $tcp = New-Object System.Net.Sockets.TcpClient
+        try {
+            $task = $tcp.ConnectAsync($addr, $Port)
+            if ($task.Wait($TimeoutMs) -and $tcp.Connected) { return $true }
+        } catch {
+            # fall through to next address
+        } finally {
+            $tcp.Dispose()
+        }
+    }
+    return $false
+}
+
 # Add cargo to PATH
 $cargoPath = "$env:USERPROFILE\.cargo\bin"
 if ($env:PATH -notlike "*$cargoPath*") {
@@ -84,41 +108,50 @@ $serverProcess = Start-Process -FilePath "python" -ArgumentList "-m", "backteste
 # immediate crashes (e.g. bind failures, import errors), so without this the
 # browser just spins on every API call.
 $serverReady = $false
-for ($i = 0; $i -lt 20; $i++) {
-    Start-Sleep -Milliseconds 200
-    try {
-        $null = Invoke-WebRequest -Uri "http://127.0.0.1:8001/__prosperity4mcbt__/status.json" -UseBasicParsing -TimeoutSec 1 -ErrorAction Stop
-        $serverReady = $true
-        break
-    } catch {}
+$serverStart = Get-Date
+for ($i = 0; $i -lt 40; $i++) {
+    if (Test-PortOpen -Port 8001 -TimeoutMs 150) { $serverReady = $true; break }
+    Start-Sleep -Milliseconds 100
 }
 if (-not $serverReady) {
     Write-Host "Data server did not come up on :8001 -- see $serverLog and $serverLog.err" -ForegroundColor Red
     Write-Host "Common cause: port still in TIME_WAIT from a previous run. Wait 30s and retry." -ForegroundColor DarkYellow
+} else {
+    $elapsed = [math]::Round(((Get-Date) - $serverStart).TotalMilliseconds)
+    Write-Host "  data server ready in ${elapsed}ms" -ForegroundColor DarkGray
 }
 
-# Start Vite frontend in background
+# Start Vite frontend in background. `npm.cmd` directly rather than cmd.exe /c
+# shim -- saves a shell layer.
 Write-Host "Starting frontend on :5555 (first run pre-bundles deps -- may take 20-30s)..." -ForegroundColor Cyan
 $vizDir = Join-Path $projectRoot "visualizer"
 $vizLog = Join-Path $backtestsDir "vite.log"
-$vizProcess = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "npm.cmd run dev" -WorkingDirectory $vizDir -PassThru -WindowStyle Hidden -RedirectStandardOutput $vizLog -RedirectStandardError "$vizLog.err"
+$vizProcess = Start-Process -FilePath "npm.cmd" -ArgumentList "run", "dev" -WorkingDirectory $vizDir -PassThru -WindowStyle Hidden -RedirectStandardOutput $vizLog -RedirectStandardError "$vizLog.err"
 
-# Wait for Vite to actually be ready before opening the browser
+# Wait for Vite to actually be ready before opening the browser.
+# Probe-first-then-sleep, 100ms interval, 60s total -- so cold starts still
+# work but a warm start (~600ms) opens the browser within a second.
 $viteReady = $false
-for ($i = 0; $i -lt 60; $i++) {
-    Start-Sleep -Seconds 1
-    try {
-        $null = Invoke-WebRequest -Uri "http://127.0.0.1:5555/" -UseBasicParsing -TimeoutSec 1 -ErrorAction Stop
-        $viteReady = $true
-        break
-    } catch {}
-    if ($i -eq 5) { Write-Host "  still waiting on Vite..." -ForegroundColor DarkGray }
+$viteStart = Get-Date
+$nextNote = 5000   # first "still waiting" message at 5s elapsed
+for ($i = 0; $i -lt 600; $i++) {
+    if (Test-PortOpen -Port 5555 -TimeoutMs 150) { $viteReady = $true; break }
+    $elapsed = ((Get-Date) - $viteStart).TotalMilliseconds
+    if ($elapsed -ge $nextNote) {
+        Write-Host ("  still waiting on Vite... ({0:N0}s)" -f ($elapsed / 1000)) -ForegroundColor DarkGray
+        $nextNote += 10000
+    }
+    Start-Sleep -Milliseconds 100
 }
 if (-not $viteReady) {
-    Write-Host "Vite did not come up within 60s. Check $vizLog / $vizLog.err" -ForegroundColor Red
+    $elapsed = [math]::Round(((Get-Date) - $viteStart).TotalSeconds)
+    Write-Host "Vite did not come up within ${elapsed}s. Check $vizLog / $vizLog.err" -ForegroundColor Red
+    Write-Host "Not opening the browser -- Vite isn't listening, so the page will just spin." -ForegroundColor DarkYellow
+} else {
+    $elapsed = [math]::Round(((Get-Date) - $viteStart).TotalMilliseconds)
+    Write-Host "  vite ready in ${elapsed}ms" -ForegroundColor DarkGray
+    Start-Process "http://localhost:5555/"
 }
-
-Start-Process "http://localhost:5555/#/mc?tab=run"
 Write-Host "Dashboard open at http://localhost:5555/" -ForegroundColor Green
 Write-Host "Server log: $serverLog   Vite log: $vizLog" -ForegroundColor DarkGray
 Write-Host "Press Ctrl+C to stop." -ForegroundColor DarkGray

@@ -6,6 +6,10 @@ export default defineConfig({
   plugins: [react()],
   base: '/',
   server: {
+    // Bind to IPv4 explicitly. Node prefers IPv6 for "localhost" on Windows 10+,
+    // which makes `127.0.0.1:5555` probes (netstat, curl, PS scripts) fail even
+    // though the dev server is reachable from a browser via `localhost`.
+    host: '127.0.0.1',
     port: 5555,
     proxy: {
       '/dashboard.json': 'http://127.0.0.1:8001',
