@@ -9,10 +9,9 @@ __pycache__/
 *.pyo
 *.pyd
 .pytest_cache/
+.ipynb_checkpoints/
 
 backtester/.venv/
-tmp/
-
 visualizer/node_modules/
 visualizer/dist/
 visualizer/wasm_compute/
@@ -22,5 +21,15 @@ wasm_compute/target/
 wasm_compute/Cargo.lock
 prosperity4mcbt.egg-info/
 
+# Ephemeral logs (keep portal post-round-close logs under results/ though).
 *.log
+*.log.err
 !results/**/*.log
+
+# tmp/ is NOT blanket-ignored — we want to track study summaries + MC dashboards
+# as first-class artifacts. Heavy per-session dumps that get regenerated on
+# every run are still excluded below.
+tmp/backtests/*/sessions/
+tmp/backtests/*/sample_paths/
+tmp/backtests/*/static_charts/
+tmp/optimizer/*/trials/
