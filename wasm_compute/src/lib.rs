@@ -14,6 +14,9 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use wasm_bindgen::prelude::*;
 
+mod calibration;
+mod formula_search;
+
 // ── Utilities ───────────────────────────────────────────────────────
 
 fn group_indices(
