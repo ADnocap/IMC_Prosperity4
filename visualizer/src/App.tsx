@@ -10,6 +10,7 @@ import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterP
 import { BasePage } from './pages/base/BasePage.tsx';
 import { CalibrationPage } from './pages/calibration/CalibrationPage.tsx';
 import { MonteCarloPage } from './pages/montecarlo/MonteCarloPage.tsx';
+import { OptimizePage } from './pages/optimize/OptimizePage.tsx';
 import { RunnerPage } from './pages/runner/RunnerPage.tsx';
 import { SubmissionsPage } from './pages/submissions/SubmissionsPage.tsx';
 import { WorkshopPage } from './pages/workshop/WorkshopPage.tsx';
@@ -43,6 +44,7 @@ const router = createBrowserRouter(
         <Route path="run" element={<RunnerPage />} />
         <Route path="workshop" element={<WorkshopPage />} />
         <Route path="calibration" element={<CalibrationPage />} />
+        <Route path="optimize" element={<OptimizePage />} />
         <Route path="submissions" element={<SubmissionsPage />} />
       </Route>
       <Route path="prosperity4mcbt/*" element={<Navigate to="/" replace />} />

@@ -1,0 +1,36 @@
+# Small, fast Phase 2 smoke test — exercises splits + retest + all validators.
+# Uses the R2 tunable trader, portal-UI tick scale (1000) so the sim is cheap.
+#
+# For real tuning, use studies/round2_signal_tuning.yaml (10,000 ticks + more trials).
+
+name: round2_smoke
+trader: studies/round2_tunable.py
+
+sim:
+  train_sessions: 20
+  val_sessions:   10
+  test_sessions:  30
+  ticks_per_day:  1000
+  seed:           42
+  flags:
+    intarian-pepper-root-start-fv: 13000
+
+params:
+  SIGNAL_EDGE_ON:   { type: float, low: 0.08, high: 0.30 }
+  ACO_SOFT_POS:     { type: int,   low: 15,   high: 55 }
+  IPR_ASK_OFFSET_1: { type: int,   low: 4,    high: 12 }
+
+objective:
+  terms:
+    - { name: mean_pnl, weight: 1.0 }
+
+search:
+  sampler: tpe
+  n_trials: 15
+  n_jobs:   2
+  sampler_options:
+    n_startup_trials: 6
+  seed: 1234
+
+report:
+  top_k: 5

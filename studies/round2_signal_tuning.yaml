@@ -1,0 +1,46 @@
+# Tune the R2 OSMIUM signal params + PEPPER first ask tier.
+# Uses the Phase 2 features: train/val split + end-of-study retest + validators.
+#
+# Smoke test (fast):
+#   prosperity4opt studies/round2_signal_tuning.yaml --fresh
+#
+# Longer run (more trials, more sessions, same YAML):
+#   prosperity4opt studies/round2_signal_tuning.yaml --n-trials 200 --n-jobs 4 --fresh
+
+name: round2_signal_tuning
+trader: studies/round2_tunable.py
+
+sim:
+  # Per-trial: 20 train + 10 val in one MC subprocess.
+  train_sessions: 20
+  val_sessions:   10
+  # End-of-study retest of top-K on 60 fresh seeds — honest OOS number.
+  test_sessions:  60
+  # ticks_per_day 10000 = portal final-eval scale. Drop to 1000 for fast iter.
+  ticks_per_day:  10000
+  seed:           42
+  # R2 PEPPER continues drifting from R1 end ~13000.
+  flags:
+    intarian-pepper-root-start-fv: 13000
+
+params:
+  SIGNAL_MIN_COUNT:  { type: int,   low: 100,  high: 1500, log: true }
+  SIGNAL_EDGE_ON:    { type: float, low: 0.08, high: 0.30 }
+  ACO_SOFT_POS:      { type: int,   low: 15,   high: 55 }
+  IPR_ASK_OFFSET_1:  { type: int,   low: 4,    high: 12 }
+
+objective:
+  terms:
+    - { name: mean_pnl, weight: 1.0 }
+    - { name: cvar_10,  weight: 0.1 }   # prefer higher 10th-percentile tail
+
+search:
+  sampler: tpe
+  n_trials: 30
+  n_jobs:   2
+  sampler_options:
+    n_startup_trials: 10
+  seed: 1234
+
+report:
+  top_k: 8

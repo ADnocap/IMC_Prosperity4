@@ -1,0 +1,35 @@
+# Reference study — tunes three params of a minimal OSMIUM maker.
+#
+# Smoke test:
+#   prosperity4opt studies/demo_osmium.yaml --n-trials 20 --sessions 30 --n-jobs 2
+#
+# For a real sweep with meaningful stats:
+#   prosperity4opt studies/demo_osmium.yaml --n-trials 200 --n-jobs 4
+
+name: demo_osmium
+trader: studies/demo_osmium_trader.py
+
+sim:
+  sessions: 100
+  ticks_per_day: 10000
+
+params:
+  MAKE_SPREAD:  { type: int, low: 1, high: 8 }
+  TAKE_EDGE:    { type: int, low: 1, high: 6 }
+  SOFT_POS_CAP: { type: int, low: 10, high: 70 }
+
+objective:
+  terms:
+    - { name: mean_pnl, weight: 1.0 }
+    - { name: cvar_5,   weight: 0.1 }   # prefer higher 5th percentile -> risk penalty
+
+search:
+  sampler: tpe
+  n_trials: 40
+  n_jobs: 2
+  sampler_options:
+    n_startup_trials: 10
+  seed: 42
+
+report:
+  top_k: 10

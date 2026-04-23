@@ -14,6 +14,7 @@ export function Header(): ReactNode {
     { label: 'Run', path: '/run' },
     { label: 'Workshop', path: '/workshop' },
     { label: 'Calibration', path: '/calibration' },
+    { label: 'Optimize', path: '/optimize' },
     { label: 'Submissions', path: '/submissions' },
   ];
 

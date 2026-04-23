@@ -29,6 +29,7 @@ RUNNER_PREFIX = "/__prosperity4mcbt__/runner/"
 WORKSHOP_PREFIX = "/__prosperity4mcbt__/workshop/"
 SUBMISSIONS_PREFIX = "/__prosperity4mcbt__/submissions/"
 CALIBRATION_PREFIX = "/__prosperity4mcbt__/calibration/"
+OPTIMIZER_PREFIX = "/__prosperity4mcbt__/optimizer/"
 
 # ── Runner state (single backtest at a time) ────────────────────────
 _runner_lock = threading.Lock()
@@ -316,6 +317,150 @@ def _resolve_calibration_asset(asset: str) -> str | None:
     return lower
 
 
+# ── Optimizer (parameter-tuning studies) ────────────────────────────
+
+
+def _optimizer_dir() -> Path:
+    return _project_root() / "tmp" / "optimizer"
+
+
+def _list_optimizer_studies() -> list[dict[str, object]]:
+    """Enumerate studies under tmp/optimizer/<name>/ and summarize each.
+
+    A valid study has at least `study.db`. The richer fields (results.parquet,
+    validators.json, retest.json) are optional — studies that crashed mid-run
+    may only have the DB. The UI degrades gracefully when pieces are missing.
+    """
+    root = _optimizer_dir()
+    if not root.is_dir():
+        return []
+    out: list[dict[str, object]] = []
+    for entry in sorted(root.iterdir(), reverse=True):
+        if not entry.is_dir():
+            continue
+        db_path = entry / "study.db"
+        if not db_path.is_file():
+            continue
+        parquet_path = entry / "results.parquet"
+        validators_path = entry / "validators.json"
+        retest_path = entry / "retest.json"
+        top_csv_path = entry / "top_trials.csv"
+
+        n_trials: int | None = None
+        best_value: float | None = None
+        best_test_score: float | None = None
+        if parquet_path.is_file():
+            try:
+                import pandas as pd  # imported lazily so the server starts without pandas available
+
+                df = pd.read_parquet(parquet_path)
+                n_trials = int(len(df))
+                finished = df[df.get("state", "") == "COMPLETE"] if "state" in df else df
+                if "value" in finished.columns and not finished.empty:
+                    max_val = finished["value"].max()
+                    best_value = float(max_val) if max_val == max_val else None
+                if "test_score" in finished.columns and finished["test_score"].notna().any():
+                    max_test = finished["test_score"].max()
+                    best_test_score = float(max_test) if max_test == max_test else None
+            except Exception:
+                # Corrupt or locked — skip rich summary, keep minimal fields.
+                pass
+
+        out.append({
+            "name": entry.name,
+            "hasParquet": parquet_path.is_file(),
+            "hasValidators": validators_path.is_file(),
+            "hasRetest": retest_path.is_file(),
+            "hasTopCsv": top_csv_path.is_file(),
+            "mtimeMs": int(db_path.stat().st_mtime_ns // 1_000_000),
+            "dbSizeBytes": int(db_path.stat().st_size),
+            "nTrials": n_trials,
+            "bestValue": best_value,
+            "bestTestScore": best_test_score,
+        })
+    return out
+
+
+def _resolve_optimizer_study(name: str) -> Path | None:
+    """Validate and return the study directory path."""
+    if not name or "/" in name or "\\" in name or name.startswith(".."):
+        return None
+    candidate = _optimizer_dir() / name
+    if not candidate.is_dir() or not (candidate / "study.db").is_file():
+        return None
+    return candidate
+
+
+def _sanitize_for_json(obj):
+    """Recursively replace NaN/Inf floats with None.
+
+    Python's `json.dumps` emits `NaN` / `Infinity` as literals by default —
+    those are NOT valid JSON and `JSON.parse` in the browser rejects the
+    entire document, leaving axios with no usable response. Pandas
+    DataFrames converted via `to_dict('records')` happily carry NaN through
+    as Python floats, so we have to sweep them out before serializing.
+    """
+    import math
+
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    if isinstance(obj, dict):
+        return {k: _sanitize_for_json(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize_for_json(v) for v in obj]
+    return obj
+
+
+def _load_optimizer_study(study_dir: Path) -> dict[str, object]:
+    """Bundle study artifacts into a single JSON payload for the UI.
+
+    Parquet trials table → list of dicts. Param names are also extracted as a
+    sorted list so the UI can build per-param scatters without mining column
+    names out of each row.
+    """
+    import pandas as pd
+
+    payload: dict[str, object] = {"name": study_dir.name}
+    parquet_path = study_dir / "results.parquet"
+    if parquet_path.is_file():
+        df = pd.read_parquet(parquet_path)
+        # Cast to object first so the NaN-to-None conversion survives
+        # to_dict — float columns with NaN would otherwise keep float('nan')
+        # in the output records.
+        df = df.astype(object).where(df.notna(), None)
+        rows = df.to_dict(orient="records")
+        payload["trials"] = rows
+        param_cols = sorted(c for c in df.columns if c.startswith("params_"))
+        payload["paramNames"] = [c[len("params_"):] for c in param_cols]
+    else:
+        payload["trials"] = []
+        payload["paramNames"] = []
+
+    validators_path = study_dir / "validators.json"
+    if validators_path.is_file():
+        try:
+            payload["validators"] = json.loads(validators_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            payload["validators"] = None
+    else:
+        payload["validators"] = None
+
+    retest_path = study_dir / "retest.json"
+    if retest_path.is_file():
+        try:
+            payload["retest"] = json.loads(retest_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            payload["retest"] = None
+    else:
+        payload["retest"] = None
+
+    # Defence in depth: any NaN/Inf that slipped through (nested pandas dtypes,
+    # stray numpy scalars) still gets neutralized before the browser sees it.
+    return _sanitize_for_json(payload)
+
+
 # ── Submissions (portal-backtester zips) ────────────────────────────
 
 
@@ -512,6 +657,9 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
             return
         if path.startswith(CALIBRATION_PREFIX):
             self._handle_calibration_get(parsed)
+            return
+        if path.startswith(OPTIMIZER_PREFIX):
+            self._handle_optimizer_get(parsed)
             return
         super().do_GET()
 
@@ -732,6 +880,32 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
         target = target_dir / "params.json"
         target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         self._send_json({"ok": True, "path": str(target.relative_to(_project_root())).replace("\\", "/")})
+
+    # ── Optimizer endpoints ─────────────────────────────────────────
+
+    def _handle_optimizer_get(self, parsed) -> None:
+        route = parsed.path[len(OPTIMIZER_PREFIX):]
+        if route == "list":
+            self._send_json({"studies": _list_optimizer_studies()})
+            return
+        if route == "study":
+            params = parse_qs(parsed.query)
+            name_list = params.get("name", [])
+            if not name_list:
+                self.send_error(400, "missing name")
+                return
+            study_dir = _resolve_optimizer_study(unquote(name_list[0]))
+            if study_dir is None:
+                self.send_error(404)
+                return
+            try:
+                payload = _load_optimizer_study(study_dir)
+            except Exception as exc:
+                self._send_json({"error": str(exc)}, 500)
+                return
+            self._send_json(payload)
+            return
+        self.send_error(404)
 
     def _handle_runner_post(self, path: str) -> None:
         route = path[len(RUNNER_PREFIX):]
