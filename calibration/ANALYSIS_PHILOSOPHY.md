@@ -1,5 +1,7 @@
 # Calibration Analysis Philosophy
 
+The rules below are the methodology behind every calibrated `params.json` in this directory. They are now also baked into the 9-stage Calibration tab (`visualizer/src/pages/calibration/`) and its WASM stats kernels (`wasm_compute/src/calibration.rs`) — conditional checks in Stage 3 (volume), stat-tests everywhere (Ljung-Box, runs, Geometric KS, χ²), Fisher + BH-FDR combined validation in Stage 7, and Occam-favouring formula selection in Stage 2.
+
 ## The Cardinal Rule: Never Look at Marginals
 
 When reverse-engineering a data-generating process, **never examine a variable in isolation**. Always condition on every other known variable.
