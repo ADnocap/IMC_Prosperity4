@@ -8,6 +8,7 @@ import { createTheme, MantineProvider } from '@mantine/core';
 import { ReactNode } from 'react';
 import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterProvider } from 'react-router-dom';
 import { BasePage } from './pages/base/BasePage.tsx';
+import { CalibrationPage } from './pages/calibration/CalibrationPage.tsx';
 import { MonteCarloPage } from './pages/montecarlo/MonteCarloPage.tsx';
 import { RunnerPage } from './pages/runner/RunnerPage.tsx';
 import { SubmissionsPage } from './pages/submissions/SubmissionsPage.tsx';
@@ -41,6 +42,7 @@ const router = createBrowserRouter(
         <Route index element={<MonteCarloPage />} />
         <Route path="run" element={<RunnerPage />} />
         <Route path="workshop" element={<WorkshopPage />} />
+        <Route path="calibration" element={<CalibrationPage />} />
         <Route path="submissions" element={<SubmissionsPage />} />
       </Route>
       <Route path="prosperity4mcbt/*" element={<Navigate to="/" replace />} />

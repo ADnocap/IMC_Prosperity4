@@ -13,6 +13,7 @@ export function Header(): ReactNode {
     { label: 'Results', path: '/' },
     { label: 'Run', path: '/run' },
     { label: 'Workshop', path: '/workshop' },
+    { label: 'Calibration', path: '/calibration' },
     { label: 'Submissions', path: '/submissions' },
   ];
 
