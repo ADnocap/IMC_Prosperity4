@@ -22,14 +22,14 @@ wasm_compute/Cargo.lock
 prosperity4mcbt.egg-info/
 
 # Ephemeral logs (keep portal post-round-close logs under results/ though).
+# Server startup + Vite HMR noise isn't worth tracking; these patterns reach
+# into tmp/ too and that's intentional.
 *.log
 *.log.err
 !results/**/*.log
 
-# tmp/ is NOT blanket-ignored — we want to track study summaries + MC dashboards
-# as first-class artifacts. Heavy per-session dumps that get regenerated on
-# every run are still excluded below.
-tmp/backtests/*/sessions/
-tmp/backtests/*/sample_paths/
-tmp/backtests/*/static_charts/
-tmp/optimizer/*/trials/
+# tmp/backtests/ and tmp/optimizer/ are fully tracked so teammates can browse
+# each other's runs after a pull. Timestamped directory names mean no
+# cross-user collisions. Yes, this grows the repo — if it ever becomes a
+# problem, prune old runs with a dedicated cleanup commit rather than
+# gitignoring them.
