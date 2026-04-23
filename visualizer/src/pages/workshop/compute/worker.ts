@@ -1,4 +1,5 @@
 import init, {
+  computeAutocorr,
   computeCorrMatrix,
   computeDepth,
   computeEffRealized,
@@ -10,6 +11,8 @@ import init, {
   computeOfi,
   computePairSpread,
   computeQueueImbalance,
+  computeRealizedVol,
+  computeRollingBeta,
   computeSeasonality,
   computeSpread,
 } from '../../../../wasm_compute/wasm_compute.js';
@@ -216,6 +219,34 @@ function runTask(request: WorkerRequest): TaskOutput {
         task.input.ask1,
       );
       return { kind: 'seasonality', output };
+    }
+    case 'realizedVol': {
+      const meta = {
+        productsAllowed: task.input.productsAllowed,
+        products: task.input.products,
+        window: task.input.window,
+      };
+      const output = computeRealizedVol(meta, task.input.times, task.input.mids);
+      return { kind: 'realizedVol', output };
+    }
+    case 'autocorr': {
+      const meta = {
+        productsAllowed: task.input.productsAllowed,
+        products: task.input.products,
+        maxLag: task.input.maxLag,
+      };
+      const output = computeAutocorr(meta, task.input.times, task.input.mids);
+      return { kind: 'autocorr', output };
+    }
+    case 'rollingBeta': {
+      const meta = {
+        products: task.input.products,
+        productA: task.input.productA,
+        productB: task.input.productB,
+        window: task.input.window,
+      };
+      const output = computeRollingBeta(meta, task.input.times, task.input.mids);
+      return { kind: 'rollingBeta', output };
     }
   }
 }

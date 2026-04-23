@@ -1197,6 +1197,323 @@ pub fn compute_obs_beta(
     Ok(serde_wasm_bindgen::to_value(&out)?)
 }
 
+// ── Realized volatility (rolling stdev of tick returns) ────────────
+
+#[derive(Deserialize)]
+struct RealizedVolMetaJs {
+    #[serde(rename = "productsAllowed")] products_allowed: Option<Vec<String>>,
+    products: Vec<String>,
+    window: usize,
+}
+
+#[derive(Serialize)]
+struct RealizedVolOut {
+    product: String,
+    n: u32,
+    mean: f64,
+    p05: f64,
+    p50: f64,
+    p95: f64,
+    #[serde(rename = "timeSeries")] time_series: Vec<[f64; 2]>,
+}
+
+#[wasm_bindgen(js_name = computeRealizedVol)]
+pub fn compute_realized_vol(
+    meta: JsValue,
+    times: Float64Array,
+    mids: Float64Array,
+) -> Result<JsValue, JsValue> {
+    let meta: RealizedVolMetaJs = serde_wasm_bindgen::from_value(meta)?;
+    let times = times.to_vec();
+    let mids = mids.to_vec();
+    let window = meta.window.max(2);
+    let groups = group_indices(&meta.products, &meta.products_allowed);
+
+    let mut out: Vec<RealizedVolOut> = Vec::new();
+    for (product, indices) in groups {
+        // Per-product return series: (time_at_row, Δmid vs previous same-product row).
+        let mut returns: Vec<(f64, f64)> = Vec::with_capacity(indices.len());
+        let mut prev_mid: Option<f64> = None;
+        for &i in &indices {
+            let t = times[i];
+            let m = mids[i];
+            if !finite(t) || !finite(m) { continue; }
+            if let Some(p) = prev_mid {
+                returns.push((t, m - p));
+            }
+            prev_mid = Some(m);
+        }
+        if returns.len() < window + 1 { continue; }
+
+        // Rolling sum / sum-of-squares — O(N) with a single pass.
+        let mut sum = 0.0_f64;
+        let mut sum2 = 0.0_f64;
+        for i in 0..window {
+            let r = returns[i].1;
+            sum += r;
+            sum2 += r * r;
+        }
+        let mut sd_series: Vec<[f64; 2]> = Vec::with_capacity(returns.len() - window + 1);
+        let mut sd_values: Vec<f64> = Vec::with_capacity(returns.len() - window + 1);
+        let w = window as f64;
+        // First window ends at index window-1.
+        let emit = |t: f64, sum: f64, sum2: f64, bucket: &mut Vec<[f64; 2]>, bucket_v: &mut Vec<f64>| {
+            let mu = sum / w;
+            // Sample variance: (Σx² − n·μ²) / (n − 1). Guard against tiny negatives from FP drift.
+            let var = ((sum2 - w * mu * mu) / (w - 1.0)).max(0.0);
+            let sd = var.sqrt();
+            bucket.push([t, sd]);
+            bucket_v.push(sd);
+        };
+        emit(returns[window - 1].0, sum, sum2, &mut sd_series, &mut sd_values);
+        for i in window..returns.len() {
+            let add = returns[i].1;
+            let drop = returns[i - window].1;
+            sum += add - drop;
+            sum2 += add * add - drop * drop;
+            emit(returns[i].0, sum, sum2, &mut sd_series, &mut sd_values);
+        }
+        if sd_values.is_empty() { continue; }
+        let mu = mean(&sd_values);
+        let mut sorted = sd_values.clone();
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        out.push(RealizedVolOut {
+            product,
+            n: sd_values.len() as u32,
+            mean: mu,
+            p05: quantile_sorted(&sorted, 0.05),
+            p50: quantile_sorted(&sorted, 0.5),
+            p95: quantile_sorted(&sorted, 0.95),
+            time_series: decimate(&sd_series, 5000),
+        });
+    }
+    out.sort_by(|a, b| a.product.cmp(&b.product));
+    Ok(serde_wasm_bindgen::to_value(&out)?)
+}
+
+// ── Return autocorrelation + Ljung-Box ──────────────────────────────
+//
+// ACF(k) = corr(r_t, r_{t+k}) with a single shared mean. Bartlett-bound CI
+// ≈ ±1.96/√n. Ljung-Box Q = n(n+2)·Σ ρ_k² / (n−k), tested against χ²(max_lag)
+// via the Wilson-Hilferty approximation (df ≥ 2 ⇒ <1% error in the tail).
+
+#[derive(Deserialize)]
+struct AutocorrMetaJs {
+    #[serde(rename = "productsAllowed")] products_allowed: Option<Vec<String>>,
+    products: Vec<String>,
+    #[serde(rename = "maxLag")] max_lag: usize,
+}
+
+#[derive(Serialize)]
+struct AutocorrOut {
+    product: String,
+    n: u32,
+    lags: Vec<u32>,
+    acf: Vec<f64>,
+    #[serde(rename = "ciUpper")] ci_upper: f64,
+    #[serde(rename = "ciLower")] ci_lower: f64,
+    #[serde(rename = "ljungBoxQ")] ljung_box_q: f64,
+    #[serde(rename = "ljungBoxP")] ljung_box_p: f64,
+}
+
+fn standard_normal_cdf(z: f64) -> f64 {
+    // Abramowitz & Stegun 7.1.26 — max error ≈ 1.5e-7.
+    let sign = if z < 0.0 { -1.0 } else { 1.0 };
+    let x = z.abs() / std::f64::consts::SQRT_2;
+    let t = 1.0 / (1.0 + 0.3275911 * x);
+    let erf = 1.0 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t
+        - 0.284496736) * t + 0.254829592) * t * (-x * x).exp();
+    0.5 * (1.0 + sign * erf)
+}
+
+fn chi2_upper_p(q: f64, df: f64) -> f64 {
+    if df <= 0.0 || !q.is_finite() || q < 0.0 { return 1.0; }
+    // Wilson-Hilferty: (χ²/df)^(1/3) is approx. Normal(1 − 2/9df, 2/9df).
+    let h = 2.0 / (9.0 * df);
+    let z = ((q / df).powf(1.0 / 3.0) - (1.0 - h)) / h.sqrt();
+    (1.0 - standard_normal_cdf(z)).clamp(0.0, 1.0)
+}
+
+#[wasm_bindgen(js_name = computeAutocorr)]
+pub fn compute_autocorr(
+    meta: JsValue,
+    _times: Float64Array,
+    mids: Float64Array,
+) -> Result<JsValue, JsValue> {
+    let meta: AutocorrMetaJs = serde_wasm_bindgen::from_value(meta)?;
+    let mids = mids.to_vec();
+    let max_lag = meta.max_lag.max(1);
+    let groups = group_indices(&meta.products, &meta.products_allowed);
+
+    let mut out: Vec<AutocorrOut> = Vec::new();
+    for (product, indices) in groups {
+        let mut returns: Vec<f64> = Vec::with_capacity(indices.len());
+        let mut prev_mid: Option<f64> = None;
+        for &i in &indices {
+            let m = mids[i];
+            if !finite(m) { continue; }
+            if let Some(p) = prev_mid {
+                returns.push(m - p);
+            }
+            prev_mid = Some(m);
+        }
+        let n = returns.len();
+        if n <= max_lag + 10 { continue; }
+
+        let mu = mean(&returns);
+        let mut ss0 = 0.0_f64;
+        for &r in &returns { let d = r - mu; ss0 += d * d; }
+        if ss0 == 0.0 { continue; }
+
+        let mut lags: Vec<u32> = Vec::with_capacity(max_lag);
+        let mut acf: Vec<f64> = Vec::with_capacity(max_lag);
+        let mut q_sum = 0.0_f64;
+        for k in 1..=max_lag {
+            let mut num = 0.0_f64;
+            for i in 0..(n - k) {
+                num += (returns[i] - mu) * (returns[i + k] - mu);
+            }
+            let rho = num / ss0;
+            lags.push(k as u32);
+            acf.push(rho);
+            q_sum += rho * rho / ((n - k) as f64);
+        }
+        let nf = n as f64;
+        let ljung_q = nf * (nf + 2.0) * q_sum;
+        let ljung_p = chi2_upper_p(ljung_q, max_lag as f64);
+        let ci = 1.96 / nf.sqrt();
+        out.push(AutocorrOut {
+            product,
+            n: n as u32,
+            lags,
+            acf,
+            ci_upper: ci,
+            ci_lower: -ci,
+            ljung_box_q: ljung_q,
+            ljung_box_p: ljung_p,
+        });
+    }
+    out.sort_by(|a, b| a.product.cmp(&b.product));
+    Ok(serde_wasm_bindgen::to_value(&out)?)
+}
+
+// ── Rolling β (pair of products) ────────────────────────────────────
+//
+// Align midA / midB on matching timestamps (same merge-join pattern as
+// pairSpread), diff to get return series, then slide a window computing
+// OLS slope of returnsA on returnsB plus rolling R² = corr².
+
+#[derive(Deserialize)]
+struct RollingBetaMetaJs {
+    products: Vec<String>,
+    #[serde(rename = "productA")] product_a: String,
+    #[serde(rename = "productB")] product_b: String,
+    window: usize,
+}
+
+#[derive(Serialize)]
+struct RollingBetaOut {
+    #[serde(rename = "betaSeries")] beta_series: Vec<[f64; 2]>,
+    #[serde(rename = "r2Series")] r2_series: Vec<[f64; 2]>,
+    #[serde(rename = "fullBeta")] full_beta: f64,
+    #[serde(rename = "fullR2")] full_r2: f64,
+    n: u32,
+}
+
+#[wasm_bindgen(js_name = computeRollingBeta)]
+pub fn compute_rolling_beta(
+    meta: JsValue,
+    times: Float64Array,
+    mids: Float64Array,
+) -> Result<JsValue, JsValue> {
+    let meta: RollingBetaMetaJs = serde_wasm_bindgen::from_value(meta)?;
+    let times = times.to_vec();
+    let mids = mids.to_vec();
+
+    let mut a_map: HashMap<u64, f64> = HashMap::new();
+    let mut b_map: HashMap<u64, f64> = HashMap::new();
+    for i in 0..meta.products.len() {
+        let t = times[i]; let m = mids[i];
+        if !finite(t) || !finite(m) { continue; }
+        let k = t.to_bits();
+        if meta.products[i] == meta.product_a { a_map.insert(k, m); }
+        if meta.products[i] == meta.product_b { b_map.insert(k, m); }
+    }
+    let mut aligned: Vec<(f64, f64, f64)> = a_map.iter()
+        .filter_map(|(k, &va)| b_map.get(k).map(|&vb| (f64::from_bits(*k), va, vb)))
+        .collect();
+    aligned.sort_by(|x, y| x.0.partial_cmp(&y.0).unwrap_or(std::cmp::Ordering::Equal));
+
+    let window = meta.window.max(10);
+    if aligned.len() < window + 2 {
+        return Ok(serde_wasm_bindgen::to_value(&RollingBetaOut {
+            beta_series: Vec::new(),
+            r2_series: Vec::new(),
+            full_beta: 0.0,
+            full_r2: 0.0,
+            n: 0,
+        })?);
+    }
+
+    let n_rets = aligned.len() - 1;
+    let mut ts: Vec<f64> = Vec::with_capacity(n_rets);
+    let mut ra: Vec<f64> = Vec::with_capacity(n_rets);
+    let mut rb: Vec<f64> = Vec::with_capacity(n_rets);
+    for i in 1..aligned.len() {
+        ts.push(aligned[i].0);
+        ra.push(aligned[i].1 - aligned[i - 1].1);
+        rb.push(aligned[i].2 - aligned[i - 1].2);
+    }
+
+    let (full_beta, _) = ols(&rb, &ra);
+    let full_r = pearson(&rb, &ra);
+
+    // Rolling OLS / Pearson via sliding sums. O(N) after the initial window.
+    let mut beta_series: Vec<[f64; 2]> = Vec::new();
+    let mut r2_series: Vec<[f64; 2]> = Vec::new();
+    if n_rets >= window {
+        let w = window as f64;
+        let (mut sa, mut sb) = (0.0_f64, 0.0_f64);
+        let (mut saa, mut sbb, mut sab) = (0.0_f64, 0.0_f64, 0.0_f64);
+        for i in 0..window {
+            sa += ra[i]; sb += rb[i];
+            saa += ra[i] * ra[i]; sbb += rb[i] * rb[i]; sab += ra[i] * rb[i];
+        }
+        let push = |ts: &[f64], idx: usize,
+                    sa: f64, sb: f64, saa: f64, sbb: f64, sab: f64,
+                    beta: &mut Vec<[f64; 2]>, r2: &mut Vec<[f64; 2]>| {
+            let ma = sa / w;
+            let mb = sb / w;
+            let cov = sab - w * ma * mb;
+            let var_b = sbb - w * mb * mb;
+            let var_a = saa - w * ma * ma;
+            let slope = if var_b > 0.0 { cov / var_b } else { 0.0 };
+            let r = if var_a > 0.0 && var_b > 0.0 { cov / (var_a * var_b).sqrt() } else { 0.0 };
+            beta.push([ts[idx], slope]);
+            r2.push([ts[idx], r * r]);
+        };
+        push(&ts, window - 1, sa, sb, saa, sbb, sab, &mut beta_series, &mut r2_series);
+        for i in window..n_rets {
+            let add_a = ra[i]; let add_b = rb[i];
+            let drop_a = ra[i - window]; let drop_b = rb[i - window];
+            sa += add_a - drop_a;
+            sb += add_b - drop_b;
+            saa += add_a * add_a - drop_a * drop_a;
+            sbb += add_b * add_b - drop_b * drop_b;
+            sab += add_a * add_b - drop_a * drop_b;
+            push(&ts, i, sa, sb, saa, sbb, sab, &mut beta_series, &mut r2_series);
+        }
+    }
+
+    Ok(serde_wasm_bindgen::to_value(&RollingBetaOut {
+        beta_series: decimate(&beta_series, 5000),
+        r2_series: decimate(&r2_series, 5000),
+        full_beta,
+        full_r2: full_r * full_r,
+        n: n_rets as u32,
+    })?)
+}
+
 // ── Seasonality: per-product stats by intraday bucket ──────────────
 
 #[derive(Deserialize)]

@@ -19,6 +19,7 @@ import { VisualizerCard } from '../visualizer/VisualizerCard.tsx';
 import { concatTables, ConcatenatedTable } from './concat.ts';
 import { preparePrices, prepareTrades } from './compute/project.ts';
 import { fetchTree, loadTable } from './loader.ts';
+import { AutocorrPanel } from './panels/AutocorrPanel.tsx';
 import { CorrMatrixPanel } from './panels/CorrMatrixPanel.tsx';
 import { CounterpartyPivot } from './panels/CounterpartyPivot.tsx';
 import { DepthAreaPanel } from './panels/DepthAreaPanel.tsx';
@@ -32,6 +33,8 @@ import { OffsetFromMidPanel } from './panels/OffsetFromMidPanel.tsx';
 import { OfiPanel } from './panels/OfiPanel.tsx';
 import { PairSpreadPanel } from './panels/PairSpreadPanel.tsx';
 import { QueueImbalancePanel } from './panels/QueueImbalancePanel.tsx';
+import { RealizedVolPanel } from './panels/RealizedVolPanel.tsx';
+import { RollingBetaPanel } from './panels/RollingBetaPanel.tsx';
 import { SchemaCard } from './panels/SchemaCard.tsx';
 import { SeasonalityPanel } from './panels/SeasonalityPanel.tsx';
 import { SpreadPanel } from './panels/SpreadPanel.tsx';
@@ -304,6 +307,9 @@ export function WorkshopPage(): ReactNode {
               <Tabs.Tab value="cross" disabled={preparedPrices === null || availableProducts.length < 2}>
                 Cross-Asset
               </Tabs.Tab>
+              <Tabs.Tab value="returns" disabled={preparedPrices === null}>
+                Returns
+              </Tabs.Tab>
               <Tabs.Tab value="exogenous" disabled={preparedPrices === null || observationsTable === null}>
                 Exogenous
               </Tabs.Tab>
@@ -381,6 +387,20 @@ export function WorkshopPage(): ReactNode {
                 </Grid.Col>
                 <Grid.Col span={12}>
                   <PairSpreadPanel prices={preparedPrices} products={activeProducts} />
+                </Grid.Col>
+                <Grid.Col span={12}>
+                  <RollingBetaPanel prices={preparedPrices} products={activeProducts} />
+                </Grid.Col>
+              </Grid>
+            </Tabs.Panel>
+
+            <Tabs.Panel value="returns" pt="sm">
+              <Grid>
+                <Grid.Col span={12}>
+                  <RealizedVolPanel prepared={preparedPrices} products={activeProducts} />
+                </Grid.Col>
+                <Grid.Col span={12}>
+                  <AutocorrPanel prepared={preparedPrices} products={activeProducts} />
                 </Grid.Col>
               </Grid>
             </Tabs.Panel>

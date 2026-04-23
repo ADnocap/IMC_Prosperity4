@@ -272,6 +272,66 @@ export interface ObsBetaCell {
 
 export type ObsBetaOutput = ObsBetaCell[];
 
+// ── Realized vol / autocorrelation / rolling β ─────────────────────
+
+export interface RealizedVolInput {
+  productsAllowed: string[] | null;
+  products: string[];
+  times: Float64Array;
+  mids: Float64Array;
+  window: number;           // rows
+}
+
+export interface RealizedVolProduct {
+  product: string;
+  n: number;
+  mean: number;
+  p05: number;
+  p50: number;
+  p95: number;
+  timeSeries: [number, number][];
+}
+
+export type RealizedVolOutput = RealizedVolProduct[];
+
+export interface AutocorrInput {
+  productsAllowed: string[] | null;
+  products: string[];
+  times: Float64Array;
+  mids: Float64Array;
+  maxLag: number;
+}
+
+export interface AutocorrProduct {
+  product: string;
+  n: number;
+  lags: number[];
+  acf: number[];
+  ciUpper: number;          // ±1.96/√n Bartlett band
+  ciLower: number;
+  ljungBoxQ: number;
+  ljungBoxP: number;        // upper-tail χ²(maxLag) p-value
+}
+
+export type AutocorrOutput = AutocorrProduct[];
+
+export interface RollingBetaInput {
+  products: string[];
+  times: Float64Array;
+  mids: Float64Array;
+  productA: string;
+  productB: string;
+  window: number;           // rows of aligned returns
+}
+
+export interface RollingBetaOutput {
+  betaSeries: [number, number][];
+  r2Series: [number, number][];
+  fullBeta: number;
+  fullR2: number;
+  n: number;
+}
+
 // ── Seasonality ────────────────────────────────────────────────────
 
 export interface SeasonalityInput {
@@ -299,7 +359,8 @@ export type TaskKind =
   | 'mid' | 'spread' | 'depth' | 'queueImbalance' | 'ofi'
   | 'markout' | 'offset' | 'effRealized'
   | 'corrMatrix' | 'leadLag' | 'pairSpread'
-  | 'obsBeta' | 'seasonality';
+  | 'obsBeta' | 'seasonality'
+  | 'realizedVol' | 'autocorr' | 'rollingBeta';
 
 export type TaskInput =
   | { kind: 'mid'; input: MidInput }
@@ -314,7 +375,10 @@ export type TaskInput =
   | { kind: 'leadLag'; input: LeadLagInput }
   | { kind: 'pairSpread'; input: PairSpreadInput }
   | { kind: 'obsBeta'; input: ObsBetaInput }
-  | { kind: 'seasonality'; input: SeasonalityInput };
+  | { kind: 'seasonality'; input: SeasonalityInput }
+  | { kind: 'realizedVol'; input: RealizedVolInput }
+  | { kind: 'autocorr'; input: AutocorrInput }
+  | { kind: 'rollingBeta'; input: RollingBetaInput };
 
 export type TaskOutput =
   | { kind: 'mid'; output: MidOutput }
@@ -329,7 +393,10 @@ export type TaskOutput =
   | { kind: 'leadLag'; output: LeadLagOutput }
   | { kind: 'pairSpread'; output: PairSpreadOutput }
   | { kind: 'obsBeta'; output: ObsBetaOutput }
-  | { kind: 'seasonality'; output: SeasonalityOutput };
+  | { kind: 'seasonality'; output: SeasonalityOutput }
+  | { kind: 'realizedVol'; output: RealizedVolOutput }
+  | { kind: 'autocorr'; output: AutocorrOutput }
+  | { kind: 'rollingBeta'; output: RollingBetaOutput };
 
 export interface WorkerRequest {
   id: number;
