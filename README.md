@@ -5,8 +5,8 @@ Algorithmic trading competition workspace with a Rust-backed Monte Carlo backtes
 ## Quick Start
 
 ```bash
-# Install backtester + optimizer
-cd backtester && pip install -e . && cd ..
+# Install backtester + optimizer (pyproject.toml is at the repo root)
+pip install -e .
 
 # Run Monte Carlo backtest (active round's trader)
 prosperity4mcbt traders/round3/a.py --quick
@@ -29,7 +29,7 @@ Artifacts:
 See:
 
 - [BACKTEST.md](BACKTEST.md) — full backtesting guide, calibration methodology, flag reference.
-- [optimizer/README.md](optimizer/README.md) — parameter-optimization framework (Optuna + TPE/CMA-ES + anti-overfitting validators).
+- [OPTIMIZER.md](OPTIMIZER.md) — parameter-optimization framework (Optuna + TPE/CMA-ES + anti-overfitting validators).
 - [DATA_WORKSHOP.md](DATA_WORKSHOP.md) — the Workshop tab: 13 market-microstructure panels powered by Rust/WASM kernels. **Load P3 R5 to see every feature light up.**
 
 ## Repo Layout
@@ -43,7 +43,6 @@ IMC_trading_hack/
 │   ├── datamodel.py               #   Official Prosperity 4 data model
 │   └── trader_hold1.py            #   Hold-1-unit FV-extraction strategy
 ├── results/round{1,2,3}/          # Post-round-close submission snapshots (.png / .log / .json)
-├── analysis/round{1,2,3}/         # Market-data analysis scripts + findings per round
 ├── data/
 │   ├── prosperity4/round{0,1,2}/  #   P4 CSVs (R3 placeholder until IMC drops data)
 │   └── prosperity3/round1-8/      #   P3 historical data (reference)
@@ -55,11 +54,12 @@ IMC_trading_hack/
 ├── studies/                       # Declarative YAML studies (one per tuning campaign)
 ├── calibration/                   # Bot reverse-engineering, one dir per asset (emeralds, tomatoes, ash_coated_osmium, intarian_pepper_root)
 ├── manual/                        # Manual trading challenges (round{1,2,3}/)
+├── submissions/                   # Portal-downloaded submission bundles (.zip)
 ├── tmp/                           # Backtest + optimizer artifacts (MC dashboards, study DBs)
 ├── scripts/                       # Helper utilities (strategy worker, fill analytics)
 ├── BACKTEST.md                    # Backtesting & calibration guide
+├── OPTIMIZER.md                   # Parameter-optimization framework guide
 ├── DATA_WORKSHOP.md               # Data Analysis Workshop guide
-├── optimizer/README.md            # Parameter-optimization framework guide
 └── CLAUDE.md                      # Project context for Claude
 ```
 
@@ -101,18 +101,18 @@ Features:
 - Outputs: resumable SQLite + parquet export + validators.json + top-K CSV
 - Optimize tab in the visualizer: study picker, convergence, importance bar chart, 1D param effects, 2D slice scatter, top-K table
 
-Full schema + interpretation guide in [optimizer/README.md](optimizer/README.md).
+Full schema + interpretation guide in [OPTIMIZER.md](OPTIMIZER.md).
 
 ## How the Monte Carlo Works
 
-The simulator generates synthetic market sessions using calibrated bot models reverse-engineered from tutorial data:
+The simulator generates synthetic market sessions using calibrated bot models reverse-engineered from published round data. One Rust file per asset under `rust_simulator/src/assets/` encodes the FV process, bot formulas, and taker rates:
 
-1. **Fair value**: EMERALDS fixed at 10,000; TOMATOES follows a Gaussian random walk N(0, 0.496^2)
-2. **Bot quotes**: 3 bots place orders around fair value with calibrated spreads, rounding rules, and volume distributions
-3. **Your algo runs**: sees the bot-only book, places orders
-4. **Bot takers**: simulated market trades hit your resting orders
+1. **Fair value**: EMERALDS fixed at 10,000; TOMATOES Gaussian random walk; OSMIUM random walk (σ=0.312/tick); PEPPER_ROOT deterministic drift (+0.1/tick)
+2. **Bot quotes**: calibrated spreads, rounding rules, and volume distributions per asset. PEPPER bots use proportional offsets (`bid = floor(FV·(1 − K))`); OSMIUM + TOMATOES use fixed-integer offsets
+3. **Bot takers**: simulated base-rate + elastic takers hit the book BEFORE your strategy runs (per P4 spec)
+4. **Your algo runs**: sees the post-take bot book, places orders matched against remaining liquidity
 
-Parameters were extracted by submitting a hold-1-unit strategy to recover true server fair value, then fitting bot quote rules to >96% accuracy. See [BACKTEST.md](BACKTEST.md) for details.
+Parameters were extracted by submitting the asset-agnostic `traders/trader_hold1.py` strategy to recover true server fair value, then fitting bot quote rules to >95% exact-match accuracy. The sim is calibrated to portal reality within ~1% on matched FV paths. See [BACKTEST.md](BACKTEST.md) for the full methodology and [CLAUDE.md](CLAUDE.md) for the calibration history.
 
 ## Competition
 

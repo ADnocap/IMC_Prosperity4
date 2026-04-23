@@ -7,7 +7,7 @@ traders embed (verbatim, by copy-paste) to honour the contract.
 **For traders**: submission files can't import from this repo (single-file
 constraint), so traders embed the tiny loader below as a standalone function.
 The canonical snippet is in the module docstring of `optimizer.trader_api` and
-also in `optimizer/README.md` under "Trader contract".
+also in `OPTIMIZER.md` (repo root) under "Trader contract".
 
 The contract
 ============

@@ -129,12 +129,14 @@ prosperity4mcbt traders/round3/a.py --sessions 3000 --sample-sessions 150
 
 ---
 
-## Running a Round 2 backtest
+## Running a backtest for the active round (R3)
 
-R2 uses the same products as R1, but two things changed that affect the sim:
+R3 kicked off 2026-04-21. Until IMC publishes new products, the active submission (`traders/round3/a.py`) trades the same R1/R2 symbols (OSMIUM + PEPPER_ROOT) — prior-round products remain tradeable throughout the competition. Two R2 gotchas that still apply:
 
-1. **PEPPER FV continues from R1's end.** R1 day 0 ended at FV ≈ 13,000. Hold-1 submission 274082 confirmed R2 day 1 starts at 13,000 (not 10,000). Pass `--intarian-pepper-root-start-fv 13000` (or the legacy alias `--ipr-start-fv 13000`).
-2. **MAF auction.** Add a `bid()` method to your `Trader` class and use the MAF flags below to simulate the +25% quote uplift a winner would see.
+1. **PEPPER FV continues from R1's end.** R1 day 0 ended at FV ≈ 13,000. Hold-1 submission 274082 confirmed R2 day 1 starts at 13,000 (not 10,000). Pass `--intarian-pepper-root-start-fv 13000` (or the legacy alias `--ipr-start-fv 13000`). R3 day 1 continues from there until we know otherwise.
+2. **MAF auction** (R2 specific). Add a `bid()` method to your `Trader` class and use the MAF flags below to simulate the +25% quote uplift a winner would see. Ignored in non-R2 scoring but the flags still let you stress-test quote-volume sensitivity.
+
+When R3's new products drop, add a Rust asset file under `rust_simulator/src/assets/<asset>.rs` and register it in `mod.rs` — see the "Recalibrating + adding a new asset to the sim" section at the bottom of this doc.
 
 ### Portal tick counts (important!)
 
@@ -144,7 +146,7 @@ R2 uses the same products as R1, but two things changed that affect the sim:
 
 Use `--ticks-per-day 1000` when you want MC numbers comparable to the portal UI backtest output.
 
-### Standard R2 dev iteration
+### Standard dev iteration
 
 ```bash
 # Quick iteration (100 sessions, 10,000 ticks each)
@@ -157,7 +159,7 @@ prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 1300
 prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000 --ticks-per-day 1000
 ```
 
-### R2 MAF analysis
+### MAF analysis (R2-style)
 
 ```bash
 # Loser (R2 testing default: 80% of generated quotes visible)
@@ -242,20 +244,15 @@ tmp/backtests/<timestamp>_monte_carlo/
 └── sessions/            # Full session logs
 ```
 
-### Regenerating the MC baseline for Round 2
+### Tracking a baseline across iterations
 
-The previous strategy-comparison table was R1-specific and has been removed. R2 uses the same products, so the R1 baseline is still the most relevant reference:
-
-- `traders/round1/submission.py` MC heavy (1000×5-day sessions): mean **114,867 XIRECs**, std 1,517, OSMIUM 34,887, PEPPER 79,980.
-- Portal R1 actual: **99,546** algo challenge. **~13% shortfall vs MC** — see CLAUDE.md "Portal Submission Results" for the gap-analysis hypotheses. Treat MC as an upper-bound proxy, not a calibrated estimate.
-
-When iterating on R2 changes, re-baseline with:
+Before changing the trader, grab a reference MC run so you can detect regressions:
 
 ```bash
-prosperity4mcbt traders/round3/a.py --heavy
+prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000
 ```
 
-Record mean / std / P5–P95 to track regressions, but **do not trust absolute numbers** — only relative A/B deltas.
+Post-calibration, MC absolute numbers are trustworthy within ~1% on matched FV paths — not just relative deltas. Record mean / std / P5–P95 from the `run_summary.csv` in the output dir and diff after each change. The R2 MAF-uplift table above is the current reference for what "good" looks like on OSMIUM + PEPPER.
 
 ---
 
@@ -286,7 +283,7 @@ py -3.13 scripts/bt_stats.py traders/round3/a.py 1
 | Fill breakdown      | `bt_stats.py`             | `py -3.13 scripts/bt_stats.py traders/round3/a.py 1` |
 | Ground truth        | Portal                    | Submit on prosperity.imc.com                         |
 
-For parameter tuning, see [optimizer/README.md](optimizer/README.md) — Bayesian optimization on top of the MC sim with train/val/test seed splits, Deflated Sharpe Ratio, PBO, and fANOVA importance.
+For parameter tuning, see [OPTIMIZER.md](OPTIMIZER.md) — Bayesian optimization on top of the MC sim with train/val/test seed splits, Deflated Sharpe Ratio, PBO, and fANOVA importance.
 
 ---
 

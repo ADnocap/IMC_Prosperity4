@@ -48,8 +48,8 @@ IMC_trading_hack/
 │   ├── samplers.py                    #   Optuna sampler wrappers (random/TPE/CMA-ES/QMC)
 │   ├── validators.py                  #   DSR, PBO (CSCV), cluster stability, fANOVA importance
 │   ├── study.py                       #   Lifecycle: sample → run → retest → validate → report
-│   ├── cli.py                         #   `prosperity4opt` entry point
-│   └── README.md                      #   Trader contract, YAML schema, interpretation guide
+│   └── cli.py                         #   `prosperity4opt` entry point
+│   (guide lives at repo root as OPTIMIZER.md)
 ├── studies/                           # Declarative YAML studies (one per tuning campaign)
 ├── calibration/                       # Bot reverse-engineering, one dir per asset
 │   ├── ANALYSIS_PHILOSOPHY.md         #   Methodology (condition on everything, stat tests)
@@ -71,7 +71,7 @@ IMC_trading_hack/
 ├── CLAUDE.md                          # This file - project context
 ├── BACKTEST.md                        # Backtesting & calibration guide
 ├── DATA_WORKSHOP.md                   # Browser-based data analysis workshop guide
-├── optimizer/README.md                # Parameter-optimization framework guide
+├── OPTIMIZER.md                       # Parameter-optimization framework guide (was optimizer/README.md)
 └── PROSPERITY_4_WIKI_COMPLETE.md      # Full game reference
 ```
 
@@ -315,7 +315,7 @@ Post-round-close logs for R1/R2 are in `results/round{1,2}/` (portal sub id as f
 
 ## Parameter Optimization
 
-See [optimizer/README.md](optimizer/README.md) for the full guide.
+See [OPTIMIZER.md](OPTIMIZER.md) for the full guide.
 
 TL;DR: declare a study in `studies/<name>.yaml`, point it at a trader that follows the env-var override contract, run `prosperity4opt studies/<name>.yaml --fresh`, and browse results in the Optimize tab. Built on Optuna with honest out-of-sample retest, Deflated Sharpe Ratio multiple-testing correction, Probability of Backtest Overfitting (CSCV), cluster stability, and fANOVA param importance.
 
@@ -331,7 +331,7 @@ prosperity4opt studies/round2_signal_tuning.yaml --fresh
 #   top_trials.csv     — ranked summary
 ```
 
-Trader contract (copy-paste snippet in `optimizer/README.md`): every tunable trader reads its params from a `PARAMS` dict merged with `os.environ["PROSPERITY_PARAMS"]`. Portal submission is unaffected — the env var is never set there, so defaults apply.
+Trader contract (copy-paste snippet in `OPTIMIZER.md`): every tunable trader reads its params from a `PARAMS` dict merged with `os.environ["PROSPERITY_PARAMS"]`. Portal submission is unaffected — the env var is never set there, so defaults apply.
 
 `studies/round2_tunable.py` is a reference trader (identical trading logic to the shipped R2, with the contract layered on). Study it before writing a new tunable trader for R3+.
 
