@@ -1,0 +1,50 @@
+{
+  "n_completed_trials": 15,
+  "n_trials_with_pnl_matrix": 15,
+  "best_trial": {
+    "number": 0,
+    "value": 9474.546630859375,
+    "params": {
+      "SIGNAL_EDGE_ON": 0.25790015733037963,
+      "ACO_SOFT_POS": 28,
+      "IPR_ASK_OFFSET_1": 11
+    }
+  },
+  "dsr": {
+    "sharpe": 26.701616218492365,
+    "probability": 1.0,
+    "expected_max_sr_under_null": 0.6522694961648821,
+    "n_trials": 15,
+    "n_sessions": 30,
+    "skew": -0.13283798765257795,
+    "kurt_excess": -0.4651838346780197,
+    "reasoning": "SR=26.702 vs null-max SR0=0.652; z=140280025.22; P(true SR > 0)=1.000. Pass."
+  },
+  "pbo": {
+    "pbo": 0.0,
+    "n_trials": 15,
+    "n_sessions": 30,
+    "n_partitions_used": 8,
+    "reasoning": "best-in-A below median in B: 0/8 partitions \u2192 PBO = 0.000. Winners generalize."
+  },
+  "cluster": {
+    "top_k": 5,
+    "median_top_dist": 2.5900754636920453,
+    "median_random_dist": 2.0500296432857743,
+    "ratio": 1.2634331762835824,
+    "reasoning": "top-K is 1.26\u00d7 spread of random-K \u2014 scattered winners, results are likely noise.",
+    "numeric_params": [
+      "ACO_SOFT_POS",
+      "IPR_ASK_OFFSET_1",
+      "SIGNAL_EDGE_ON"
+    ]
+  },
+  "importance": {
+    "importances": {
+      "IPR_ASK_OFFSET_1": 0.9577079093787794,
+      "ACO_SOFT_POS": 0.03478080688985569,
+      "SIGNAL_EDGE_ON": 0.00751128373136488
+    },
+    "reasoning": "param importances (fANOVA, normalized to sum 1):\n  IPR_ASK_OFFSET_1     0.958\n  ACO_SOFT_POS         0.035\n  SIGNAL_EDGE_ON       0.008"
+  }
+}
