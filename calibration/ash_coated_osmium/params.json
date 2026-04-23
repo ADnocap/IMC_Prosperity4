@@ -1,0 +1,112 @@
+{
+  "asset": "ASH_COATED_OSMIUM",
+  "position_limit": 80,
+  "fv_process": {
+    "type": "random_walk",
+    "params": {
+      "sigma": 0.3117,
+      "drift": 0.0,
+      "mean": 10000.0,
+      "quantization": 0.0009765625
+    },
+    "diagnostics": {
+      "n_ticks": 30000,
+      "mean_step": 0.000016,
+      "mean_step_p": 0.92,
+      "ljung_box_p": 0.49,
+      "skew_z": 0.64,
+      "kurt_z": -0.14
+    }
+  },
+  "bots": [
+    {
+      "id": "bot1",
+      "name": "Outer Wall",
+      "offset_type": "fixed",
+      "bid_formula_str": "floor(fv) - 10",
+      "ask_formula_str": "ceil(fv) + 10",
+      "formula_spec": {
+        "bid": { "round_fn": "floor", "shift": 0.0, "constant": -10, "K": null },
+        "ask": { "round_fn": "ceil",  "shift": 0.0, "constant":  10, "K": null }
+      },
+      "volume": {
+        "distribution": "uniform",
+        "low": 20, "high": 30,
+        "sides_tied": true
+      },
+      "presence": {
+        "rate": 0.80,
+        "iid": true,
+        "bid_ask_independent": true
+      },
+      "offset_band": {
+        "bid": [-20.5, -9.0],
+        "ask": [9.0, 20.5]
+      },
+      "diagnostics": {
+        "bid_match_rate": 0.997,
+        "ask_match_rate": 1.000,
+        "volume_chi2_p": 0.22
+      }
+    },
+    {
+      "id": "bot2",
+      "name": "Inner Wall",
+      "offset_type": "fixed",
+      "bid_formula_str": "round(fv) - 8",
+      "ask_formula_str": "round(fv) + 8",
+      "formula_spec": {
+        "bid": { "round_fn": "round", "shift": 0.0, "constant": -8, "K": null },
+        "ask": { "round_fn": "round", "shift": 0.0, "constant":  8, "K": null }
+      },
+      "volume": {
+        "distribution": "uniform",
+        "low": 10, "high": 15,
+        "sides_tied": true
+      },
+      "presence": {
+        "rate": 0.80,
+        "iid": true,
+        "bid_ask_independent": true
+      },
+      "offset_band": {
+        "bid": [-9.0, -4.5],
+        "ask": [4.5, 9.0]
+      },
+      "diagnostics": {
+        "bid_match_rate": 1.000,
+        "ask_match_rate": 1.000,
+        "volume_chi2_p": 0.89
+      }
+    }
+  ],
+  "noise_layer": {
+    "presence_rate": 0.076,
+    "single_sided_rate": 1.0,
+    "offsets": {
+      "bid": { "-3": 0.25, "-2": 0.25, "1": 0.25, "2": 0.25 },
+      "ask": { "-2": 0.25, "-1": 0.25, "2": 0.25, "3": 0.25 }
+    },
+    "crossing_vol": { "distribution": "uniform", "low": 4, "high": 10, "mean": 7.4 },
+    "passive_vol":  { "distribution": "uniform", "low": 1, "high": 5,  "mean": 3.4 },
+    "run_length": { "single_tick_rate": 0.87, "two_tick_rate": 0.07 }
+  },
+  "trade_bot": {
+    "rate_per_tick": 0.04,
+    "count_distribution": "poisson",
+    "poisson_lambda": 0.04,
+    "quantity_model": {
+      "type": "bimodal",
+      "modes": [
+        { "low": 2, "high": 6, "weight": 0.5 },
+        { "low": 7, "high": 10, "weight": 0.5 }
+      ]
+    }
+  },
+  "metadata": {
+    "calibrated_from": "portal hold-1 submission 103017 + R1 days -2/-1/0 CSVs",
+    "pipeline_version": "manual",
+    "overall_match_rate": 0.998,
+    "notes": "Gaussian random walk around 10000. 3 bots detected: outer wall (Bot1, ±10), inner wall (Bot2, ±8), noise (Bot3). Noise layer low impact — can be approximated or ignored in simulator."
+  }
+}

@@ -28,6 +28,7 @@ RUN_DASHBOARD_PREFIX = "/__prosperity4mcbt__/runs/"
 RUNNER_PREFIX = "/__prosperity4mcbt__/runner/"
 WORKSHOP_PREFIX = "/__prosperity4mcbt__/workshop/"
 SUBMISSIONS_PREFIX = "/__prosperity4mcbt__/submissions/"
+CALIBRATION_PREFIX = "/__prosperity4mcbt__/calibration/"
 
 # ── Runner state (single backtest at a time) ────────────────────────
 _runner_lock = threading.Lock()
@@ -260,6 +261,61 @@ def _resolve_data_file(rel_path: str) -> Path | None:
     return candidate
 
 
+# ── Calibration (per-asset hold-1 + params) ────────────────────────
+
+def _calibration_dir() -> Path:
+    return _project_root() / "calibration"
+
+
+def _rust_assets_dir() -> Path:
+    return _project_root() / "rust_simulator" / "src" / "assets"
+
+
+def _list_calibration_assets() -> list[dict[str, object]]:
+    """Enumerate assets with a file in rust_simulator/src/assets/ (excluding mod.rs).
+
+    For each, report whether the hold-1 `fv_and_book.json` and/or `params.json`
+    exist so the frontend can gate which stages are runnable.
+    """
+    assets_dir = _rust_assets_dir()
+    calib_dir = _calibration_dir()
+    if not assets_dir.is_dir():
+        return []
+    out: list[dict[str, object]] = []
+    for f in sorted(assets_dir.glob("*.rs")):
+        if f.name == "mod.rs":
+            continue
+        asset_lower = f.stem
+        asset_upper = asset_lower.upper()
+        data_path = calib_dir / asset_lower / "data" / "fv_and_book.json"
+        params_path = calib_dir / asset_lower / "params.json"
+        out.append({
+            "asset": asset_upper,
+            "assetLower": asset_lower,
+            "rustFile": f.name,
+            "hasData": data_path.is_file(),
+            "hasParams": params_path.is_file(),
+            "dataPath": str(data_path.relative_to(_project_root())).replace("\\", "/") if data_path.is_file() else None,
+            "paramsPath": str(params_path.relative_to(_project_root())).replace("\\", "/") if params_path.is_file() else None,
+            "dataMtimeMs": int(data_path.stat().st_mtime_ns // 1_000_000) if data_path.is_file() else None,
+            "paramsMtimeMs": int(params_path.stat().st_mtime_ns // 1_000_000) if params_path.is_file() else None,
+        })
+    return out
+
+
+def _resolve_calibration_asset(asset: str) -> str | None:
+    """Normalize + validate an asset name against rust_simulator/src/assets/.
+
+    Returns the lowercase asset folder name (matches the .rs stem) or None on mismatch.
+    """
+    if not asset or "/" in asset or "\\" in asset or asset.startswith("."):
+        return None
+    lower = asset.lower()
+    if not (_rust_assets_dir() / f"{lower}.rs").is_file():
+        return None
+    return lower
+
+
 # ── Submissions (portal-backtester zips) ────────────────────────────
 
 
@@ -454,6 +510,9 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
         if path.startswith(SUBMISSIONS_PREFIX):
             self._handle_submissions_get(parsed)
             return
+        if path.startswith(CALIBRATION_PREFIX):
+            self._handle_calibration_get(parsed)
+            return
         super().do_GET()
 
     def do_POST(self) -> None:
@@ -461,6 +520,9 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
         path = parsed.path
         if path.startswith(RUNNER_PREFIX):
             self._handle_runner_post(path)
+            return
+        if path.startswith(CALIBRATION_PREFIX):
+            self._handle_calibration_post(parsed)
             return
         self.send_error(404)
 
@@ -611,6 +673,65 @@ class DashboardRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(payload)
             return
         self.send_error(404)
+
+    # ── Calibration endpoints ───────────────────────────────────────
+
+    def _handle_calibration_get(self, parsed) -> None:
+        route = parsed.path[len(CALIBRATION_PREFIX):]
+        if route == "assets":
+            self._send_json({"assets": _list_calibration_assets()})
+            return
+        if route in ("data", "params"):
+            params = parse_qs(parsed.query)
+            asset_list = params.get("asset", [])
+            if not asset_list:
+                self.send_error(400, "missing asset")
+                return
+            asset_lower = _resolve_calibration_asset(unquote(asset_list[0]))
+            if asset_lower is None:
+                self.send_error(404, "unknown asset")
+                return
+            if route == "data":
+                file_path = _calibration_dir() / asset_lower / "data" / "fv_and_book.json"
+            else:
+                file_path = _calibration_dir() / asset_lower / "params.json"
+            if not file_path.is_file():
+                self._send_json(None, 404)
+                return
+            body = file_path.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        self.send_error(404)
+
+    def _handle_calibration_post(self, parsed) -> None:
+        route = parsed.path[len(CALIBRATION_PREFIX):]
+        if route != "params":
+            self.send_error(404)
+            return
+        params = parse_qs(parsed.query)
+        asset_list = params.get("asset", [])
+        if not asset_list:
+            self.send_error(400, "missing asset")
+            return
+        asset_lower = _resolve_calibration_asset(unquote(asset_list[0]))
+        if asset_lower is None:
+            self.send_error(404, "unknown asset")
+            return
+        try:
+            body = self._read_body()
+            payload = json.loads(body)
+        except json.JSONDecodeError as exc:
+            self._send_json({"error": f"invalid JSON: {exc}"}, 400)
+            return
+        target_dir = _calibration_dir() / asset_lower
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target = target_dir / "params.json"
+        target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        self._send_json({"ok": True, "path": str(target.relative_to(_project_root())).replace("\\", "/")})
 
     def _handle_runner_post(self, path: str) -> None:
         route = path[len(RUNNER_PREFIX):]

@@ -1,0 +1,108 @@
+{
+  "asset": "INTARIAN_PEPPER_ROOT",
+  "position_limit": 80,
+  "fv_process": {
+    "type": "linear_drift",
+    "params": {
+      "drift": 0.1,
+      "mean": 10000.0,
+      "quantization": 0.0009765625,
+      "sigma": 0.0005
+    },
+    "diagnostics": {
+      "n_ticks": 30000,
+      "fit_residual_std": 0.0005,
+      "notes": "Deterministic +0.1/tick drift; residual std ~= quantization noise only. Drift continues across rounds (R2 day 1 starts at ~13000)."
+    }
+  },
+  "bots": [
+    {
+      "id": "bot1",
+      "name": "Outer Wall",
+      "offset_type": "proportional",
+      "bid_formula_str": "floor(fv * (1 - 3/4000))",
+      "ask_formula_str": "ceil(fv * (1 + 3/4000))",
+      "formula_spec": {
+        "bid": { "round_fn": "floor", "shift": 0.0, "constant": 0, "K": 0.00075 },
+        "ask": { "round_fn": "ceil",  "shift": 0.0, "constant": 0, "K": 0.00075 }
+      },
+      "volume": {
+        "distribution": "uniform",
+        "low": 15, "high": 25,
+        "sides_tied": true
+      },
+      "presence": {
+        "rate": 0.80,
+        "iid": true,
+        "bid_ask_independent": true
+      },
+      "offset_band": {
+        "bid": [-20.0, -8.0],
+        "ask": [8.0, 20.0]
+      },
+      "diagnostics": {
+        "bid_match_rate": 0.999,
+        "ask_match_rate": 0.999,
+        "volume_chi2_p": 0.12,
+        "n_cv_samples": 23987
+      }
+    },
+    {
+      "id": "bot2",
+      "name": "Inner Wall",
+      "offset_type": "proportional",
+      "bid_formula_str": "floor(fv * (1 - 1/2000))",
+      "ask_formula_str": "ceil(fv * (1 + 1/2000))",
+      "formula_spec": {
+        "bid": { "round_fn": "floor", "shift": 0.0, "constant": 0, "K": 0.00050 },
+        "ask": { "round_fn": "ceil",  "shift": 0.0, "constant": 0, "K": 0.00050 }
+      },
+      "volume": {
+        "distribution": "uniform",
+        "low": 8, "high": 12,
+        "sides_tied": true
+      },
+      "presence": {
+        "rate": 0.80,
+        "iid": true,
+        "bid_ask_independent": true
+      },
+      "offset_band": {
+        "bid": [-8.0, -4.0],
+        "ask": [4.0, 8.0]
+      },
+      "diagnostics": {
+        "bid_match_rate": 0.990,
+        "ask_match_rate": 0.990,
+        "volume_chi2_p": 0.15,
+        "n_cv_samples": 24185
+      }
+    }
+  ],
+  "noise_layer": {
+    "presence_rate": 0.05,
+    "single_sided_rate": 1.0,
+    "offsets": {
+      "bid": { "-3": 0.25, "3": 0.25 },
+      "ask": { "-4": 0.25, "2": 0.25 }
+    },
+    "crossing_vol": { "distribution": "uniform", "low": 3, "high": 8, "mean": 5.3 },
+    "passive_vol":  { "distribution": "uniform", "low": 5, "high": 12, "mean": 8.3 },
+    "notes": "Reversed vol pattern vs OSMIUM — crossing smaller, passive larger."
+  },
+  "trade_bot": {
+    "rate_per_tick": 0.032,
+    "count_distribution": "poisson",
+    "poisson_lambda": 0.032,
+    "quantity_model": {
+      "type": "uniform",
+      "modes": [{ "low": 3, "high": 8, "weight": 1.0 }]
+    }
+  },
+  "metadata": {
+    "calibrated_from": "portal hold-1 subs 103017 (R1) + 274082 (R2) + R1 days -2/-1/0 CSVs (30,000 ticks spanning FV 10000->13000)",
+    "pipeline_version": "manual",
+    "overall_match_rate": 0.994,
+    "notes": "Proportional offsets discovered via wide-FV-range data. Fixed offsets match 67% across full range; proportional matches 99%+. Drift continues across rounds -- R2 day 1 starts at ~13000."
+  }
+}
