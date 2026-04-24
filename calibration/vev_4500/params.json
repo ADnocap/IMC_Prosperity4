@@ -1,0 +1,248 @@
+{
+  "asset": "VEV_4500",
+  "position_limit": 80,
+  "fv_process": {
+    "type": "random_walk",
+    "params": {
+      "quantization": 0.00390625,
+      "drift": 0.0,
+      "sigma": 0.95833839560093,
+      "mean": 762.3832493382054
+    },
+    "diagnostics": {
+      "n_ticks": 999,
+      "residual_ljung_p": 0.44223667225103114,
+      "residual_skew_z": 1.2263661744386753,
+      "residual_kurt_z": -1.3870321537040533
+    }
+  },
+  "bots": [
+    {
+      "id": "layer1",
+      "name": "Layer 1 (outer)",
+      "offset_type": "proportional",
+      "bid_formula_str": "floor(fv - 0.5) - 9",
+      "ask_formula_str": "round(fv * (1 + 1.3155e-02))",
+      "formula_spec": {
+        "bid": {
+          "round_fn": "floor",
+          "shift": -0.5,
+          "constant": -9,
+          "K": null
+        },
+        "ask": {
+          "round_fn": "round",
+          "shift": 0.0,
+          "constant": 0,
+          "K": 0.013155258764607679
+        }
+      },
+      "volume": {
+        "distribution": "empirical",
+        "low": 12,
+        "high": 24,
+        "sides_tied": true,
+        "pmf": {
+          "14": 0.07227615965480043,
+          "15": 0.09169363538295577,
+          "17": 0.08414239482200647,
+          "16": 0.08522114347357065,
+          "13": 0.08845738942826321,
+          "19": 0.08629989212513485,
+          "12": 0.0895361380798274,
+          "23": 0.06472491909385113,
+          "21": 0.08414239482200647,
+          "22": 0.061488673139158574,
+          "24": 0.06364617044228695,
+          "20": 0.07119741100323625,
+          "18": 0.05717367853290183
+        }
+      },
+      "presence": {
+        "rate": 0.9490000000000001,
+        "bid_rate": 0.927,
+        "ask_rate": 0.971,
+        "bid_model": "iid_bernoulli",
+        "ask_model": "deterministic",
+        "iid": false,
+        "bid_ask_independent": true,
+        "deterministic_bid": false,
+        "deterministic_ask": true
+      },
+      "offset_band": {
+        "bid": [
+          -10.5,
+          -9.5
+        ],
+        "ask": [
+          9.5,
+          11.5
+        ]
+      },
+      "diagnostics": {
+        "bid_vol_uniform_p": 0.04415964898309155,
+        "ask_vol_uniform_p": 0.14064494074894496,
+        "bid_dist": "empirical",
+        "ask_dist": "uniform",
+        "sides_tied_rate": 1.0,
+        "bid_presence_rate": 0.927,
+        "ask_presence_rate": 0.971,
+        "bid_ask_indep_p": 1.0
+      }
+    },
+    {
+      "id": "layer2",
+      "name": "Layer 2 (outer)",
+      "offset_type": "fixed",
+      "bid_formula_str": "floor(fv - 0.5) - 8",
+      "ask_formula_str": "floor(fv - 0.5) + 10",
+      "formula_spec": {
+        "bid": {
+          "round_fn": "floor",
+          "shift": -0.5,
+          "constant": -8,
+          "K": null
+        },
+        "ask": {
+          "round_fn": "floor",
+          "shift": -0.5,
+          "constant": 10,
+          "K": null
+        }
+      },
+      "volume": {
+        "distribution": "empirical",
+        "low": 6,
+        "high": 24,
+        "sides_tied": false,
+        "pmf": {
+          "10": 0.1276595744680851,
+          "7": 0.06382978723404255,
+          "9": 0.09929078014184398,
+          "6": 0.18439716312056736,
+          "11": 0.12056737588652482,
+          "8": 0.12056737588652482,
+          "12": 0.09929078014184398,
+          "20": 0.0070921985815602835,
+          "24": 0.014184397163120567,
+          "22": 0.0425531914893617,
+          "16": 0.0070921985815602835,
+          "23": 0.03546099290780142,
+          "15": 0.02127659574468085,
+          "18": 0.02127659574468085,
+          "13": 0.014184397163120567,
+          "19": 0.014184397163120567,
+          "21": 0.0070921985815602835
+        }
+      },
+      "presence": {
+        "rate": 0.1545,
+        "bid_rate": 0.141,
+        "ask_rate": 0.168,
+        "bid_model": "iid_bernoulli",
+        "ask_model": "empirical",
+        "iid": false,
+        "bid_ask_independent": true,
+        "deterministic_bid": false,
+        "deterministic_ask": false,
+        "ask_run_length": {
+          "mean": 1.3125,
+          "n_runs": 128
+        }
+      },
+      "offset_band": {
+        "bid": [
+          -9.5,
+          -8.5
+        ],
+        "ask": [
+          8.5,
+          9.5
+        ]
+      },
+      "diagnostics": {
+        "bid_vol_uniform_p": 0.0,
+        "ask_vol_uniform_p": 0.0,
+        "bid_dist": "empirical",
+        "ask_dist": "empirical",
+        "sides_tied_rate": 0.0,
+        "bid_presence_rate": 0.141,
+        "ask_presence_rate": 0.168,
+        "bid_ask_indep_p": 0.5210431181711915
+      }
+    },
+    {
+      "id": "layer3",
+      "name": "Layer 3 (inner)",
+      "offset_type": "fixed",
+      "bid_formula_str": "floor(fv - 0.5) - 7",
+      "ask_formula_str": "floor(fv - 0.5) + 9",
+      "formula_spec": {
+        "bid": {
+          "round_fn": "floor",
+          "shift": -0.5,
+          "constant": -7,
+          "K": null
+        },
+        "ask": {
+          "round_fn": "floor",
+          "shift": -0.5,
+          "constant": 9,
+          "K": null
+        }
+      },
+      "volume": {
+        "distribution": "empirical",
+        "low": 6,
+        "high": 12,
+        "sides_tied": true,
+        "pmf": {
+          "8": 0.17966101694915254,
+          "9": 0.1423728813559322,
+          "7": 0.12994350282485875,
+          "6": 0.12994350282485875,
+          "12": 0.15706214689265538,
+          "10": 0.1344632768361582,
+          "11": 0.12655367231638417
+        }
+      },
+      "presence": {
+        "rate": 0.8694999999999999,
+        "bid_rate": 0.885,
+        "ask_rate": 0.854,
+        "bid_model": "joint_empirical",
+        "ask_model": "joint_empirical",
+        "iid": false,
+        "bid_ask_independent": false,
+        "deterministic_bid": false,
+        "deterministic_ask": false
+      },
+      "offset_band": {
+        "bid": [
+          -8.5,
+          -7.5
+        ],
+        "ask": [
+          7.5,
+          8.5
+        ]
+      },
+      "diagnostics": {
+        "bid_vol_uniform_p": 0.03187381136426248,
+        "ask_vol_uniform_p": 0.04169466108478781,
+        "bid_dist": "empirical",
+        "ask_dist": "empirical",
+        "sides_tied_rate": 1.0,
+        "bid_presence_rate": 0.885,
+        "ask_presence_rate": 0.854,
+        "bid_ask_indep_p": 2.3095861020339115e-05
+      }
+    }
+  ],
+  "metadata": {
+    "calibrated_from": "discovery pipeline (calibration/run_pipeline.py, Stages 0-4)",
+    "pipeline_version": "1.0.0-py",
+    "timestamp": "2026-04-24T12:11:43Z",
+    "notes": "Auto-generated by Python CLI port of the visualizer Calibration tab."
+  }
+}

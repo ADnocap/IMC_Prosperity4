@@ -1,0 +1,198 @@
+{
+  "asset": "VEV_5000",
+  "position_limit": 80,
+  "fv_process": {
+    "type": "random_walk",
+    "params": {
+      "quantization": 0.0009765625,
+      "drift": 0.0,
+      "sigma": 0.9137817244469641,
+      "mean": 265.58852408622
+    },
+    "diagnostics": {
+      "n_ticks": 999,
+      "residual_ljung_p": 0.4381989487592871,
+      "residual_skew_z": 1.2039489639933079,
+      "residual_kurt_z": -1.3813313989648563
+    }
+  },
+  "bots": [
+    {
+      "id": "layer1",
+      "name": "Layer 1 (near-FV)",
+      "offset_type": "fixed",
+      "bid_formula_str": "floor(fv - 0.5) - 3",
+      "ask_formula_str": "floor(fv - 0.5) + 5",
+      "formula_spec": {
+        "bid": {
+          "round_fn": "floor",
+          "shift": -0.5,
+          "constant": -3,
+          "K": null
+        },
+        "ask": {
+          "round_fn": "floor",
+          "shift": -0.5,
+          "constant": 5,
+          "K": null
+        }
+      },
+      "volume": {
+        "distribution": "empirical",
+        "low": 12,
+        "high": 36,
+        "sides_tied": false,
+        "pmf": {
+          "24": 0.07134220072551391,
+          "15": 0.07980652962515115,
+          "17": 0.06287787182587666,
+          "14": 0.06287787182587666,
+          "16": 0.06892382103990327,
+          "22": 0.06287787182587666,
+          "13": 0.08343409915356712,
+          "19": 0.06771463119709795,
+          "12": 0.07496977025392987,
+          "23": 0.06650544135429262,
+          "27": 0.015719467956469165,
+          "30": 0.013301088270858524,
+          "21": 0.0773881499395405,
+          "20": 0.07013301088270858,
+          "29": 0.010882708585247884,
+          "32": 0.007255139056831923,
+          "25": 0.014510278113663845,
+          "36": 0.0036275695284159614,
+          "18": 0.041112454655380895,
+          "28": 0.012091898428053204,
+          "33": 0.0024183796856106408,
+          "35": 0.0024183796856106408,
+          "34": 0.006045949214026602,
+          "26": 0.013301088270858524,
+          "31": 0.008464328899637243
+        }
+      },
+      "presence": {
+        "rate": 0.828,
+        "bid_rate": 0.827,
+        "ask_rate": 0.829,
+        "bid_model": "joint_empirical",
+        "ask_model": "joint_empirical",
+        "iid": false,
+        "bid_ask_independent": false,
+        "deterministic_bid": false,
+        "deterministic_ask": false
+      },
+      "offset_band": {
+        "bid": [
+          -4.5,
+          -3.5
+        ],
+        "ask": [
+          3.5,
+          4.5
+        ]
+      },
+      "diagnostics": {
+        "bid_vol_uniform_p": 0.0,
+        "ask_vol_uniform_p": 0.0,
+        "bid_dist": "empirical",
+        "ask_dist": "empirical",
+        "sides_tied_rate": 0.8112633181126332,
+        "bid_presence_rate": 0.827,
+        "ask_presence_rate": 0.829,
+        "bid_ask_indep_p": 9.46801059775737e-09
+      }
+    },
+    {
+      "id": "layer2",
+      "name": "Layer 2 (near-FV)",
+      "offset_type": "fixed",
+      "bid_formula_str": "floor(fv - 0.5) - 2",
+      "ask_formula_str": "floor(fv - 0.5) + 4",
+      "formula_spec": {
+        "bid": {
+          "round_fn": "floor",
+          "shift": -0.5,
+          "constant": -2,
+          "K": null
+        },
+        "ask": {
+          "round_fn": "floor",
+          "shift": -0.5,
+          "constant": 4,
+          "K": null
+        }
+      },
+      "volume": {
+        "distribution": "empirical",
+        "low": 6,
+        "high": 36,
+        "sides_tied": false,
+        "pmf": {
+          "8": 0.1386946386946387,
+          "9": 0.10722610722610723,
+          "7": 0.10955710955710955,
+          "6": 0.1048951048951049,
+          "12": 0.12354312354312354,
+          "24": 0.011655011655011656,
+          "10": 0.10839160839160839,
+          "11": 0.10722610722610723,
+          "30": 0.011655011655011656,
+          "22": 0.011655011655011656,
+          "25": 0.017482517482517484,
+          "19": 0.0034965034965034965,
+          "34": 0.009324009324009324,
+          "27": 0.022144522144522144,
+          "26": 0.01282051282051282,
+          "23": 0.013986013986013986,
+          "33": 0.006993006993006993,
+          "32": 0.01048951048951049,
+          "21": 0.009324009324009324,
+          "28": 0.01282051282051282,
+          "29": 0.016317016317016316,
+          "31": 0.016317016317016316,
+          "18": 0.004662004662004662,
+          "36": 0.002331002331002331,
+          "20": 0.004662004662004662,
+          "35": 0.002331002331002331
+        }
+      },
+      "presence": {
+        "rate": 0.8485,
+        "bid_rate": 0.858,
+        "ask_rate": 0.839,
+        "bid_model": "joint_empirical",
+        "ask_model": "joint_empirical",
+        "iid": false,
+        "bid_ask_independent": false,
+        "deterministic_bid": false,
+        "deterministic_ask": false
+      },
+      "offset_band": {
+        "bid": [
+          -3.5,
+          -2.5
+        ],
+        "ask": [
+          2.5,
+          3.5
+        ]
+      },
+      "diagnostics": {
+        "bid_vol_uniform_p": 0.0,
+        "ask_vol_uniform_p": 0.0,
+        "bid_dist": "empirical",
+        "ask_dist": "empirical",
+        "sides_tied_rate": 0.7636103151862464,
+        "bid_presence_rate": 0.858,
+        "ask_presence_rate": 0.839,
+        "bid_ask_indep_p": 5.572246444263129e-07
+      }
+    }
+  ],
+  "metadata": {
+    "calibrated_from": "discovery pipeline (calibration/run_pipeline.py, Stages 0-4)",
+    "pipeline_version": "1.0.0-py",
+    "timestamp": "2026-04-24T12:12:26Z",
+    "notes": "Auto-generated by Python CLI port of the visualizer Calibration tab."
+  }
+}

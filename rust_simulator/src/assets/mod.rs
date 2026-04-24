@@ -13,6 +13,19 @@ use std::collections::HashMap;
 
 pub mod ash_coated_osmium;
 pub mod intarian_pepper_root;
+// R3 products (auto-generated from calibration/<asset>/params.json):
+pub mod hydrogel_pack;
+pub mod velvetfruit_extract;
+pub mod vev_4000;
+pub mod vev_4500;
+pub mod vev_5000;
+pub mod vev_5100;
+pub mod vev_5200;
+pub mod vev_5300;
+pub mod vev_5400;
+pub mod vev_5500;
+pub mod vev_6000;
+pub mod vev_6500;
 
 /// One registry entry per known asset.
 #[allow(dead_code)]
@@ -35,6 +48,26 @@ const REGISTRY: &[Entry] = &[
         flag_specs: intarian_pepper_root::flag_specs,
         build: intarian_pepper_root::build,
     },
+    Entry {
+        symbol: hydrogel_pack::SYMBOL,
+        flag_specs: hydrogel_pack::flag_specs,
+        build: hydrogel_pack::build,
+    },
+    Entry {
+        symbol: velvetfruit_extract::SYMBOL,
+        flag_specs: velvetfruit_extract::flag_specs,
+        build: velvetfruit_extract::build,
+    },
+    Entry { symbol: vev_4000::SYMBOL, flag_specs: vev_4000::flag_specs, build: vev_4000::build },
+    Entry { symbol: vev_4500::SYMBOL, flag_specs: vev_4500::flag_specs, build: vev_4500::build },
+    Entry { symbol: vev_5000::SYMBOL, flag_specs: vev_5000::flag_specs, build: vev_5000::build },
+    Entry { symbol: vev_5100::SYMBOL, flag_specs: vev_5100::flag_specs, build: vev_5100::build },
+    Entry { symbol: vev_5200::SYMBOL, flag_specs: vev_5200::flag_specs, build: vev_5200::build },
+    Entry { symbol: vev_5300::SYMBOL, flag_specs: vev_5300::flag_specs, build: vev_5300::build },
+    Entry { symbol: vev_5400::SYMBOL, flag_specs: vev_5400::flag_specs, build: vev_5400::build },
+    Entry { symbol: vev_5500::SYMBOL, flag_specs: vev_5500::flag_specs, build: vev_5500::build },
+    Entry { symbol: vev_6000::SYMBOL, flag_specs: vev_6000::flag_specs, build: vev_6000::build },
+    Entry { symbol: vev_6500::SYMBOL, flag_specs: vev_6500::flag_specs, build: vev_6500::build },
 ];
 
 pub fn is_known_symbol(symbol: &str) -> bool {
