@@ -3,6 +3,8 @@
 Round 3 product. Calibrated by `calibration/run_pipeline.py`
 (Python port of the visualizer 9-stage pipeline).
 
+**Position limit:** 300
+
 ## Fair Value process
 
 | Property | Value |

@@ -11,7 +11,7 @@ This is our workspace for **IMC Prosperity 4** (2026), a multi-round algorithmic
 
 ## Current Round
 
-**Round 3** (active from 2026-04-21). R1 and R2 both passed. The shipped submissions live at `traders/round1/submission.py` (portal sub 269599 — R1 algo PnL 99,546) and `traders/round2/submission.py` (portal sub 360419). The **active submission file** for R3 is `traders/round3/a.py` (seeded from the R2 final). R3 products and rules will be confirmed when IMC publishes — CSVs drop into `data/prosperity4/round3/`.
+**Round 3** (active from 2026-04-21). R1 and R2 both passed. R3 introduces a derivatives book — `HYDROGEL_PACK` and `VELVETFRUIT_EXTRACT` (spots, position limit 200) plus 10 `VEV_<strike>` call options on VELVETFRUIT (each at limit 300). OSMIUM and PEPPER are NOT tradeable in R3. The shipped submissions live at `traders/round1/submission.py` (portal sub 269599 — R1 algo PnL 99,546) and `traders/round2/submission.py` (portal sub 360419). The **active submission file** for R3 is `traders/round3/a.py` (penny-jump MM on the 10 active assets — dead options VEV_6000/6500 skipped). All R3 calibration in `calibration/<asset>/`.
 
 ## Directory Structure
 
@@ -145,7 +145,20 @@ Manual challenge was "Invest & Expand" (allocate % across Research/Scale/Speed; 
 
 ### Round 3 — ACTIVE (2026-04-21 →)
 
-Products and rules pending IMC publishing. The active submission file is `traders/round3/a.py`, seeded from the R2 final. OSMIUM and PEPPER_ROOT handlers remain live (prior-round products remain tradeable). New-round data will drop into `data/prosperity4/round3/`.
+R3 introduces a derivatives book. **OSMIUM and PEPPER_ROOT are no longer tradeable** — only the products below appear on the portal:
+
+| Product | Position Limit | Behavior | Notes |
+| --- | --- | --- | --- |
+| HYDROGEL_PACK | **200** | Random walk, σ ≈ 1.92, drift ≈ −0.05/tick | Spot, ~16-tick spread (outer K=0.001) |
+| VELVETFRUIT_EXTRACT | **200** | Random walk, σ ≈ 0.96 | Spot underlying for the VEV vouchers, ~3-tick spread |
+| VEV_4000 (voucher) | **300** | Deep ITM call, behaves like underlying with offset | Spread ~16-20 |
+| VEV_4500 (voucher) | **300** | ITM call | Spread ~16 |
+| VEV_5000 / 5100 / 5200 / 5300 / 5400 / 5500 | **300** each | ATM-area calls | Tight spreads (1-2 ticks), narrow MM edge |
+| VEV_6000 / VEV_6500 (voucher) | **300** each | Deep OTM (FV ≈ 0) | Effectively dead; no MM room |
+
+`VEV_<strike>` = `VELVETFRUIT_EXTRACT_VOUCHER` at strike `<strike>`. Per-product calibration lives in `calibration/<asset>/calibration.md`; FV-process and bot models in `calibration/<asset>/params.json` and `rust_simulator/src/assets/<asset>.rs`.
+
+The active R3 submission file is `traders/round3/a.py` (penny-jump MM on the 10 active assets; dead options skipped).
 
 ### Data Format (CSV, semicolon-delimited)
 
@@ -159,7 +172,7 @@ Products and rules pending IMC publishing. The active submission file is `trader
 
 Note: Prosperity 4 breaks the P3 pattern. R1 and R2 both trade only OSMIUM + PEPPER_ROOT — R2 adds the MAF auction instead of new products. Unclear yet how many rounds P4 has in total; the wiki top-level timeline lists 5 rounds but the R2 page calls itself the "final trading round on Intara", suggesting later rounds may be off-planet with new products.
 
-All prior-round products remain tradeable in later rounds, so OSMIUM and PEPPER_ROOT handlers must stay live in `traders/round3/a.py` and any future round's trader.
+**Update for R3 (confirmed 2026-04-24):** the "all prior-round products remain tradeable" expectation broke at R3 — only the new R3 products (HYDROGEL, VELVETFRUIT, VEV_*) appear on the portal. R3 trader `traders/round3/a.py` no longer carries OSMIUM/PEPPER handlers.
 
 ## Strategy Framework
 

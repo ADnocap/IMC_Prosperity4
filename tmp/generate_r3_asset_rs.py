@@ -21,6 +21,17 @@ R3_ASSETS = [
     "vev_6000", "vev_6500",
 ]
 
+# Per-product position limits (R3 — confirmed against the portal product page).
+# HYDROGEL/VELVET = 200, each VEV voucher = 300. Used to override the
+# `position_limit` field in params.json (which Stage 8 fills with a default 80).
+R3_POSITION_LIMITS = {
+    "hydrogel_pack": 200,
+    "velvetfruit_extract": 200,
+    "vev_4000": 300, "vev_4500": 300, "vev_5000": 300, "vev_5100": 300,
+    "vev_5200": 300, "vev_5300": 300, "vev_5400": 300, "vev_5500": 300,
+    "vev_6000": 300, "vev_6500": 300,
+}
+
 
 def _formula_expr(spec: dict, side: str) -> str:
     """Render formula_spec → Rust expression returning i32, given variable `fair: f64`."""
@@ -358,7 +369,7 @@ def generate(asset: str) -> str:
         snake=snake,
         kebab=kebab,
         struct_name=struct_name,
-        position_limit=p.get("position_limit", 80),
+        position_limit=R3_POSITION_LIMITS.get(asset, p.get("position_limit", 80)),
         base_trade_prob=rates["base"],
         second_trade_prob=rates["second"],
         elastic_trade_prob=rates["elastic"],

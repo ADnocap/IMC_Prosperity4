@@ -1,6 +1,6 @@
 {
   "asset": "VELVETFRUIT_EXTRACT",
-  "position_limit": 80,
+  "position_limit": 200,
   "fv_process": {
     "type": "random_walk",
     "params": {

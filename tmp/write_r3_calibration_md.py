@@ -24,6 +24,8 @@ for asset in R3:
     lines.append("Round 3 product. Calibrated by `calibration/run_pipeline.py`")
     lines.append("(Python port of the visualizer 9-stage pipeline).")
     lines.append("")
+    lines.append(f"**Position limit:** {p.get('position_limit', '?')}")
+    lines.append("")
     lines.append("## Fair Value process")
     lines.append("")
     lines.append("| Property | Value |")

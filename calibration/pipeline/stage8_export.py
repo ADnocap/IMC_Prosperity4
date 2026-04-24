@@ -111,9 +111,20 @@ def assemble_params(asset: str, fv, s1, s2, s3=None, s4=None) -> dict:
                 "bid_ask_indep_p": model["bid_ask_indep"].p_value,
             })
 
+    # Per-product position limits — Stage 8 doesn't have access to a portal
+    # source-of-truth, so it falls back to the OSMIUM/PEPPER default (80) for
+    # unknown assets. R3 products override below; updates here should be
+    # mirrored in calibration/<asset>/calibration.md.
+    POSITION_LIMITS = {
+        "ASH_COATED_OSMIUM": 80, "INTARIAN_PEPPER_ROOT": 80,
+        "HYDROGEL_PACK": 200, "VELVETFRUIT_EXTRACT": 200,
+        "VEV_4000": 300, "VEV_4500": 300, "VEV_5000": 300, "VEV_5100": 300,
+        "VEV_5200": 300, "VEV_5300": 300, "VEV_5400": 300, "VEV_5500": 300,
+        "VEV_6000": 300, "VEV_6500": 300,
+    }
     return {
         "asset": asset,
-        "position_limit": 80,
+        "position_limit": POSITION_LIMITS.get(asset, 80),
         "fv_process": {
             "type": fv_type,
             "params": fv_params,

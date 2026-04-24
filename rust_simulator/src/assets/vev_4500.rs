@@ -17,7 +17,7 @@ use std::collections::HashMap;
 
 pub const SYMBOL: &str = "VEV_4500";
 
-const POSITION_LIMIT: i32 = 80;
+const POSITION_LIMIT: i32 = 300;
 const BASE_TRADE_PROB: f64 = 0.000333667000333667;
 const SECOND_TRADE_PROB: f64 = 0.0;
 const ELASTIC_TRADE_PROB: f64 = 6.67334000667334e-05;

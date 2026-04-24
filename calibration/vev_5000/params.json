@@ -1,6 +1,6 @@
 {
   "asset": "VEV_5000",
-  "position_limit": 80,
+  "position_limit": 300,
   "fv_process": {
     "type": "random_walk",
     "params": {
