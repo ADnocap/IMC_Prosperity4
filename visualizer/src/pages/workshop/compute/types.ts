@@ -315,6 +315,27 @@ export interface AutocorrProduct {
 
 export type AutocorrOutput = AutocorrProduct[];
 
+export interface VarianceRatioInput {
+  productsAllowed: string[] | null;
+  products: string[];
+  times: Float64Array;
+  mids: Float64Array;
+  maxK: number;            // compute VR(k) for k in 2..=maxK
+}
+
+export interface VarianceRatioProduct {
+  product: string;
+  n: number;
+  ks: number[];
+  vrs: number[];
+  m1s: number[];           // homoskedastic test statistics (~N(0,1))
+  m1Pvalues: number[];     // two-sided
+  m2s: number[];           // heteroskedasticity-robust
+  m2Pvalues: number[];
+}
+
+export type VarianceRatioOutput = VarianceRatioProduct[];
+
 export interface RollingBetaInput {
   products: string[];
   times: Float64Array;
@@ -360,7 +381,7 @@ export type TaskKind =
   | 'markout' | 'offset' | 'effRealized'
   | 'corrMatrix' | 'leadLag' | 'pairSpread'
   | 'obsBeta' | 'seasonality'
-  | 'realizedVol' | 'autocorr' | 'rollingBeta';
+  | 'realizedVol' | 'autocorr' | 'rollingBeta' | 'varianceRatio';
 
 export type TaskInput =
   | { kind: 'mid'; input: MidInput }
@@ -378,7 +399,8 @@ export type TaskInput =
   | { kind: 'seasonality'; input: SeasonalityInput }
   | { kind: 'realizedVol'; input: RealizedVolInput }
   | { kind: 'autocorr'; input: AutocorrInput }
-  | { kind: 'rollingBeta'; input: RollingBetaInput };
+  | { kind: 'rollingBeta'; input: RollingBetaInput }
+  | { kind: 'varianceRatio'; input: VarianceRatioInput };
 
 export type TaskOutput =
   | { kind: 'mid'; output: MidOutput }
@@ -396,7 +418,8 @@ export type TaskOutput =
   | { kind: 'seasonality'; output: SeasonalityOutput }
   | { kind: 'realizedVol'; output: RealizedVolOutput }
   | { kind: 'autocorr'; output: AutocorrOutput }
-  | { kind: 'rollingBeta'; output: RollingBetaOutput };
+  | { kind: 'rollingBeta'; output: RollingBetaOutput }
+  | { kind: 'varianceRatio'; output: VarianceRatioOutput };
 
 export interface WorkerRequest {
   id: number;

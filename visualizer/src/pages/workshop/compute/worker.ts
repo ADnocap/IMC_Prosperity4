@@ -15,6 +15,7 @@ import init, {
   computeRollingBeta,
   computeSeasonality,
   computeSpread,
+  computeVarianceRatio,
 } from '../../../../wasm_compute/wasm_compute.js';
 import { TaskOutput, WorkerRequest, WorkerResponse } from './types.ts';
 
@@ -247,6 +248,15 @@ function runTask(request: WorkerRequest): TaskOutput {
       };
       const output = computeRollingBeta(meta, task.input.times, task.input.mids);
       return { kind: 'rollingBeta', output };
+    }
+    case 'varianceRatio': {
+      const meta = {
+        productsAllowed: task.input.productsAllowed,
+        products: task.input.products,
+        maxK: task.input.maxK,
+      };
+      const output = computeVarianceRatio(meta, task.input.times, task.input.mids);
+      return { kind: 'varianceRatio', output };
     }
   }
 }

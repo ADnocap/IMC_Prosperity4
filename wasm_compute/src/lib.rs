@@ -465,9 +465,11 @@ pub fn compute_ofi(
             let e_b = if bp[i] > bp[i - 1] { bv[i] }
                       else if bp[i] < bp[i - 1] { -bv[i - 1] }
                       else { bv[i] - bv[i - 1] };
+            // Cont-Kukanov ask-side contributions are flipped vs. bid side:
+            // an INCREASE in volume at a flat ask = more supply = bearish.
             let e_a = if ap[i] < ap[i - 1] { -av[i] }
                       else if ap[i] > ap[i - 1] { av[i - 1] }
-                      else { av[i] - av[i - 1] };
+                      else { av[i - 1] - av[i] };
             let ofi = e_b + e_a;
             let next_mid = if i + 1 < mid.len() { mid[i + 1] } else { mid[i] };
             xs.push(ofi);
@@ -842,13 +844,13 @@ struct CorrMatrixOut {
 
 /// Per-product tick-to-tick return correlation matrix.
 ///
-/// Implementation notes:
-/// - No dense (N_products × N_times) grid. For a round like P3 R7 (15 products,
-///   580k rows, ~50k unique cumulative timestamps, partial per-product overlap)
-///   that grid is ~20 MB of HashMap entries and bumps WASM memory limits.
-/// - Instead: group rows by product, sort each group by time, diff consecutive
-///   rows to get returns keyed by timestamp. Then for each pair of products,
-///   two-pointer merge-join on timestamps to pick up the overlapping samples.
+/// Implementation:
+/// - Group (time, mid) by product and sort each group by time.
+/// - For each product pair, merge-join their sorted series on matching
+///   timestamps → two parallel mid sequences sampled on the INTERSECTION of
+///   their tick grids. This guarantees both products' returns span the same
+///   time interval (important when sampling rates differ between products).
+/// - Diff the aligned mid sequences with offset `horizon_steps`, then Pearson.
 /// - Memory scales as O(rows), not O(products × times).
 #[wasm_bindgen(js_name = computeCorrMatrix)]
 pub fn compute_corr_matrix(
@@ -881,48 +883,49 @@ pub fn compute_corr_matrix(
         })?);
     }
 
-    // 2) Per-product returns series: list of (time_end, Δmid) sorted by time.
-    //    horizon_steps = 1 diff between consecutive same-product rows. Higher
-    //    horizons would re-use the same series but pair i with i+h.
-    let horizon_steps = meta.return_horizon.max(1) as usize;
-    let mut returns: Vec<Vec<(f64, f64)>> = Vec::with_capacity(n_products);
+    // 2) Sort each product's series by time once.
+    let mut series_by_product: Vec<Vec<(f64, f64)>> = Vec::with_capacity(n_products);
     for label in &labels {
-        let mut series = by_product.remove(label).unwrap_or_default();
-        series.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-        let mut rets: Vec<(f64, f64)> = Vec::with_capacity(series.len().saturating_sub(horizon_steps));
-        if series.len() > horizon_steps {
-            for i in 0..(series.len() - horizon_steps) {
-                let a = series[i].1;
-                let b = series[i + horizon_steps].1;
-                if finite(a) && finite(b) {
-                    rets.push((series[i + horizon_steps].0, b - a));
-                }
-            }
-        }
-        returns.push(rets);
+        let mut s = by_product.remove(label).unwrap_or_default();
+        s.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+        series_by_product.push(s);
     }
 
-    // 3) Pairwise merge-join + Pearson correlation.
+    let horizon_steps = meta.return_horizon.max(1) as usize;
+
+    // 3) Pairwise merge-join → aligned mid series → returns → Pearson.
+    //    Compute returns AFTER alignment so both legs span the same intervals,
+    //    even when products have different tick grids.
     let mut matrix = vec![0.0_f64; n_products * n_products];
     let mut n_matrix = vec![0_u32; n_products * n_products];
+    let mut a_mids: Vec<f64> = Vec::new();
+    let mut b_mids: Vec<f64> = Vec::new();
     let mut xs: Vec<f64> = Vec::new();
     let mut ys: Vec<f64> = Vec::new();
     for i in 0..n_products {
-        // Diagonal: autocorrelation with self = 1 when there's any data.
-        matrix[i * n_products + i] = if returns[i].is_empty() { 0.0 } else { 1.0 };
-        n_matrix[i * n_products + i] = returns[i].len() as u32;
+        let self_len = series_by_product[i].len();
+        matrix[i * n_products + i] = if self_len == 0 { 0.0 } else { 1.0 };
+        n_matrix[i * n_products + i] = self_len.saturating_sub(horizon_steps) as u32;
+
         for j in (i + 1)..n_products {
-            xs.clear();
-            ys.clear();
-            let a = &returns[i];
-            let b = &returns[j];
+            a_mids.clear();
+            b_mids.clear();
+            let a = &series_by_product[i];
+            let b = &series_by_product[j];
             let (mut p, mut q) = (0usize, 0usize);
             while p < a.len() && q < b.len() {
                 let ta = a[p].0;
                 let tb = b[q].0;
                 if ta < tb { p += 1; }
                 else if ta > tb { q += 1; }
-                else { xs.push(a[p].1); ys.push(b[q].1); p += 1; q += 1; }
+                else { a_mids.push(a[p].1); b_mids.push(b[q].1); p += 1; q += 1; }
+            }
+            if a_mids.len() <= horizon_steps { continue; }
+            xs.clear();
+            ys.clear();
+            for k in 0..(a_mids.len() - horizon_steps) {
+                xs.push(a_mids[k + horizon_steps] - a_mids[k]);
+                ys.push(b_mids[k + horizon_steps] - b_mids[k]);
             }
             let c = pearson(&xs, &ys);
             matrix[i * n_products + j] = c;
@@ -1397,6 +1400,142 @@ pub fn compute_autocorr(
     Ok(serde_wasm_bindgen::to_value(&out)?)
 }
 
+// ── Variance-ratio test (Lo-MacKinlay 1988) ─────────────────────────
+//
+// For return series r_t of length n, σ²_1 = (1/n)·Σ(r_t − μ̂)² is the 1-period
+// variance and σ²_k = (1/m)·Σ(R_k(t) − k·μ̂)² is the overlapping k-period
+// variance (m = n − k + 1, R_k(t) = r_t + ... + r_{t−k+1}).
+//
+//   VR(k) = σ²_k / (k·σ²_1)
+//
+// Under the random-walk null, VR(k) → 1. Reject with:
+//   M1(k) = √n · (VR(k)−1) / √φ(k)    φ(k) = 2(2k−1)(k−1)/(3k)      [homosked.]
+//   M2(k) = √n · (VR(k)−1) / √φ*(k)   φ*(k) = Σ_{j=1..k−1} [2(k−j)/k]² · δ(j)
+//     where δ(j) = n·Σ(r_t−μ̂)²(r_{t−j}−μ̂)² / [Σ(r_t−μ̂)²]²           [robust]
+//
+// Both are N(0,1) asymptotically; two-sided p = 2(1 − Φ(|M|)). VR < 1 ⇒
+// mean-reversion; VR > 1 ⇒ momentum.
+
+#[derive(Deserialize)]
+struct VarianceRatioMetaJs {
+    #[serde(rename = "productsAllowed")] products_allowed: Option<Vec<String>>,
+    products: Vec<String>,
+    #[serde(rename = "maxK")] max_k: u32,
+}
+
+#[derive(Serialize)]
+struct VarianceRatioOut {
+    product: String,
+    n: u32,
+    ks: Vec<u32>,
+    vrs: Vec<f64>,
+    m1s: Vec<f64>,
+    #[serde(rename = "m1Pvalues")] m1_pvalues: Vec<f64>,
+    m2s: Vec<f64>,
+    #[serde(rename = "m2Pvalues")] m2_pvalues: Vec<f64>,
+}
+
+#[wasm_bindgen(js_name = computeVarianceRatio)]
+pub fn compute_variance_ratio(
+    meta: JsValue,
+    _times: Float64Array,
+    mids: Float64Array,
+) -> Result<JsValue, JsValue> {
+    let meta: VarianceRatioMetaJs = serde_wasm_bindgen::from_value(meta)?;
+    let mids = mids.to_vec();
+    let max_k = (meta.max_k.max(2) as usize).min(128);
+    let groups = group_indices(&meta.products, &meta.products_allowed);
+
+    let mut out: Vec<VarianceRatioOut> = Vec::new();
+    for (product, indices) in groups {
+        let mut returns: Vec<f64> = Vec::with_capacity(indices.len());
+        let mut prev_mid: Option<f64> = None;
+        for &i in &indices {
+            let m = mids[i];
+            if !finite(m) { continue; }
+            if let Some(p) = prev_mid { returns.push(m - p); }
+            prev_mid = Some(m);
+        }
+        let n = returns.len();
+        if n <= max_k + 30 { continue; }
+
+        let mu = mean(&returns);
+        let mut ss0 = 0.0_f64;
+        for &r in &returns { let d = r - mu; ss0 += d * d; }
+        if ss0 == 0.0 { continue; }
+        let sig2_1 = ss0 / n as f64;
+        let nf = n as f64;
+
+        // Precompute δ(j) for j = 1..max_k − 1 (used by M2 for every k).
+        let mut deltas = vec![0.0_f64; max_k];
+        let ss0_sq = ss0 * ss0;
+        for j in 1..max_k {
+            let mut s_j = 0.0_f64;
+            for t in j..n {
+                let a = returns[t] - mu;
+                let b = returns[t - j] - mu;
+                s_j += a * a * b * b;
+            }
+            deltas[j] = nf * s_j / ss0_sq;
+        }
+
+        let mut ks: Vec<u32> = Vec::with_capacity(max_k - 1);
+        let mut vrs: Vec<f64> = Vec::with_capacity(max_k - 1);
+        let mut m1s: Vec<f64> = Vec::with_capacity(max_k - 1);
+        let mut m1_ps: Vec<f64> = Vec::with_capacity(max_k - 1);
+        let mut m2s: Vec<f64> = Vec::with_capacity(max_k - 1);
+        let mut m2_ps: Vec<f64> = Vec::with_capacity(max_k - 1);
+
+        for k in 2..=max_k {
+            let kf = k as f64;
+
+            // Overlapping k-period variance via a rolling sum. First window is
+            // the sum of returns[0..k]; thereafter slide one step at a time.
+            let mut roll = 0.0_f64;
+            for i in 0..k { roll += returns[i]; }
+            let center = kf * mu;
+            let mut ss_k = (roll - center).powi(2);
+            let mut count = 1_u32;
+            for t in k..n {
+                roll += returns[t] - returns[t - k];
+                ss_k += (roll - center).powi(2);
+                count += 1;
+            }
+            let m = count as f64;
+            let sig2_k = ss_k / m;
+            let vr = sig2_k / (kf * sig2_1);
+
+            let phi = 2.0 * (2.0 * kf - 1.0) * (kf - 1.0) / (3.0 * kf);
+            let m1 = if phi > 0.0 { nf.sqrt() * (vr - 1.0) / phi.sqrt() } else { 0.0 };
+
+            let mut phi_star = 0.0_f64;
+            for j in 1..k {
+                let w = 2.0 * (kf - j as f64) / kf;
+                phi_star += w * w * deltas[j];
+            }
+            let m2 = if phi_star > 0.0 { nf.sqrt() * (vr - 1.0) / phi_star.sqrt() } else { 0.0 };
+
+            let p1 = (2.0 * (1.0 - standard_normal_cdf(m1.abs()))).clamp(0.0, 1.0);
+            let p2 = (2.0 * (1.0 - standard_normal_cdf(m2.abs()))).clamp(0.0, 1.0);
+
+            ks.push(k as u32);
+            vrs.push(vr);
+            m1s.push(m1);
+            m1_ps.push(p1);
+            m2s.push(m2);
+            m2_ps.push(p2);
+        }
+
+        out.push(VarianceRatioOut {
+            product,
+            n: n as u32,
+            ks, vrs, m1s, m1_pvalues: m1_ps, m2s, m2_pvalues: m2_ps,
+        });
+    }
+    out.sort_by(|a, b| a.product.cmp(&b.product));
+    Ok(serde_wasm_bindgen::to_value(&out)?)
+}
+
 // ── Rolling β (pair of products) ────────────────────────────────────
 //
 // Align midA / midB on matching timestamps (same merge-join pattern as
@@ -1550,11 +1689,12 @@ pub fn compute_seasonality(
     let buckets = meta.buckets.max(1);
     let period = meta.day_period.max(1.0);
 
-    // Per product: per-bucket (sum_spread, sum_return_sq, n)
-    let mut acc: HashMap<String, (Vec<f64>, Vec<f64>, Vec<u32>, Vec<f64>)> = HashMap::new();
-    // (spread_sum, ret2_sum, n, last_mid_in_bucket)
-    // Approach for return-vol: compute per-row Δmid vs previous row of the SAME product,
-    // bucket by that row's time-of-day, and accumulate ret^2.
+    // Per product, per bucket: (spread_sum, spread_n, ret_sum, ret2_sum, ret_n)
+    //
+    // Return-vol uses sample variance  σ² = (Σr² − (Σr)²/c) / (c − 1)  so it is
+    // unbiased and ignores any non-zero mean drift (e.g. PEPPER's +0.1/tick).
+    // Spread count is separate because bid/ask can be missing when mid isn't.
+    let mut acc: HashMap<String, (Vec<f64>, Vec<u32>, Vec<f64>, Vec<f64>, Vec<u32>)> = HashMap::new();
     let mut prev_mid: HashMap<String, f64> = HashMap::new();
     for i in 0..meta.products.len() {
         let p = &meta.products[i];
@@ -1564,34 +1704,45 @@ pub fn compute_seasonality(
         let bucket = ((t.rem_euclid(period)) / period * buckets as f64).floor() as isize;
         let bucket = bucket.clamp(0, buckets as isize - 1) as usize;
         let slot = acc.entry(p.clone()).or_insert_with(|| (
-            vec![0.0; buckets], vec![0.0; buckets], vec![0; buckets], vec![0.0; buckets],
+            vec![0.0; buckets], vec![0; buckets],
+            vec![0.0; buckets], vec![0.0; buckets], vec![0; buckets],
         ));
         if finite(bp) && finite(ap) {
             slot.0[bucket] += ap - bp;
+            slot.1[bucket] += 1;
         }
         if finite(m) {
             if let Some(prev) = prev_mid.get(p) {
                 let r = m - prev;
-                slot.1[bucket] += r * r;
+                slot.2[bucket] += r;
+                slot.3[bucket] += r * r;
+                slot.4[bucket] += 1;
             }
             prev_mid.insert(p.clone(), m);
         }
-        slot.2[bucket] += 1;
     }
 
     let mut out: Vec<SeasonalityOut> = Vec::new();
     let bucket_centers: Vec<f64> = (0..buckets).map(|b| (b as f64 + 0.5) / buckets as f64 * period).collect();
-    for (product, (spread_sum, ret2_sum, n, _last)) in acc.into_iter() {
-        let mean_spread: Vec<f64> = spread_sum.iter().zip(n.iter())
+    for (product, (spread_sum, spread_n, ret_sum, ret2_sum, ret_n)) in acc.into_iter() {
+        let mean_spread: Vec<f64> = spread_sum.iter().zip(spread_n.iter())
             .map(|(s, c)| if *c == 0 { 0.0 } else { s / *c as f64 }).collect();
-        let return_vol: Vec<f64> = ret2_sum.iter().zip(n.iter())
-            .map(|(s, c)| if *c == 0 { 0.0 } else { (s / *c as f64).sqrt() }).collect();
+        let return_vol: Vec<f64> = (0..buckets).map(|b| {
+            let c = ret_n[b];
+            if c < 2 { return 0.0; }
+            let cf = c as f64;
+            let mu = ret_sum[b] / cf;
+            let var = ((ret2_sum[b] - cf * mu * mu) / (cf - 1.0)).max(0.0);
+            var.sqrt()
+        }).collect();
+        // Emit the mid-tracking count (drives return-vol) so the panel can reason
+        // about statistical power per bucket.
         out.push(SeasonalityOut {
             product,
             bucket_centers: bucket_centers.clone(),
             mean_spread,
             return_vol,
-            n,
+            n: ret_n,
         });
     }
     out.sort_by(|a, b| a.product.cmp(&b.product));

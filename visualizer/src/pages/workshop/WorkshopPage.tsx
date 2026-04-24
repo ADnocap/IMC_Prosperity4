@@ -39,6 +39,7 @@ import { SchemaCard } from './panels/SchemaCard.tsx';
 import { SeasonalityPanel } from './panels/SeasonalityPanel.tsx';
 import { SpreadPanel } from './panels/SpreadPanel.tsx';
 import { TradeTape } from './panels/TradeTape.tsx';
+import { VarianceRatioPanel } from './panels/VarianceRatioPanel.tsx';
 import { ParsedTable, TreeEntry } from './types.ts';
 
 const ALL_DAYS = '__all__';
@@ -401,6 +402,9 @@ export function WorkshopPage(): ReactNode {
                 </Grid.Col>
                 <Grid.Col span={12}>
                   <AutocorrPanel prepared={preparedPrices} products={activeProducts} />
+                </Grid.Col>
+                <Grid.Col span={12}>
+                  <VarianceRatioPanel prepared={preparedPrices} products={activeProducts} />
                 </Grid.Col>
               </Grid>
             </Tabs.Panel>
