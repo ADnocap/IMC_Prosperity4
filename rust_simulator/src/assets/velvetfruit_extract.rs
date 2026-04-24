@@ -4,6 +4,11 @@
 //! `calibration/velvetfruit_extract/params.json`. Edit the params file and re-run the
 //! generator instead of editing this file by hand.
 //!
+//! Trade rates: BASE / SECOND derived from R3 trade CSVs (3 days × 10K ticks).
+//! ELASTIC back-fitted against portal sub 366383 (penny-jump MM at 1K ticks);
+//! see R3_ELASTIC_OVERRIDES in the generator. Method: scale until sim mean
+//! PnL is within ~1σ of the portal sample for that asset.
+//!
 //! Calibration: see `calibration/velvetfruit_extract/calibration.md`.
 
 use crate::asset::{
@@ -18,9 +23,9 @@ use std::collections::HashMap;
 pub const SYMBOL: &str = "VELVETFRUIT_EXTRACT";
 
 const POSITION_LIMIT: i32 = 200;
-const BASE_TRADE_PROB: f64 = 0.43476810143476813;
-const SECOND_TRADE_PROB: f64 = 0.052954719877206444;
-const ELASTIC_TRADE_PROB: f64 = 0.08695362028695364;
+const BASE_TRADE_PROB: f64 = 0.04543333333333333;
+const SECOND_TRADE_PROB: f64 = 0.006603081438004402;
+const ELASTIC_TRADE_PROB: f64 = 0.053;
 const BUY_PROB: f64 = 0.5;
 
 pub struct VelvetfruitExtract {

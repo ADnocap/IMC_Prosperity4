@@ -174,6 +174,8 @@ Note: Prosperity 4 breaks the P3 pattern. R1 and R2 both trade only OSMIUM + PEP
 
 **Update for R3 (confirmed 2026-04-24):** the "all prior-round products remain tradeable" expectation broke at R3 — only the new R3 products (HYDROGEL, VELVETFRUIT, VEV_*) appear on the portal. R3 trader `traders/round3/a.py` no longer carries OSMIUM/PEPPER handlers.
 
+**R3 sim calibration (2026-04-24, portal sub 366383):** the auto-generated `_trade_rates` in `tmp/generate_r3_asset_rs.py` had a 10× bug — it divided trade-event ticks by `3 * n_fv_ticks` (3000) instead of `3 * 10000`. Fix: use the actual CSV horizon (3 days × 10K ticks). Plus the raw trade CSVs under-represent ELASTIC (post-strategy taker) demand because the recordings come from a market with no aggressive MM — so once `traders/round3/a.py` shows up with improved quotes, real takers fire much more often. Resolved by adding per-asset `R3_ELASTIC_OVERRIDES` in the generator, back-fitted from portal sub 366383. Post-fix MC matches portal within 0.1σ on every R3 asset (sim total 1146 vs portal 1273 at 1K ticks).
+
 ## Strategy Framework
 
 ### 1. Alpha Engine (Fair Value Estimation)

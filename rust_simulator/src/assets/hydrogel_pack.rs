@@ -4,6 +4,11 @@
 //! `calibration/hydrogel_pack/params.json`. Edit the params file and re-run the
 //! generator instead of editing this file by hand.
 //!
+//! Trade rates: BASE / SECOND derived from R3 trade CSVs (3 days × 10K ticks).
+//! ELASTIC back-fitted against portal sub 366383 (penny-jump MM at 1K ticks);
+//! see R3_ELASTIC_OVERRIDES in the generator. Method: scale until sim mean
+//! PnL is within ~1σ of the portal sample for that asset.
+//!
 //! Calibration: see `calibration/hydrogel_pack/calibration.md`.
 
 use crate::asset::{
@@ -18,9 +23,9 @@ use std::collections::HashMap;
 pub const SYMBOL: &str = "HYDROGEL_PACK";
 
 const POSITION_LIMIT: i32 = 200;
-const BASE_TRADE_PROB: f64 = 0.3289956623289957;
-const SECOND_TRADE_PROB: f64 = 0.02434077079107505;
-const ELASTIC_TRADE_PROB: f64 = 0.06579913246579915;
+const BASE_TRADE_PROB: f64 = 0.033666666666666664;
+const SECOND_TRADE_PROB: f64 = 0.0;
+const ELASTIC_TRADE_PROB: f64 = 0.02;
 const BUY_PROB: f64 = 0.5;
 
 pub struct HydrogelPack {

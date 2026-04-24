@@ -33,3 +33,5 @@ prosperity4mcbt.egg-info/
 # cross-user collisions. Yes, this grows the repo — if it ever becomes a
 # problem, prune old runs with a dedicated cleanup commit rather than
 # gitignoring them.
+
+tmp/backtests/

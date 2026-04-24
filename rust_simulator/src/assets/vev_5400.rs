@@ -4,6 +4,11 @@
 //! `calibration/vev_5400/params.json`. Edit the params file and re-run the
 //! generator instead of editing this file by hand.
 //!
+//! Trade rates: BASE / SECOND derived from R3 trade CSVs (3 days × 10K ticks).
+//! ELASTIC back-fitted against portal sub 366383 (penny-jump MM at 1K ticks);
+//! see R3_ELASTIC_OVERRIDES in the generator. Method: scale until sim mean
+//! PnL is within ~1σ of the portal sample for that asset.
+//!
 //! Calibration: see `calibration/vev_5400/calibration.md`.
 
 use crate::asset::{
@@ -18,9 +23,9 @@ use std::collections::HashMap;
 pub const SYMBOL: &str = "VEV_5400";
 
 const POSITION_LIMIT: i32 = 300;
-const BASE_TRADE_PROB: f64 = 0.07340674007340674;
-const SECOND_TRADE_PROB: f64 = 0.022727272727272728;
-const ELASTIC_TRADE_PROB: f64 = 0.014681348014681348;
+const BASE_TRADE_PROB: f64 = 0.0075;
+const SECOND_TRADE_PROB: f64 = 0.0;
+const ELASTIC_TRADE_PROB: f64 = 0.0;
 const BUY_PROB: f64 = 0.5;
 
 pub struct Vev5400 {
