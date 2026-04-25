@@ -1,0 +1,73 @@
+# Round 3 search 2 — extended-range refinement around trial #324 winner.
+#
+# Search 1 winner hit the EDGE of the search range on most of the
+# important params (MR_TAKE_Z=2.47 hit ceiling 2.5; MR_K=0.32 hit floor
+# 0.30; MR_MM_LEVELS=1 hit floor; etc.) — strong signal we capped the
+# conservative direction too early. Search 2 extends the ranges in the
+# direction the optimizer was pushing.
+#
+# Key locked-in values from search 1 evidence (NOT searched):
+#   OBI_CONFIRM_TAKE = True   (toby's gate enabled)
+#   INCLUDE_5400_MR  = True   (keep 5400 in MR)
+#   INCLUDE_5500_MR  = False  (drop 5500 — too noisy, route to OBI MM)
+#   OBI_SKEW_1/2/3   = trial #324 values (low fANOVA importance)
+#   VEV_SIZES_*      = harry_v4 defaults (not searched in search 1)
+#
+# Modified objective vs search 1: small positive weight on mean_pnl so
+# pure-zero-activity solutions don't win on Sharpe alone (a strategy that
+# does nothing has Sharpe 0/0 = NaN; we want positive PnL with low std).
+#
+# Path-length / sessions: 80 train + 20 val per trial (same as search 1)
+# but 200 test sessions for tighter end-of-study OOS estimate.
+
+name: round3_param_search_v2
+trader: studies/round3_tunable_v2.py
+
+sim:
+  train_sessions: 80
+  val_sessions:   20
+  test_sessions:  200       # bigger OOS retest than search 1
+  ticks_per_day:  10000
+  seed:           42
+  test_seed:      10042
+
+params:
+  # ---- MR core (extended ranges around #324 values) -----------------
+  EMA_ALPHA:        { type: float, low: 0.00003, high: 0.001, log: true }    # was [0.0001, 0.005]
+  VAR_ALPHA:        { type: float, low: 0.005,   high: 0.05, log: true }     # unchanged
+  MR_K:             { type: float, low: 0.05,    high: 0.50 }                 # was [0.30, 0.90] — extended LOW
+  MR_MAX_FRAC:      { type: float, low: 0.30,    high: 0.80 }                 # was [0.50, 0.95] — extended LOW
+  MR_TAKE_Z:        { type: float, low: 2.0,     high: 5.0 }                  # was [1.0, 2.5] — extended HIGH
+  MR_TAKE_MAX:      { type: int,   low: 5,       high: 50 }                   # was [10, 80]
+  MR_MM_LEVEL_SIZE: { type: int,   low: 3,       high: 25 }                   # was [10, 50] — extended LOW
+  MR_MM_LEVELS:     { type: int,   low: 1,       high: 4 }                    # was [1, 3] — extended HIGH
+
+  # ---- OBI MM thresholds (search around #324 values, smaller VEV_BASE)
+  VEV_BASE_SIZE:    { type: int,   low: 3,       high: 18 }                   # was [8, 25] — extended LOW
+
+  # ---- NEW: test if no-takes-at-all wins outright (emma hypothesis) -
+  DISABLE_TAKES:    { type: categorical, choices: [false, true] }
+
+# No constraints needed (OBI_SKEW thresholds locked at #324 values).
+
+objective:
+  # Same Sharpe-dominant objective with small mean_pnl weight to prevent
+  # the search converging on a do-nothing strategy.
+  terms:
+    - { name: sharpe,     weight: 1.0 }
+    - { name: mean_pnl,   weight: 0.0001 }   # tiny: keeps mean positive
+    - { name: cvar_5,     weight: 0.0001 }   # tiny: prefer better tail
+    - { name: std_pnl,    weight: 0.0 }      # reported only
+    - { name: median_pnl, weight: 0.0 }      # reported only
+    - { name: p05_pnl,    weight: 0.0 }      # reported only
+
+search:
+  sampler: tpe
+  n_trials: 400             # fewer params (10 vs 15) → fewer trials needed
+  n_jobs:   4
+  seed:     5678
+  sampler_options:
+    n_startup_trials: 50    # LHS-like exploration
+
+report:
+  top_k: 15

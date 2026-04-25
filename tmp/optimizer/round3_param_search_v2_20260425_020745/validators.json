@@ -1,0 +1,70 @@
+{
+  "n_completed_trials": 400,
+  "n_trials_with_pnl_matrix": 400,
+  "best_trial": {
+    "number": 351,
+    "value": 2.4538554652277775,
+    "params": {
+      "EMA_ALPHA": 9.60930565528529e-05,
+      "VAR_ALPHA": 0.02194146457617409,
+      "MR_K": 0.0597009142310693,
+      "MR_MAX_FRAC": 0.5756582871480043,
+      "MR_TAKE_Z": 3.950088708469303,
+      "MR_TAKE_MAX": 24,
+      "MR_MM_LEVEL_SIZE": 17,
+      "MR_MM_LEVELS": 1,
+      "VEV_BASE_SIZE": 3,
+      "DISABLE_TAKES": true
+    }
+  },
+  "dsr": {
+    "sharpe": 1.6554388178242034,
+    "probability": 1.0,
+    "expected_max_sr_under_null": 0.7773024350028266,
+    "n_trials": 400,
+    "n_sessions": 100,
+    "skew": 0.09688673001349037,
+    "kurt_excess": -0.17999345720332505,
+    "reasoning": "SR=1.655 vs null-max SR0=0.777; z=10.32; P(true SR > 0)=1.000. Pass."
+  },
+  "pbo": {
+    "pbo": 0.03125,
+    "n_trials": 400,
+    "n_sessions": 100,
+    "n_partitions_used": 64,
+    "reasoning": "best-in-A below median in B: 2/64 partitions \u2192 PBO = 0.031. Winners generalize."
+  },
+  "cluster": {
+    "top_k": 15,
+    "median_top_dist": 2.1817862099331533,
+    "median_random_dist": 3.6308671737159113,
+    "ratio": 0.600899483662539,
+    "reasoning": "top-K is 0.60\u00d7 spread of random-K \u2014 tightly clustered, robust winner.",
+    "numeric_params": [
+      "EMA_ALPHA",
+      "MR_K",
+      "MR_MAX_FRAC",
+      "MR_MM_LEVELS",
+      "MR_MM_LEVEL_SIZE",
+      "MR_TAKE_MAX",
+      "MR_TAKE_Z",
+      "VAR_ALPHA",
+      "VEV_BASE_SIZE"
+    ]
+  },
+  "importance": {
+    "importances": {
+      "MR_MM_LEVELS": 0.6270414885621426,
+      "MR_MM_LEVEL_SIZE": 0.33470336136843365,
+      "MR_K": 0.03379205597316787,
+      "VAR_ALPHA": 0.0012426123934284302,
+      "MR_TAKE_MAX": 0.0008385437208392768,
+      "MR_MAX_FRAC": 0.0007638508479486666,
+      "VEV_BASE_SIZE": 0.0007428915994706561,
+      "MR_TAKE_Z": 0.0005269780361928017,
+      "EMA_ALPHA": 0.0003151556560429865,
+      "DISABLE_TAKES": 3.3061842333272707e-05
+    },
+    "reasoning": "param importances (fANOVA, normalized to sum 1):\n  MR_MM_LEVELS         0.627\n  MR_MM_LEVEL_SIZE     0.335\n  MR_K                 0.034\n  VAR_ALPHA            0.001\n  MR_TAKE_MAX          0.001\n  MR_MAX_FRAC          0.001\n  VEV_BASE_SIZE        0.001\n  MR_TAKE_Z            0.001\n  EMA_ALPHA            0.000\n  DISABLE_TAKES        0.000"
+  }
+}

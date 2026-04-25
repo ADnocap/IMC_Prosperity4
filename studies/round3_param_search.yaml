@@ -1,0 +1,87 @@
+# Round 3 robust parameter search.
+#
+# Goal: find params that maximize SHARPE-like risk-adjusted PnL on the MR
+# core of harry_potter_v4 (portal +17,449), so the strategy is reliable
+# across the unknown final-eval data path. Optimizing pure mean would
+# chase a high-but-fragile peak; optimizing Sharpe punishes the swings.
+#
+# Locked from portal evidence (NOT tuned here):
+#   - HYDROGEL stays on OBI MM (wigwam regressed)
+#   - VEV_4000/4500 stay on OBI MM (proportional spreads)
+#   - No structural shorts (naomi/chester regressed)
+#   - No BS-coupled FV (denham/manny regressed; MC decouples vouchers)
+#   - Dead VEV_6000/6500 always skipped
+#
+# Param space chosen around harry_v4 defaults so they're inside the
+# search box (TPE startup samples uniformly first, so baseline is hit).
+#
+# Path-length choice: 10000 ticks/session = portal final-eval scale.
+# Shorter sessions (1000 ticks) would be 10x faster but the per-trial
+# variance would dominate the param signal.
+#
+# Budget: 50 train + 15 val sessions per trial. With ~2-3s per trial on
+# this machine, 300 trials ~= 15 min. End-of-study test on top-10 with
+# 100 fresh-seed sessions = honest OOS.
+
+name: round3_param_search
+trader: studies/round3_tunable.py
+
+sim:
+  train_sessions: 80      # MR strategies need decent N for stable Sharpe
+  val_sessions:   20      # per-trial OOS sanity check
+  test_sessions:  150     # end-of-study top-K retest on fresh seed
+  ticks_per_day:  10000   # portal final-eval scale
+  seed:           42      # CRN — same seed across trials for low trial-vs-trial variance
+  test_seed:      10042   # disjoint from training (sim.seed + 10000)
+
+params:
+  # ---- MR core (centered on harry_v4 defaults) ---------------------
+  EMA_ALPHA:        { type: float, low: 0.0001, high: 0.005, log: true }
+  VAR_ALPHA:        { type: float, low: 0.005,  high: 0.05,  log: true }
+  MR_K:             { type: float, low: 0.30,   high: 0.90 }
+  MR_MAX_FRAC:      { type: float, low: 0.50,   high: 0.95 }
+  MR_TAKE_Z:        { type: float, low: 1.0,    high: 2.5 }
+  MR_TAKE_MAX:      { type: int,   low: 10,     high: 80 }
+  MR_MM_LEVEL_SIZE: { type: int,   low: 10,     high: 50 }
+  MR_MM_LEVELS:     { type: int,   low: 1,      high: 3 }
+
+  # ---- OBI MM thresholds (HYDROGEL + VEV_4000/4500 + maybe 5400/5500)
+  OBI_SKEW_1:    { type: float, low: 0.05, high: 0.20 }
+  OBI_SKEW_2:    { type: float, low: 0.25, high: 0.55 }
+  OBI_SKEW_3:    { type: float, low: 0.60, high: 0.85 }
+  VEV_BASE_SIZE: { type: int,   low: 8,    high: 25 }
+
+  # ---- Categorical toggles (test ideas from manual experiments) ----
+  # toby's OBI gate on cross-spread takes (require OBI to agree with z sign)
+  OBI_CONFIRM_TAKE: { type: categorical, choices: [false, true] }
+  # MR on the small-sigma vouchers, or fall back to OBI MM (toby drops them)
+  INCLUDE_5400_MR:  { type: categorical, choices: [false, true] }
+  INCLUDE_5500_MR:  { type: categorical, choices: [false, true] }
+
+constraints:
+  # Tier thresholds must be ordered.
+  - "OBI_SKEW_1 < OBI_SKEW_2"
+  - "OBI_SKEW_2 < OBI_SKEW_3"
+
+objective:
+  # Sharpe = mean_pnl / std_pnl (per-session, not annualized).
+  # Punishes high-std strategies directly.
+  # Add cvar_5 with small positive weight to favor better tail behavior.
+  terms:
+    - { name: sharpe,   weight: 1.0 }
+    - { name: cvar_5,   weight: 0.0001 }   # tiny weight — tiebreaker only
+    - { name: mean_pnl, weight: 0.0 }      # reported, not scored
+    - { name: std_pnl,  weight: 0.0 }      # reported, not scored
+    - { name: median_pnl, weight: 0.0 }
+    - { name: p05_pnl,    weight: 0.0 }
+
+search:
+  sampler: tpe
+  n_trials: 800           # generous coverage of 15-dim space
+  n_jobs:   4             # parallel trials (each spawns a Rust subprocess)
+  seed:     1234
+  sampler_options:
+    n_startup_trials: 80  # LHS-like exploration before TPE narrows
+
+report:
+  top_k: 15
