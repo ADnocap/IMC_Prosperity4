@@ -1,0 +1,18 @@
+# Overfit schedule from portal log 368660
+
+HYDROGEL_PACK          spread=15.64  mid_width=116.00  turning_pts= 21  flip_PnL=   +48,949  long_PnL=   +17,910
+VELVETFRUIT_EXTRACT    spread= 4.98  mid_width= 35.00  turning_pts= 55  flip_PnL=   +28,484  long_PnL=   +13,892
+VEV_4000               spread=20.97  mid_width= 35.00  turning_pts=  8  flip_PnL=    +2,157  long_PnL=    +2,424
+VEV_4500               spread=16.08  mid_width= 35.50  turning_pts= 12  flip_PnL=    +6,033  long_PnL=      +904
+VEV_5000               spread= 6.23  mid_width= 34.00  turning_pts= 28  flip_PnL=   +32,929  long_PnL=   +16,949
+VEV_5100               spread= 4.44  mid_width= 29.50  turning_pts= 42  flip_PnL=   +34,739  long_PnL=   +17,586
+VEV_5200               spread= 2.98  mid_width= 23.00  turning_pts= 48  flip_PnL=   +30,976  long_PnL=   +15,710
+VEV_5300               spread= 2.17  mid_width= 16.00  turning_pts= 44  flip_PnL=   +18,794  long_PnL=    +9,273
+VEV_5400               spread= 1.42  mid_width=  7.00  turning_pts= 16  flip_PnL=    +6,365  long_PnL=    +2,894
+VEV_5500               spread= 1.17  mid_width=  3.00  turning_pts=  6  flip_PnL=    +1,246  long_PnL=      +649
+
+TOTAL flip-strategy PnL:     +210,670 XIRECs
+TOTAL long-only PnL:         +98,191 XIRECs
+TOTAL picking best-per-asset: +210,938 XIRECs
+
+(Gross = fill at mid ± half_spread. Real fills walk the book and pay additional slippage on flip size > top-of-book depth.)
