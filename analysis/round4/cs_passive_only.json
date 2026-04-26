@@ -1,0 +1,98 @@
+{
+  "VEV_5200_VEV_5400_size30_p0.05": {
+    "per_day_pnl": [
+      1.0,
+      22.0,
+      11.0
+    ],
+    "total_pnl": 34.0
+  },
+  "VEV_5200_VEV_5400_size30_p0.1": {
+    "per_day_pnl": [
+      10.0,
+      -3.0,
+      -10.0
+    ],
+    "total_pnl": -3.0
+  },
+  "VEV_5200_VEV_5400_size30_p0.2": {
+    "per_day_pnl": [
+      -14.0,
+      -5.0,
+      -1.0
+    ],
+    "total_pnl": -20.0
+  },
+  "VEV_5200_VEV_5400_size30_p0.5": {
+    "per_day_pnl": [
+      -7.0,
+      7.0,
+      29.0
+    ],
+    "total_pnl": 29.0
+  },
+  "VEV_5300_VEV_5400_size40_p0.05": {
+    "per_day_pnl": [
+      3.0,
+      2.0,
+      -1.0
+    ],
+    "total_pnl": 4.0
+  },
+  "VEV_5300_VEV_5400_size40_p0.1": {
+    "per_day_pnl": [
+      6.0,
+      2.0,
+      -1.0
+    ],
+    "total_pnl": 7.0
+  },
+  "VEV_5300_VEV_5400_size40_p0.2": {
+    "per_day_pnl": [
+      4.0,
+      8.0,
+      -5.0
+    ],
+    "total_pnl": 7.0
+  },
+  "VEV_5300_VEV_5400_size40_p0.5": {
+    "per_day_pnl": [
+      6.0,
+      13.0,
+      5.0
+    ],
+    "total_pnl": 24.0
+  },
+  "VEV_5300_VEV_5500_size20_p0.05": {
+    "per_day_pnl": [
+      -2.0,
+      -6.0,
+      -2.0
+    ],
+    "total_pnl": -10.0
+  },
+  "VEV_5300_VEV_5500_size20_p0.1": {
+    "per_day_pnl": [
+      6.0,
+      0.0,
+      -3.0
+    ],
+    "total_pnl": 3.0
+  },
+  "VEV_5300_VEV_5500_size20_p0.2": {
+    "per_day_pnl": [
+      2.0,
+      1.0,
+      0.0
+    ],
+    "total_pnl": 3.0
+  },
+  "VEV_5300_VEV_5500_size20_p0.5": {
+    "per_day_pnl": [
+      -1.0,
+      14.0,
+      7.0
+    ],
+    "total_pnl": 20.0
+  }
+}

@@ -1,0 +1,358 @@
+{
+  "r3_days_0_2": {
+    "VEV_5200_VEV_5400_size30": {
+      "mid": {
+        "per_day_pnl": [
+          3345.0,
+          3675.0,
+          4245.0
+        ],
+        "per_day_trades": [
+          138,
+          135,
+          163
+        ],
+        "total_pnl": 11265.0,
+        "total_trades": 436
+      },
+      "realistic": {
+        "per_day_pnl": [
+          -5212.5,
+          -4477.5,
+          -5437.5
+        ],
+        "per_day_trades": [
+          138,
+          135,
+          163
+        ],
+        "total_pnl": -15127.5,
+        "total_trades": 436
+      },
+      "cross": {
+        "per_day_pnl": [
+          -13770.0,
+          -12630.0,
+          -15120.0
+        ],
+        "per_day_trades": [
+          138,
+          135,
+          163
+        ],
+        "total_pnl": -41520.0,
+        "total_trades": 436
+      }
+    },
+    "VEV_5300_VEV_5400_size40": {
+      "mid": {
+        "per_day_pnl": [
+          1140.0,
+          1440.0,
+          1960.0
+        ],
+        "per_day_trades": [
+          28,
+          33,
+          40
+        ],
+        "total_pnl": 4540.0,
+        "total_trades": 101
+      },
+      "realistic": {
+        "per_day_pnl": [
+          -670.0,
+          -640.0,
+          -480.0
+        ],
+        "per_day_trades": [
+          28,
+          33,
+          40
+        ],
+        "total_pnl": -1790.0,
+        "total_trades": 101
+      },
+      "cross": {
+        "per_day_pnl": [
+          -2480.0,
+          -2720.0,
+          -2920.0
+        ],
+        "per_day_trades": [
+          28,
+          33,
+          40
+        ],
+        "total_pnl": -8120.0,
+        "total_trades": 101
+      }
+    },
+    "VEV_5300_VEV_5500_size20": {
+      "mid": {
+        "per_day_pnl": [
+          1080.0,
+          1130.0,
+          1260.0
+        ],
+        "per_day_trades": [
+          57,
+          62,
+          57
+        ],
+        "total_pnl": 3470.0,
+        "total_trades": 176
+      },
+      "realistic": {
+        "per_day_pnl": [
+          -730.0,
+          -805.0,
+          -500.0
+        ],
+        "per_day_trades": [
+          57,
+          62,
+          57
+        ],
+        "total_pnl": -2035.0,
+        "total_trades": 176
+      },
+      "cross": {
+        "per_day_pnl": [
+          -2540.0,
+          -2740.0,
+          -2260.0
+        ],
+        "per_day_trades": [
+          57,
+          62,
+          57
+        ],
+        "total_pnl": -7540.0,
+        "total_trades": 176
+      }
+    },
+    "VEV_5300_VEV_5400_size100": {
+      "mid": {
+        "per_day_pnl": [
+          2850.0,
+          3600.0,
+          4900.0
+        ],
+        "per_day_trades": [
+          28,
+          33,
+          40
+        ],
+        "total_pnl": 11350.0,
+        "total_trades": 101
+      },
+      "realistic": {
+        "per_day_pnl": [
+          -1675.0,
+          -1600.0,
+          -1200.0
+        ],
+        "per_day_trades": [
+          28,
+          33,
+          40
+        ],
+        "total_pnl": -4475.0,
+        "total_trades": 101
+      },
+      "cross": {
+        "per_day_pnl": [
+          -6200.0,
+          -6800.0,
+          -7300.0
+        ],
+        "per_day_trades": [
+          28,
+          33,
+          40
+        ],
+        "total_pnl": -20300.0,
+        "total_trades": 101
+      }
+    }
+  },
+  "r4_days_1_3": {
+    "VEV_5200_VEV_5400_size30": {
+      "mid": {
+        "per_day_pnl": [
+          3675.0,
+          4245.0,
+          3555.0
+        ],
+        "per_day_trades": [
+          135,
+          163,
+          149
+        ],
+        "total_pnl": 11475.0,
+        "total_trades": 447
+      },
+      "realistic": {
+        "per_day_pnl": [
+          -4477.5,
+          -5437.5,
+          -4312.5
+        ],
+        "per_day_trades": [
+          135,
+          163,
+          149
+        ],
+        "total_pnl": -14227.5,
+        "total_trades": 447
+      },
+      "cross": {
+        "per_day_pnl": [
+          -12630.0,
+          -15120.0,
+          -12180.0
+        ],
+        "per_day_trades": [
+          135,
+          163,
+          149
+        ],
+        "total_pnl": -39930.0,
+        "total_trades": 447
+      }
+    },
+    "VEV_5300_VEV_5400_size40": {
+      "mid": {
+        "per_day_pnl": [
+          1440.0,
+          1960.0,
+          1320.0
+        ],
+        "per_day_trades": [
+          33,
+          40,
+          31
+        ],
+        "total_pnl": 4720.0,
+        "total_trades": 104
+      },
+      "realistic": {
+        "per_day_pnl": [
+          -640.0,
+          -480.0,
+          -420.0
+        ],
+        "per_day_trades": [
+          33,
+          40,
+          31
+        ],
+        "total_pnl": -1540.0,
+        "total_trades": 104
+      },
+      "cross": {
+        "per_day_pnl": [
+          -2720.0,
+          -2920.0,
+          -2160.0
+        ],
+        "per_day_trades": [
+          33,
+          40,
+          31
+        ],
+        "total_pnl": -7800.0,
+        "total_trades": 104
+      }
+    },
+    "VEV_5300_VEV_5500_size20": {
+      "mid": {
+        "per_day_pnl": [
+          1130.0,
+          1260.0,
+          570.0
+        ],
+        "per_day_trades": [
+          62,
+          57,
+          39
+        ],
+        "total_pnl": 2960.0,
+        "total_trades": 158
+      },
+      "realistic": {
+        "per_day_pnl": [
+          -805.0,
+          -500.0,
+          -585.0
+        ],
+        "per_day_trades": [
+          62,
+          57,
+          39
+        ],
+        "total_pnl": -1890.0,
+        "total_trades": 158
+      },
+      "cross": {
+        "per_day_pnl": [
+          -2740.0,
+          -2260.0,
+          -1740.0
+        ],
+        "per_day_trades": [
+          62,
+          57,
+          39
+        ],
+        "total_pnl": -6740.0,
+        "total_trades": 158
+      }
+    },
+    "VEV_5300_VEV_5400_size100": {
+      "mid": {
+        "per_day_pnl": [
+          3600.0,
+          4900.0,
+          3300.0
+        ],
+        "per_day_trades": [
+          33,
+          40,
+          31
+        ],
+        "total_pnl": 11800.0,
+        "total_trades": 104
+      },
+      "realistic": {
+        "per_day_pnl": [
+          -1600.0,
+          -1200.0,
+          -1050.0
+        ],
+        "per_day_trades": [
+          33,
+          40,
+          31
+        ],
+        "total_pnl": -3850.0,
+        "total_trades": 104
+      },
+      "cross": {
+        "per_day_pnl": [
+          -6800.0,
+          -7300.0,
+          -5400.0
+        ],
+        "per_day_trades": [
+          33,
+          40,
+          31
+        ],
+        "total_pnl": -19500.0,
+        "total_trades": 104
+      }
+    }
+  }
+}

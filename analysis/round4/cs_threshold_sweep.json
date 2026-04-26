@@ -1,0 +1,1682 @@
+{
+  "VEV_5200_VEV_5400_sz30_k1.5_h30_mid": {
+    "per_day": [
+      9540.0,
+      9495.0,
+      7185.0
+    ],
+    "trades_per_day": [
+      429,
+      419,
+      346
+    ],
+    "total": 26220.0,
+    "n_trades": 1194
+  },
+  "VEV_5200_VEV_5400_sz30_k1.5_h30_realistic": {
+    "per_day": [
+      -17055.0,
+      -16192.5,
+      -11512.5
+    ],
+    "trades_per_day": [
+      429,
+      419,
+      346
+    ],
+    "total": -44760.0,
+    "n_trades": 1194
+  },
+  "VEV_5200_VEV_5400_sz30_k1.5_h100_mid": {
+    "per_day": [
+      9480.0,
+      9600.0,
+      7020.0
+    ],
+    "trades_per_day": [
+      429,
+      408,
+      316
+    ],
+    "total": 26100.0,
+    "n_trades": 1153
+  },
+  "VEV_5200_VEV_5400_sz30_k1.5_h100_realistic": {
+    "per_day": [
+      -17115.0,
+      -15420.0,
+      -9975.0
+    ],
+    "trades_per_day": [
+      429,
+      408,
+      316
+    ],
+    "total": -42510.0,
+    "n_trades": 1153
+  },
+  "VEV_5200_VEV_5400_sz30_k1.5_h300_mid": {
+    "per_day": [
+      9480.0,
+      9555.0,
+      7275.0
+    ],
+    "trades_per_day": [
+      429,
+      407,
+      315
+    ],
+    "total": 26310.0,
+    "n_trades": 1151
+  },
+  "VEV_5200_VEV_5400_sz30_k1.5_h300_realistic": {
+    "per_day": [
+      -17115.0,
+      -15397.5,
+      -9682.5
+    ],
+    "trades_per_day": [
+      429,
+      407,
+      315
+    ],
+    "total": -42195.0,
+    "n_trades": 1151
+  },
+  "VEV_5200_VEV_5400_sz30_k1.5_h1000_mid": {
+    "per_day": [
+      9480.0,
+      9555.0,
+      7275.0
+    ],
+    "trades_per_day": [
+      429,
+      407,
+      315
+    ],
+    "total": 26310.0,
+    "n_trades": 1151
+  },
+  "VEV_5200_VEV_5400_sz30_k1.5_h1000_realistic": {
+    "per_day": [
+      -17115.0,
+      -15397.5,
+      -9682.5
+    ],
+    "trades_per_day": [
+      429,
+      407,
+      315
+    ],
+    "total": -42195.0,
+    "n_trades": 1151
+  },
+  "VEV_5200_VEV_5400_sz30_k2.0_h30_mid": {
+    "per_day": [
+      3675.0,
+      4245.0,
+      3555.0
+    ],
+    "trades_per_day": [
+      135,
+      163,
+      149
+    ],
+    "total": 11475.0,
+    "n_trades": 447
+  },
+  "VEV_5200_VEV_5400_sz30_k2.0_h30_realistic": {
+    "per_day": [
+      -4477.5,
+      -5437.5,
+      -4312.5
+    ],
+    "trades_per_day": [
+      135,
+      163,
+      149
+    ],
+    "total": -14227.5,
+    "n_trades": 447
+  },
+  "VEV_5200_VEV_5400_sz30_k2.0_h100_mid": {
+    "per_day": [
+      3615.0,
+      4650.0,
+      3870.0
+    ],
+    "trades_per_day": [
+      135,
+      161,
+      142
+    ],
+    "total": 12135.0,
+    "n_trades": 438
+  },
+  "VEV_5200_VEV_5400_sz30_k2.0_h100_realistic": {
+    "per_day": [
+      -4537.5,
+      -4920.0,
+      -3630.0
+    ],
+    "trades_per_day": [
+      135,
+      161,
+      142
+    ],
+    "total": -13087.5,
+    "n_trades": 438
+  },
+  "VEV_5200_VEV_5400_sz30_k2.0_h300_mid": {
+    "per_day": [
+      3615.0,
+      4665.0,
+      4035.0
+    ],
+    "trades_per_day": [
+      135,
+      161,
+      142
+    ],
+    "total": 12315.0,
+    "n_trades": 438
+  },
+  "VEV_5200_VEV_5400_sz30_k2.0_h300_realistic": {
+    "per_day": [
+      -4537.5,
+      -4912.5,
+      -3472.5
+    ],
+    "trades_per_day": [
+      135,
+      161,
+      142
+    ],
+    "total": -12922.5,
+    "n_trades": 438
+  },
+  "VEV_5200_VEV_5400_sz30_k2.0_h1000_mid": {
+    "per_day": [
+      3615.0,
+      4665.0,
+      4035.0
+    ],
+    "trades_per_day": [
+      135,
+      161,
+      142
+    ],
+    "total": 12315.0,
+    "n_trades": 438
+  },
+  "VEV_5200_VEV_5400_sz30_k2.0_h1000_realistic": {
+    "per_day": [
+      -4537.5,
+      -4912.5,
+      -3472.5
+    ],
+    "trades_per_day": [
+      135,
+      161,
+      142
+    ],
+    "total": -12922.5,
+    "n_trades": 438
+  },
+  "VEV_5200_VEV_5400_sz30_k2.5_h30_mid": {
+    "per_day": [
+      1485.0,
+      1110.0,
+      1095.0
+    ],
+    "trades_per_day": [
+      42,
+      46,
+      47
+    ],
+    "total": 3690.0,
+    "n_trades": 135
+  },
+  "VEV_5200_VEV_5400_sz30_k2.5_h30_realistic": {
+    "per_day": [
+      -922.5,
+      -1485.0,
+      -1327.5
+    ],
+    "trades_per_day": [
+      42,
+      46,
+      47
+    ],
+    "total": -3735.0,
+    "n_trades": 135
+  },
+  "VEV_5200_VEV_5400_sz30_k2.5_h100_mid": {
+    "per_day": [
+      1485.0,
+      1275.0,
+      795.0
+    ],
+    "trades_per_day": [
+      42,
+      46,
+      47
+    ],
+    "total": 3555.0,
+    "n_trades": 135
+  },
+  "VEV_5200_VEV_5400_sz30_k2.5_h100_realistic": {
+    "per_day": [
+      -922.5,
+      -1327.5,
+      -1612.5
+    ],
+    "trades_per_day": [
+      42,
+      46,
+      47
+    ],
+    "total": -3862.5,
+    "n_trades": 135
+  },
+  "VEV_5200_VEV_5400_sz30_k2.5_h300_mid": {
+    "per_day": [
+      1485.0,
+      1275.0,
+      840.0
+    ],
+    "trades_per_day": [
+      42,
+      46,
+      47
+    ],
+    "total": 3600.0,
+    "n_trades": 135
+  },
+  "VEV_5200_VEV_5400_sz30_k2.5_h300_realistic": {
+    "per_day": [
+      -922.5,
+      -1327.5,
+      -1575.0
+    ],
+    "trades_per_day": [
+      42,
+      46,
+      47
+    ],
+    "total": -3825.0,
+    "n_trades": 135
+  },
+  "VEV_5200_VEV_5400_sz30_k2.5_h1000_mid": {
+    "per_day": [
+      1485.0,
+      1275.0,
+      840.0
+    ],
+    "trades_per_day": [
+      42,
+      46,
+      47
+    ],
+    "total": 3600.0,
+    "n_trades": 135
+  },
+  "VEV_5200_VEV_5400_sz30_k2.5_h1000_realistic": {
+    "per_day": [
+      -922.5,
+      -1327.5,
+      -1575.0
+    ],
+    "trades_per_day": [
+      42,
+      46,
+      47
+    ],
+    "total": -3825.0,
+    "n_trades": 135
+  },
+  "VEV_5200_VEV_5400_sz30_k3.0_h30_mid": {
+    "per_day": [
+      510.0,
+      330.0,
+      135.0
+    ],
+    "trades_per_day": [
+      9,
+      13,
+      8
+    ],
+    "total": 975.0,
+    "n_trades": 30
+  },
+  "VEV_5200_VEV_5400_sz30_k3.0_h30_realistic": {
+    "per_day": [
+      45.0,
+      -435.0,
+      -277.5
+    ],
+    "trades_per_day": [
+      9,
+      13,
+      8
+    ],
+    "total": -667.5,
+    "n_trades": 30
+  },
+  "VEV_5200_VEV_5400_sz30_k3.0_h100_mid": {
+    "per_day": [
+      510.0,
+      360.0,
+      135.0
+    ],
+    "trades_per_day": [
+      9,
+      13,
+      8
+    ],
+    "total": 1005.0,
+    "n_trades": 30
+  },
+  "VEV_5200_VEV_5400_sz30_k3.0_h100_realistic": {
+    "per_day": [
+      45.0,
+      -405.0,
+      -277.5
+    ],
+    "trades_per_day": [
+      9,
+      13,
+      8
+    ],
+    "total": -637.5,
+    "n_trades": 30
+  },
+  "VEV_5200_VEV_5400_sz30_k3.0_h300_mid": {
+    "per_day": [
+      510.0,
+      360.0,
+      135.0
+    ],
+    "trades_per_day": [
+      9,
+      13,
+      8
+    ],
+    "total": 1005.0,
+    "n_trades": 30
+  },
+  "VEV_5200_VEV_5400_sz30_k3.0_h300_realistic": {
+    "per_day": [
+      45.0,
+      -405.0,
+      -277.5
+    ],
+    "trades_per_day": [
+      9,
+      13,
+      8
+    ],
+    "total": -637.5,
+    "n_trades": 30
+  },
+  "VEV_5200_VEV_5400_sz30_k3.0_h1000_mid": {
+    "per_day": [
+      510.0,
+      360.0,
+      135.0
+    ],
+    "trades_per_day": [
+      9,
+      13,
+      8
+    ],
+    "total": 1005.0,
+    "n_trades": 30
+  },
+  "VEV_5200_VEV_5400_sz30_k3.0_h1000_realistic": {
+    "per_day": [
+      45.0,
+      -405.0,
+      -277.5
+    ],
+    "trades_per_day": [
+      9,
+      13,
+      8
+    ],
+    "total": -637.5,
+    "n_trades": 30
+  },
+  "VEV_5200_VEV_5400_sz30_k4.0_h30_mid": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5200_VEV_5400_sz30_k4.0_h30_realistic": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5200_VEV_5400_sz30_k4.0_h100_mid": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5200_VEV_5400_sz30_k4.0_h100_realistic": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5200_VEV_5400_sz30_k4.0_h300_mid": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5200_VEV_5400_sz30_k4.0_h300_realistic": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5200_VEV_5400_sz30_k4.0_h1000_mid": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5200_VEV_5400_sz30_k4.0_h1000_realistic": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5300_VEV_5400_sz40_k1.5_h30_mid": {
+    "per_day": [
+      7380.0,
+      7640.0,
+      5560.0
+    ],
+    "trades_per_day": [
+      203,
+      205,
+      165
+    ],
+    "total": 20580.0,
+    "n_trades": 573
+  },
+  "VEV_5300_VEV_5400_sz40_k1.5_h30_realistic": {
+    "per_day": [
+      -5810.0,
+      -5580.0,
+      -4280.0
+    ],
+    "trades_per_day": [
+      203,
+      205,
+      165
+    ],
+    "total": -15670.0,
+    "n_trades": 573
+  },
+  "VEV_5300_VEV_5400_sz40_k1.5_h100_mid": {
+    "per_day": [
+      7360.0,
+      7660.0,
+      5540.0
+    ],
+    "trades_per_day": [
+      201,
+      205,
+      160
+    ],
+    "total": 20560.0,
+    "n_trades": 566
+  },
+  "VEV_5300_VEV_5400_sz40_k1.5_h100_realistic": {
+    "per_day": [
+      -5700.0,
+      -5550.0,
+      -3970.0
+    ],
+    "trades_per_day": [
+      201,
+      205,
+      160
+    ],
+    "total": -15220.0,
+    "n_trades": 566
+  },
+  "VEV_5300_VEV_5400_sz40_k1.5_h300_mid": {
+    "per_day": [
+      7360.0,
+      7660.0,
+      5540.0
+    ],
+    "trades_per_day": [
+      201,
+      205,
+      160
+    ],
+    "total": 20560.0,
+    "n_trades": 566
+  },
+  "VEV_5300_VEV_5400_sz40_k1.5_h300_realistic": {
+    "per_day": [
+      -5700.0,
+      -5550.0,
+      -3970.0
+    ],
+    "trades_per_day": [
+      201,
+      205,
+      160
+    ],
+    "total": -15220.0,
+    "n_trades": 566
+  },
+  "VEV_5300_VEV_5400_sz40_k1.5_h1000_mid": {
+    "per_day": [
+      7360.0,
+      7660.0,
+      5540.0
+    ],
+    "trades_per_day": [
+      201,
+      205,
+      160
+    ],
+    "total": 20560.0,
+    "n_trades": 566
+  },
+  "VEV_5300_VEV_5400_sz40_k1.5_h1000_realistic": {
+    "per_day": [
+      -5700.0,
+      -5550.0,
+      -3970.0
+    ],
+    "trades_per_day": [
+      201,
+      205,
+      160
+    ],
+    "total": -15220.0,
+    "n_trades": 566
+  },
+  "VEV_5300_VEV_5400_sz40_k2.0_h30_mid": {
+    "per_day": [
+      1440.0,
+      1960.0,
+      1320.0
+    ],
+    "trades_per_day": [
+      33,
+      40,
+      31
+    ],
+    "total": 4720.0,
+    "n_trades": 104
+  },
+  "VEV_5300_VEV_5400_sz40_k2.0_h30_realistic": {
+    "per_day": [
+      -640.0,
+      -480.0,
+      -420.0
+    ],
+    "trades_per_day": [
+      33,
+      40,
+      31
+    ],
+    "total": -1540.0,
+    "n_trades": 104
+  },
+  "VEV_5300_VEV_5400_sz40_k2.0_h100_mid": {
+    "per_day": [
+      1420.0,
+      1960.0,
+      1200.0
+    ],
+    "trades_per_day": [
+      32,
+      40,
+      30
+    ],
+    "total": 4580.0,
+    "n_trades": 102
+  },
+  "VEV_5300_VEV_5400_sz40_k2.0_h100_realistic": {
+    "per_day": [
+      -590.0,
+      -460.0,
+      -480.0
+    ],
+    "trades_per_day": [
+      32,
+      40,
+      30
+    ],
+    "total": -1530.0,
+    "n_trades": 102
+  },
+  "VEV_5300_VEV_5400_sz40_k2.0_h300_mid": {
+    "per_day": [
+      1420.0,
+      1960.0,
+      1200.0
+    ],
+    "trades_per_day": [
+      32,
+      40,
+      30
+    ],
+    "total": 4580.0,
+    "n_trades": 102
+  },
+  "VEV_5300_VEV_5400_sz40_k2.0_h300_realistic": {
+    "per_day": [
+      -590.0,
+      -460.0,
+      -480.0
+    ],
+    "trades_per_day": [
+      32,
+      40,
+      30
+    ],
+    "total": -1530.0,
+    "n_trades": 102
+  },
+  "VEV_5300_VEV_5400_sz40_k2.0_h1000_mid": {
+    "per_day": [
+      1420.0,
+      1960.0,
+      1200.0
+    ],
+    "trades_per_day": [
+      32,
+      40,
+      30
+    ],
+    "total": 4580.0,
+    "n_trades": 102
+  },
+  "VEV_5300_VEV_5400_sz40_k2.0_h1000_realistic": {
+    "per_day": [
+      -590.0,
+      -460.0,
+      -480.0
+    ],
+    "trades_per_day": [
+      32,
+      40,
+      30
+    ],
+    "total": -1530.0,
+    "n_trades": 102
+  },
+  "VEV_5300_VEV_5400_sz40_k2.5_h30_mid": {
+    "per_day": [
+      100.0,
+      180.0,
+      220.0
+    ],
+    "trades_per_day": [
+      2,
+      6,
+      4
+    ],
+    "total": 500.0,
+    "n_trades": 12
+  },
+  "VEV_5300_VEV_5400_sz40_k2.5_h30_realistic": {
+    "per_day": [
+      -10.0,
+      -170.0,
+      -30.0
+    ],
+    "trades_per_day": [
+      2,
+      6,
+      4
+    ],
+    "total": -210.0,
+    "n_trades": 12
+  },
+  "VEV_5300_VEV_5400_sz40_k2.5_h100_mid": {
+    "per_day": [
+      100.0,
+      220.0,
+      160.0
+    ],
+    "trades_per_day": [
+      2,
+      6,
+      4
+    ],
+    "total": 480.0,
+    "n_trades": 12
+  },
+  "VEV_5300_VEV_5400_sz40_k2.5_h100_realistic": {
+    "per_day": [
+      -10.0,
+      -130.0,
+      -80.0
+    ],
+    "trades_per_day": [
+      2,
+      6,
+      4
+    ],
+    "total": -220.0,
+    "n_trades": 12
+  },
+  "VEV_5300_VEV_5400_sz40_k2.5_h300_mid": {
+    "per_day": [
+      100.0,
+      220.0,
+      160.0
+    ],
+    "trades_per_day": [
+      2,
+      6,
+      4
+    ],
+    "total": 480.0,
+    "n_trades": 12
+  },
+  "VEV_5300_VEV_5400_sz40_k2.5_h300_realistic": {
+    "per_day": [
+      -10.0,
+      -130.0,
+      -80.0
+    ],
+    "trades_per_day": [
+      2,
+      6,
+      4
+    ],
+    "total": -220.0,
+    "n_trades": 12
+  },
+  "VEV_5300_VEV_5400_sz40_k2.5_h1000_mid": {
+    "per_day": [
+      100.0,
+      220.0,
+      160.0
+    ],
+    "trades_per_day": [
+      2,
+      6,
+      4
+    ],
+    "total": 480.0,
+    "n_trades": 12
+  },
+  "VEV_5300_VEV_5400_sz40_k2.5_h1000_realistic": {
+    "per_day": [
+      -10.0,
+      -130.0,
+      -80.0
+    ],
+    "trades_per_day": [
+      2,
+      6,
+      4
+    ],
+    "total": -220.0,
+    "n_trades": 12
+  },
+  "VEV_5300_VEV_5400_sz40_k3.0_h30_mid": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      1,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 1
+  },
+  "VEV_5300_VEV_5400_sz40_k3.0_h30_realistic": {
+    "per_day": [
+      0.0,
+      -80.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      1,
+      0
+    ],
+    "total": -80.0,
+    "n_trades": 1
+  },
+  "VEV_5300_VEV_5400_sz40_k3.0_h100_mid": {
+    "per_day": [
+      0.0,
+      20.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      1,
+      0
+    ],
+    "total": 20.0,
+    "n_trades": 1
+  },
+  "VEV_5300_VEV_5400_sz40_k3.0_h100_realistic": {
+    "per_day": [
+      0.0,
+      -50.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      1,
+      0
+    ],
+    "total": -50.0,
+    "n_trades": 1
+  },
+  "VEV_5300_VEV_5400_sz40_k3.0_h300_mid": {
+    "per_day": [
+      0.0,
+      20.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      1,
+      0
+    ],
+    "total": 20.0,
+    "n_trades": 1
+  },
+  "VEV_5300_VEV_5400_sz40_k3.0_h300_realistic": {
+    "per_day": [
+      0.0,
+      -50.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      1,
+      0
+    ],
+    "total": -50.0,
+    "n_trades": 1
+  },
+  "VEV_5300_VEV_5400_sz40_k3.0_h1000_mid": {
+    "per_day": [
+      0.0,
+      20.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      1,
+      0
+    ],
+    "total": 20.0,
+    "n_trades": 1
+  },
+  "VEV_5300_VEV_5400_sz40_k3.0_h1000_realistic": {
+    "per_day": [
+      0.0,
+      -50.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      1,
+      0
+    ],
+    "total": -50.0,
+    "n_trades": 1
+  },
+  "VEV_5300_VEV_5400_sz40_k4.0_h30_mid": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5300_VEV_5400_sz40_k4.0_h30_realistic": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5300_VEV_5400_sz40_k4.0_h100_mid": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5300_VEV_5400_sz40_k4.0_h100_realistic": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5300_VEV_5400_sz40_k4.0_h300_mid": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5300_VEV_5400_sz40_k4.0_h300_realistic": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5300_VEV_5400_sz40_k4.0_h1000_mid": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5300_VEV_5400_sz40_k4.0_h1000_realistic": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5300_VEV_5500_sz20_k1.5_h30_mid": {
+    "per_day": [
+      4130.0,
+      4770.0,
+      2720.0
+    ],
+    "trades_per_day": [
+      278,
+      289,
+      190
+    ],
+    "total": 11620.0,
+    "n_trades": 757
+  },
+  "VEV_5300_VEV_5500_sz20_k1.5_h30_realistic": {
+    "per_day": [
+      -4815.0,
+      -4275.0,
+      -2860.0
+    ],
+    "trades_per_day": [
+      278,
+      289,
+      190
+    ],
+    "total": -11950.0,
+    "n_trades": 757
+  },
+  "VEV_5300_VEV_5500_sz20_k1.5_h100_mid": {
+    "per_day": [
+      4140.0,
+      4770.0,
+      2810.0
+    ],
+    "trades_per_day": [
+      277,
+      287,
+      184
+    ],
+    "total": 11720.0,
+    "n_trades": 748
+  },
+  "VEV_5300_VEV_5500_sz20_k1.5_h100_realistic": {
+    "per_day": [
+      -4770.0,
+      -4215.0,
+      -2625.0
+    ],
+    "trades_per_day": [
+      277,
+      287,
+      184
+    ],
+    "total": -11610.0,
+    "n_trades": 748
+  },
+  "VEV_5300_VEV_5500_sz20_k1.5_h300_mid": {
+    "per_day": [
+      4140.0,
+      4770.0,
+      2810.0
+    ],
+    "trades_per_day": [
+      277,
+      287,
+      184
+    ],
+    "total": 11720.0,
+    "n_trades": 748
+  },
+  "VEV_5300_VEV_5500_sz20_k1.5_h300_realistic": {
+    "per_day": [
+      -4770.0,
+      -4215.0,
+      -2625.0
+    ],
+    "trades_per_day": [
+      277,
+      287,
+      184
+    ],
+    "total": -11610.0,
+    "n_trades": 748
+  },
+  "VEV_5300_VEV_5500_sz20_k1.5_h1000_mid": {
+    "per_day": [
+      4140.0,
+      4770.0,
+      2810.0
+    ],
+    "trades_per_day": [
+      277,
+      287,
+      184
+    ],
+    "total": 11720.0,
+    "n_trades": 748
+  },
+  "VEV_5300_VEV_5500_sz20_k1.5_h1000_realistic": {
+    "per_day": [
+      -4770.0,
+      -4215.0,
+      -2625.0
+    ],
+    "trades_per_day": [
+      277,
+      287,
+      184
+    ],
+    "total": -11610.0,
+    "n_trades": 748
+  },
+  "VEV_5300_VEV_5500_sz20_k2.0_h30_mid": {
+    "per_day": [
+      1130.0,
+      1260.0,
+      570.0
+    ],
+    "trades_per_day": [
+      62,
+      57,
+      39
+    ],
+    "total": 2960.0,
+    "n_trades": 158
+  },
+  "VEV_5300_VEV_5500_sz20_k2.0_h30_realistic": {
+    "per_day": [
+      -805.0,
+      -500.0,
+      -585.0
+    ],
+    "trades_per_day": [
+      62,
+      57,
+      39
+    ],
+    "total": -1890.0,
+    "n_trades": 158
+  },
+  "VEV_5300_VEV_5500_sz20_k2.0_h100_mid": {
+    "per_day": [
+      1130.0,
+      1260.0,
+      560.0
+    ],
+    "trades_per_day": [
+      62,
+      57,
+      39
+    ],
+    "total": 2950.0,
+    "n_trades": 158
+  },
+  "VEV_5300_VEV_5500_sz20_k2.0_h100_realistic": {
+    "per_day": [
+      -805.0,
+      -500.0,
+      -590.0
+    ],
+    "trades_per_day": [
+      62,
+      57,
+      39
+    ],
+    "total": -1895.0,
+    "n_trades": 158
+  },
+  "VEV_5300_VEV_5500_sz20_k2.0_h300_mid": {
+    "per_day": [
+      1130.0,
+      1260.0,
+      560.0
+    ],
+    "trades_per_day": [
+      62,
+      57,
+      39
+    ],
+    "total": 2950.0,
+    "n_trades": 158
+  },
+  "VEV_5300_VEV_5500_sz20_k2.0_h300_realistic": {
+    "per_day": [
+      -805.0,
+      -500.0,
+      -590.0
+    ],
+    "trades_per_day": [
+      62,
+      57,
+      39
+    ],
+    "total": -1895.0,
+    "n_trades": 158
+  },
+  "VEV_5300_VEV_5500_sz20_k2.0_h1000_mid": {
+    "per_day": [
+      1130.0,
+      1260.0,
+      560.0
+    ],
+    "trades_per_day": [
+      62,
+      57,
+      39
+    ],
+    "total": 2950.0,
+    "n_trades": 158
+  },
+  "VEV_5300_VEV_5500_sz20_k2.0_h1000_realistic": {
+    "per_day": [
+      -805.0,
+      -500.0,
+      -590.0
+    ],
+    "trades_per_day": [
+      62,
+      57,
+      39
+    ],
+    "total": -1895.0,
+    "n_trades": 158
+  },
+  "VEV_5300_VEV_5500_sz20_k2.5_h30_mid": {
+    "per_day": [
+      200.0,
+      330.0,
+      170.0
+    ],
+    "trades_per_day": [
+      8,
+      12,
+      9
+    ],
+    "total": 700.0,
+    "n_trades": 29
+  },
+  "VEV_5300_VEV_5500_sz20_k2.5_h30_realistic": {
+    "per_day": [
+      -30.0,
+      -25.0,
+      -95.0
+    ],
+    "trades_per_day": [
+      8,
+      12,
+      9
+    ],
+    "total": -150.0,
+    "n_trades": 29
+  },
+  "VEV_5300_VEV_5500_sz20_k2.5_h100_mid": {
+    "per_day": [
+      200.0,
+      330.0,
+      200.0
+    ],
+    "trades_per_day": [
+      8,
+      12,
+      9
+    ],
+    "total": 730.0,
+    "n_trades": 29
+  },
+  "VEV_5300_VEV_5500_sz20_k2.5_h100_realistic": {
+    "per_day": [
+      -30.0,
+      -25.0,
+      -60.0
+    ],
+    "trades_per_day": [
+      8,
+      12,
+      9
+    ],
+    "total": -115.0,
+    "n_trades": 29
+  },
+  "VEV_5300_VEV_5500_sz20_k2.5_h300_mid": {
+    "per_day": [
+      200.0,
+      330.0,
+      200.0
+    ],
+    "trades_per_day": [
+      8,
+      12,
+      9
+    ],
+    "total": 730.0,
+    "n_trades": 29
+  },
+  "VEV_5300_VEV_5500_sz20_k2.5_h300_realistic": {
+    "per_day": [
+      -30.0,
+      -25.0,
+      -60.0
+    ],
+    "trades_per_day": [
+      8,
+      12,
+      9
+    ],
+    "total": -115.0,
+    "n_trades": 29
+  },
+  "VEV_5300_VEV_5500_sz20_k2.5_h1000_mid": {
+    "per_day": [
+      200.0,
+      330.0,
+      200.0
+    ],
+    "trades_per_day": [
+      8,
+      12,
+      9
+    ],
+    "total": 730.0,
+    "n_trades": 29
+  },
+  "VEV_5300_VEV_5500_sz20_k2.5_h1000_realistic": {
+    "per_day": [
+      -30.0,
+      -25.0,
+      -60.0
+    ],
+    "trades_per_day": [
+      8,
+      12,
+      9
+    ],
+    "total": -115.0,
+    "n_trades": 29
+  },
+  "VEV_5300_VEV_5500_sz20_k3.0_h30_mid": {
+    "per_day": [
+      50.0,
+      50.0,
+      0.0
+    ],
+    "trades_per_day": [
+      1,
+      2,
+      0
+    ],
+    "total": 100.0,
+    "n_trades": 3
+  },
+  "VEV_5300_VEV_5500_sz20_k3.0_h30_realistic": {
+    "per_day": [
+      25.0,
+      -5.0,
+      0.0
+    ],
+    "trades_per_day": [
+      1,
+      2,
+      0
+    ],
+    "total": 20.0,
+    "n_trades": 3
+  },
+  "VEV_5300_VEV_5500_sz20_k3.0_h100_mid": {
+    "per_day": [
+      50.0,
+      50.0,
+      0.0
+    ],
+    "trades_per_day": [
+      1,
+      2,
+      0
+    ],
+    "total": 100.0,
+    "n_trades": 3
+  },
+  "VEV_5300_VEV_5500_sz20_k3.0_h100_realistic": {
+    "per_day": [
+      25.0,
+      -5.0,
+      0.0
+    ],
+    "trades_per_day": [
+      1,
+      2,
+      0
+    ],
+    "total": 20.0,
+    "n_trades": 3
+  },
+  "VEV_5300_VEV_5500_sz20_k3.0_h300_mid": {
+    "per_day": [
+      50.0,
+      50.0,
+      0.0
+    ],
+    "trades_per_day": [
+      1,
+      2,
+      0
+    ],
+    "total": 100.0,
+    "n_trades": 3
+  },
+  "VEV_5300_VEV_5500_sz20_k3.0_h300_realistic": {
+    "per_day": [
+      25.0,
+      -5.0,
+      0.0
+    ],
+    "trades_per_day": [
+      1,
+      2,
+      0
+    ],
+    "total": 20.0,
+    "n_trades": 3
+  },
+  "VEV_5300_VEV_5500_sz20_k3.0_h1000_mid": {
+    "per_day": [
+      50.0,
+      50.0,
+      0.0
+    ],
+    "trades_per_day": [
+      1,
+      2,
+      0
+    ],
+    "total": 100.0,
+    "n_trades": 3
+  },
+  "VEV_5300_VEV_5500_sz20_k3.0_h1000_realistic": {
+    "per_day": [
+      25.0,
+      -5.0,
+      0.0
+    ],
+    "trades_per_day": [
+      1,
+      2,
+      0
+    ],
+    "total": 20.0,
+    "n_trades": 3
+  },
+  "VEV_5300_VEV_5500_sz20_k4.0_h30_mid": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5300_VEV_5500_sz20_k4.0_h30_realistic": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5300_VEV_5500_sz20_k4.0_h100_mid": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5300_VEV_5500_sz20_k4.0_h100_realistic": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5300_VEV_5500_sz20_k4.0_h300_mid": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5300_VEV_5500_sz20_k4.0_h300_realistic": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5300_VEV_5500_sz20_k4.0_h1000_mid": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  },
+  "VEV_5300_VEV_5500_sz20_k4.0_h1000_realistic": {
+    "per_day": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "trades_per_day": [
+      0,
+      0,
+      0
+    ],
+    "total": 0.0,
+    "n_trades": 0
+  }
+}

@@ -1,0 +1,664 @@
+{
+  "signals": [
+    {
+      "mark": "Mark 14",
+      "product": "HYDROGEL_PACK",
+      "mark_side": "buyer",
+      "n_trades": 496,
+      "agg_pct": 0.0,
+      "drift_H200_mean": 8.938,
+      "per_day_H200": {
+        "day1": 10.210382513661202,
+        "day2": 7.436619718309859,
+        "day3": 8.821637426900585
+      },
+      "per_day_n": {
+        "day1": 183,
+        "day2": 142,
+        "day3": 171
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "follow Mark 14: when they BUY, mid moves +8.94 over 200 ticks"
+    },
+    {
+      "mark": "Mark 38",
+      "product": "HYDROGEL_PACK",
+      "mark_side": "seller",
+      "n_trades": 507,
+      "agg_pct": 100.0,
+      "drift_H200_mean": -8.554,
+      "per_day_H200": {
+        "day1": -9.959677419354838,
+        "day2": -7.0479452054794525,
+        "day3": -8.317142857142857
+      },
+      "per_day_n": {
+        "day1": 186,
+        "day2": 146,
+        "day3": 175
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "fade Mark 38: when they SELL, mid drops -8.55/200t \u2192 we BUY the print"
+    },
+    {
+      "mark": "Mark 14",
+      "product": "HYDROGEL_PACK",
+      "mark_side": "seller",
+      "n_trades": 507,
+      "agg_pct": 0.0,
+      "drift_H200_mean": 7.415,
+      "per_day_H200": {
+        "day1": 11.040106951871659,
+        "day2": 2.040372670807453,
+        "day3": 8.59433962264151
+      },
+      "per_day_n": {
+        "day1": 187,
+        "day2": 161,
+        "day3": 159
+      },
+      "action_side_for_us": "SELL",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "follow Mark 14: when they SELL, mid moves +7.42 over 200 ticks"
+    },
+    {
+      "mark": "Mark 38",
+      "product": "HYDROGEL_PACK",
+      "mark_side": "buyer",
+      "n_trades": 515,
+      "agg_pct": 100.0,
+      "drift_H200_mean": -7.321,
+      "per_day_H200": {
+        "day1": -10.928571428571429,
+        "day2": -1.9181818181818182,
+        "day3": -8.624223602484472
+      },
+      "per_day_n": {
+        "day1": 189,
+        "day2": 165,
+        "day3": 161
+      },
+      "action_side_for_us": "SELL",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "fade Mark 38: when they BUY, mid drops -7.32/200t \u2192 we SELL the print"
+    },
+    {
+      "mark": "Mark 14",
+      "product": "VEV_4000",
+      "mark_side": "seller",
+      "n_trades": 207,
+      "agg_pct": 0.0,
+      "drift_H200_mean": 11.263,
+      "per_day_H200": {
+        "day1": 10.215277777777779,
+        "day2": 8.8828125,
+        "day3": 14.471830985915492
+      },
+      "per_day_n": {
+        "day1": 72,
+        "day2": 64,
+        "day3": 71
+      },
+      "action_side_for_us": "SELL",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "follow Mark 14: when they SELL, mid moves +11.26 over 200 ticks"
+    },
+    {
+      "mark": "Mark 38",
+      "product": "VEV_4000",
+      "mark_side": "buyer",
+      "n_trades": 209,
+      "agg_pct": 100.0,
+      "drift_H200_mean": -11.081,
+      "per_day_H200": {
+        "day1": -9.965753424657533,
+        "day2": -8.8828125,
+        "day3": -14.166666666666666
+      },
+      "per_day_n": {
+        "day1": 73,
+        "day2": 64,
+        "day3": 72
+      },
+      "action_side_for_us": "SELL",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "fade Mark 38: when they BUY, mid drops -11.08/200t \u2192 we SELL the print"
+    },
+    {
+      "mark": "Mark 38",
+      "product": "VEV_4000",
+      "mark_side": "seller",
+      "n_trades": 233,
+      "agg_pct": 100.0,
+      "drift_H200_mean": -9.938,
+      "per_day_H200": {
+        "day1": -9.175824175824175,
+        "day2": -10.921875,
+        "day3": -10.01923076923077
+      },
+      "per_day_n": {
+        "day1": 91,
+        "day2": 64,
+        "day3": 78
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "fade Mark 38: when they SELL, mid drops -9.94/200t \u2192 we BUY the print"
+    },
+    {
+      "mark": "Mark 14",
+      "product": "VEV_4000",
+      "mark_side": "buyer",
+      "n_trades": 232,
+      "agg_pct": 0.0,
+      "drift_H200_mean": 9.892,
+      "per_day_H200": {
+        "day1": 9.175824175824175,
+        "day2": 10.921875,
+        "day3": 9.883116883116884
+      },
+      "per_day_n": {
+        "day1": 91,
+        "day2": 64,
+        "day3": 77
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "follow Mark 14: when they BUY, mid moves +9.89 over 200 ticks"
+    },
+    {
+      "mark": "Mark 01",
+      "product": "VELVETFRUIT_EXTRACT",
+      "mark_side": "seller",
+      "n_trades": 244,
+      "agg_pct": 0.0,
+      "drift_H200_mean": 2.73,
+      "per_day_H200": {
+        "day1": 1.8950617283950617,
+        "day2": 3.744565217391304,
+        "day3": 2.3661971830985915
+      },
+      "per_day_n": {
+        "day1": 81,
+        "day2": 92,
+        "day3": 71
+      },
+      "action_side_for_us": "SELL",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "follow Mark 01: when they SELL, mid moves +2.73 over 200 ticks"
+    },
+    {
+      "mark": "Mark 55",
+      "product": "VELVETFRUIT_EXTRACT",
+      "mark_side": "buyer",
+      "n_trades": 598,
+      "agg_pct": 100.0,
+      "drift_H200_mean": -1.622,
+      "per_day_H200": {
+        "day1": 0.34408602150537637,
+        "day2": -2.165137614678899,
+        "day3": -2.8969072164948453
+      },
+      "per_day_n": {
+        "day1": 186,
+        "day2": 218,
+        "day3": 194
+      },
+      "action_side_for_us": "SELL",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "fade Mark 55: when they BUY, mid drops -1.62/200t \u2192 we SELL the print"
+    },
+    {
+      "mark": "Mark 55",
+      "product": "VELVETFRUIT_EXTRACT",
+      "mark_side": "seller",
+      "n_trades": 600,
+      "agg_pct": 100.0,
+      "drift_H200_mean": -1.363,
+      "per_day_H200": {
+        "day1": -1.6035353535353536,
+        "day2": -1.3238341968911918,
+        "day3": -1.1722488038277512
+      },
+      "per_day_n": {
+        "day1": 198,
+        "day2": 193,
+        "day3": 209
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "fade Mark 55: when they SELL, mid drops -1.36/200t \u2192 we BUY the print"
+    },
+    {
+      "mark": "Mark 01",
+      "product": "VELVETFRUIT_EXTRACT",
+      "mark_side": "buyer",
+      "n_trades": 260,
+      "agg_pct": 0.0,
+      "drift_H200_mean": 2.054,
+      "per_day_H200": {
+        "day1": 2.013157894736842,
+        "day2": 2.659340659340659,
+        "day3": 1.4946236559139785
+      },
+      "per_day_n": {
+        "day1": 76,
+        "day2": 91,
+        "day3": 93
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "follow Mark 01: when they BUY, mid moves +2.05 over 200 ticks"
+    },
+    {
+      "mark": "Mark 22",
+      "product": "VEV_5200",
+      "mark_side": "seller",
+      "n_trades": 46,
+      "agg_pct": 95.7,
+      "drift_H200_mean": -2.978,
+      "per_day_H200": {
+        "day1": 1.0,
+        "day2": -5.8125,
+        "day3": -3.1451612903225805
+      },
+      "per_day_n": {
+        "day1": 7,
+        "day2": 8,
+        "day3": 31
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "med",
+      "note": "fade Mark 22: when they SELL, mid drops -2.98/200t \u2192 we BUY the print"
+    },
+    {
+      "mark": "Mark 22",
+      "product": "VEV_5300",
+      "mark_side": "seller",
+      "n_trades": 163,
+      "agg_pct": 98.8,
+      "drift_H200_mean": -1.27,
+      "per_day_H200": {
+        "day1": -0.717948717948718,
+        "day2": -1.8111111111111111,
+        "day3": -1.2341772151898733
+      },
+      "per_day_n": {
+        "day1": 39,
+        "day2": 45,
+        "day3": 79
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "fade Mark 22: when they SELL, mid drops -1.27/200t \u2192 we BUY the print"
+    },
+    {
+      "mark": "Mark 14",
+      "product": "VELVETFRUIT_EXTRACT",
+      "mark_side": "buyer",
+      "n_trades": 316,
+      "agg_pct": 0.0,
+      "drift_H200_mean": 0.91,
+      "per_day_H200": {
+        "day1": 1.8245614035087718,
+        "day2": 0.15760869565217392,
+        "day3": 0.5909090909090909
+      },
+      "per_day_n": {
+        "day1": 114,
+        "day2": 92,
+        "day3": 110
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "follow Mark 14: when they BUY, mid moves +0.91 over 200 ticks"
+    },
+    {
+      "mark": "Mark 14",
+      "product": "VELVETFRUIT_EXTRACT",
+      "mark_side": "seller",
+      "n_trades": 331,
+      "agg_pct": 0.0,
+      "drift_H200_mean": 0.838,
+      "per_day_H200": {
+        "day1": -2.381443298969072,
+        "day2": 1.1610169491525424,
+        "day3": 3.2025862068965516
+      },
+      "per_day_n": {
+        "day1": 97,
+        "day2": 118,
+        "day3": 116
+      },
+      "action_side_for_us": "SELL",
+      "horizon_ticks": 200,
+      "confidence": "low",
+      "note": "follow Mark 14: when they SELL, mid moves +0.84 over 200 ticks"
+    },
+    {
+      "mark": "Mark 01",
+      "product": "VEV_5300",
+      "mark_side": "buyer",
+      "n_trades": 132,
+      "agg_pct": 0.0,
+      "drift_H200_mean": 1.205,
+      "per_day_H200": {
+        "day1": 0.828125,
+        "day2": 1.5483870967741935,
+        "day3": 1.2246376811594204
+      },
+      "per_day_n": {
+        "day1": 32,
+        "day2": 31,
+        "day3": 69
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "follow Mark 01: when they BUY, mid moves +1.20 over 200 ticks"
+    },
+    {
+      "mark": "Mark 67",
+      "product": "VELVETFRUIT_EXTRACT",
+      "mark_side": "buyer",
+      "n_trades": 165,
+      "agg_pct": 99.4,
+      "drift_H200_mean": 1.033,
+      "per_day_H200": {
+        "day1": 3.7586206896551726,
+        "day2": -0.3524590163934426,
+        "day3": -0.5652173913043478
+      },
+      "per_day_n": {
+        "day1": 58,
+        "day2": 61,
+        "day3": 46
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "low",
+      "note": "follow Mark 67: when they BUY, mid moves +1.03 over 200 ticks"
+    },
+    {
+      "mark": "Mark 49",
+      "product": "VELVETFRUIT_EXTRACT",
+      "mark_side": "seller",
+      "n_trades": 105,
+      "agg_pct": 1.0,
+      "drift_H200_mean": -1.162,
+      "per_day_H200": {
+        "day1": -1.9411764705882353,
+        "day2": -1.635135135135135,
+        "day3": 0.1323529411764706
+      },
+      "per_day_n": {
+        "day1": 34,
+        "day2": 37,
+        "day3": 34
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "low",
+      "note": "fade Mark 49: when they SELL, mid drops -1.16/200t \u2192 we BUY the print"
+    },
+    {
+      "mark": "Mark 01",
+      "product": "VEV_5400",
+      "mark_side": "buyer",
+      "n_trades": 263,
+      "agg_pct": 0.0,
+      "drift_H200_mean": 0.66,
+      "per_day_H200": {
+        "day1": 0.756578947368421,
+        "day2": 0.6025641025641025,
+        "day3": 0.6330275229357798
+      },
+      "per_day_n": {
+        "day1": 76,
+        "day2": 78,
+        "day3": 109
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "follow Mark 01: when they BUY, mid moves +0.66 over 200 ticks"
+    },
+    {
+      "mark": "Mark 14",
+      "product": "VEV_5200",
+      "mark_side": "buyer",
+      "n_trades": 33,
+      "agg_pct": 0.0,
+      "drift_H200_mean": 1.833,
+      "per_day_H200": {
+        "day1": -1.9166666666666667,
+        "day2": 5.8125,
+        "day3": 1.3421052631578947
+      },
+      "per_day_n": {
+        "day1": 6,
+        "day2": 8,
+        "day3": 19
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "med",
+      "note": "follow Mark 14: when they BUY, mid moves +1.83 over 200 ticks"
+    },
+    {
+      "mark": "Mark 22",
+      "product": "VEV_5400",
+      "mark_side": "seller",
+      "n_trades": 276,
+      "agg_pct": 99.6,
+      "drift_H200_mean": -0.601,
+      "per_day_H200": {
+        "day1": -0.6111111111111112,
+        "day2": -0.5625,
+        "day3": -0.6217391304347826
+      },
+      "per_day_n": {
+        "day1": 81,
+        "day2": 80,
+        "day3": 115
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "fade Mark 22: when they SELL, mid drops -0.60/200t \u2192 we BUY the print"
+    },
+    {
+      "mark": "Mark 01",
+      "product": "VEV_5500",
+      "mark_side": "buyer",
+      "n_trades": 299,
+      "agg_pct": 0.0,
+      "drift_H200_mean": 0.538,
+      "per_day_H200": {
+        "day1": 0.5393258426966292,
+        "day2": 0.5769230769230769,
+        "day3": 0.5084033613445378
+      },
+      "per_day_n": {
+        "day1": 89,
+        "day2": 91,
+        "day3": 119
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "follow Mark 01: when they BUY, mid moves +0.54 over 200 ticks"
+    },
+    {
+      "mark": "Mark 22",
+      "product": "VEV_5500",
+      "mark_side": "seller",
+      "n_trades": 306,
+      "agg_pct": 100.0,
+      "drift_H200_mean": -0.518,
+      "per_day_H200": {
+        "day1": -0.483695652173913,
+        "day2": -0.5638297872340425,
+        "day3": -0.5083333333333333
+      },
+      "per_day_n": {
+        "day1": 92,
+        "day2": 94,
+        "day3": 120
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "fade Mark 22: when they SELL, mid drops -0.52/200t \u2192 we BUY the print"
+    },
+    {
+      "mark": "Mark 01",
+      "product": "VEV_6000",
+      "mark_side": "buyer",
+      "n_trades": 317,
+      "agg_pct": 0.0,
+      "drift_H200_mean": 0.5,
+      "per_day_H200": {
+        "day1": 0.5,
+        "day2": 0.5,
+        "day3": 0.5
+      },
+      "per_day_n": {
+        "day1": 98,
+        "day2": 95,
+        "day3": 124
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "follow Mark 01: when they BUY, mid moves +0.50 over 200 ticks"
+    },
+    {
+      "mark": "Mark 01",
+      "product": "VEV_6500",
+      "mark_side": "buyer",
+      "n_trades": 317,
+      "agg_pct": 0.0,
+      "drift_H200_mean": 0.5,
+      "per_day_H200": {
+        "day1": 0.5,
+        "day2": 0.5,
+        "day3": 0.5
+      },
+      "per_day_n": {
+        "day1": 98,
+        "day2": 95,
+        "day3": 124
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "follow Mark 01: when they BUY, mid moves +0.50 over 200 ticks"
+    },
+    {
+      "mark": "Mark 22",
+      "product": "VEV_6000",
+      "mark_side": "seller",
+      "n_trades": 317,
+      "agg_pct": 100.0,
+      "drift_H200_mean": -0.5,
+      "per_day_H200": {
+        "day1": -0.5,
+        "day2": -0.5,
+        "day3": -0.5
+      },
+      "per_day_n": {
+        "day1": 98,
+        "day2": 95,
+        "day3": 124
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "fade Mark 22: when they SELL, mid drops -0.50/200t \u2192 we BUY the print"
+    },
+    {
+      "mark": "Mark 22",
+      "product": "VEV_6500",
+      "mark_side": "seller",
+      "n_trades": 317,
+      "agg_pct": 100.0,
+      "drift_H200_mean": -0.5,
+      "per_day_H200": {
+        "day1": -0.5,
+        "day2": -0.5,
+        "day3": -0.5
+      },
+      "per_day_n": {
+        "day1": 98,
+        "day2": 95,
+        "day3": 124
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "high",
+      "note": "fade Mark 22: when they SELL, mid drops -0.50/200t \u2192 we BUY the print"
+    },
+    {
+      "mark": "Mark 22",
+      "product": "VELVETFRUIT_EXTRACT",
+      "mark_side": "buyer",
+      "n_trades": 25,
+      "agg_pct": 24.0,
+      "drift_H200_mean": 1.74,
+      "per_day_H200": {
+        "day1": 0.1,
+        "day2": 3.1666666666666665,
+        "day3": 2.3333333333333335
+      },
+      "per_day_n": {
+        "day1": 10,
+        "day2": 9,
+        "day3": 6
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "med",
+      "note": "follow Mark 22: when they BUY, mid moves +1.74 over 200 ticks"
+    },
+    {
+      "mark": "Mark 14",
+      "product": "VEV_5300",
+      "mark_side": "buyer",
+      "n_trades": 30,
+      "agg_pct": 0.0,
+      "drift_H200_mean": 1.5,
+      "per_day_H200": {
+        "day1": -0.25,
+        "day2": 2.392857142857143,
+        "day3": 1.3
+      },
+      "per_day_n": {
+        "day1": 6,
+        "day2": 14,
+        "day3": 10
+      },
+      "action_side_for_us": "BUY",
+      "horizon_ticks": 200,
+      "confidence": "med",
+      "note": "follow Mark 14: when they BUY, mid moves +1.50 over 200 ticks"
+    }
+  ]
+}

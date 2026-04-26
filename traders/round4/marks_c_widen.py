@@ -1,51 +1,34 @@
-"""Active R4 submission — stratton baseline + Timo IV-deviation scalping.
+"""VARIANT C — submission.py (stratton + IV-scalp) + Mark-aware defensive widen.
 
-R4 historical replay (prosperity3bt --merge-pnl):
-    R3 stratton baseline:        +20,954 (D1 14,100 / D2 406  / D3 6,448)
-    THIS submission:             +27,444 (D1 14,961 / D2 582  / D3 11,901)
-    Net IV-scalping uplift:      +6,490 (+31%)
-MC --quick: mean +7,858, std 5,509, p5-p95 [-2,498, +18,030].
-Honest portal estimate (1.88x replay/portal ratio from stratton): ~14,600
-XIRECs vs stratton's actual 11,140.
+Pure-defensive layer: when a recent (<=50t) high-confidence Mark trade
+indicates the price is about to move against the side we'd be passive on,
+WIDEN that side's quote (= post farther from market = less likely to be
+adversely selected). Don't take cross-spread, don't tilt sizes — just
+don't get picked off.
 
-Layers:
-  HYDROGEL                  -> stratton _trade_vev_mm  (porush handler returned
-                                                        0 PnL in replay)
-  VELVETFRUIT               -> stratton _trade_mr      (slow EMA, tiny MR_K)
-  VEV_5000..VEV_5500        -> stratton MR/MM baseline
-                               + NEW Timo IV-deviation scalping (priority)
-  VEV_4000/VEV_4500/5500    -> stratton _trade_vev_mm  (no porush BASE_MM
-                                                        floor that bled VEV_4000)
-  VEV_6000/VEV_6500         -> skip (pinned at 0/1)
-  Cross-strike spread MR    -> DISABLED (cost -37k in replay; can't reconcile
-                                          audit's +11k vs replay -3k for 5200/5400)
-  Counterparty IDs          -> NOT YET USED (R4 baseline first)
+Convention: signals.json `action_side_for_us` is the side WE want to do.
+  - action_side_for_us == "BUY"  => mid will RISE  => our ASK is in danger
+                                       (we'd sell low before the rise) =>
+                                       widen the ASK (post higher).
+  - action_side_for_us == "SELL" => mid will FALL  => our BID is in danger
+                                       (we'd buy high before the fall) =>
+                                       widen the BID (post lower).
 
-IV-scalping (analysis/round4/bachelier_vs_bs.md, audited 2026-04-26):
-  - BS smile, m = log(K/S)/sqrt(T_years), dynamic T from session timestamp,
-    online EMA refit of smile_a (curvature b,c stable across days, level a
-    drifts 0.41 -> 0.88 day-to-day).
-  - Per voucher: dev = mid - bs_fair, mean_dev EMA, switch_mean = EMA(|dev-mean|).
-    Activity gate switch_mean >= 0.7. Open when |dev - mean| > THR_OPEN=0.5
-    (sell at best_bid / buy at best_ask). Close on signal-flip through 0.
-  - Diagnostic on R4 day-1 confirmed signal direction: post-fire mid drift
-    -7 to -12 XIRECs at horizon 200 across all 6 strikes (+17k per-fire PnL
-    if executed in isolation).
+Widen ladder by |drift_H200_mean| of the firing signal:
+  - 0.5  <= |d| < 2  => 1 tick
+  - 2    <= |d| < 5  => 2 ticks
+  - |d|  >= 5        => 3 ticks (or skip the side if widen would invert)
 
-Diagnostic toggles below let us reactivate the rejected layers for future
-experiments without re-rolling the file.
+Skip widening when our existing position is already on the safe side
+(e.g. long HYDROGEL + signal "mid will RISE" = no need to widen ask).
 
-Lineage:
-  stratton (R3 search-2 #233): portal +11,140  passive MM (saved as round4/stratton.py)
-  porush   (R3 search-4 #119): MC +11,774      adds HYDROGEL handler (broken in replay)
-  wolf     (porush + CS):      MC +6,157       adds CS spread MR
-  THIS:                        replay +27,444  IV-scalp on stratton, CS off, HYDROGEL=stratton
+Hooked into: _trade_vev_mm, _trade_mr, and the IV-scalp close-back leg.
 """
 
 try:
-    from datamodel import Order, OrderDepth, TradingState
+    from datamodel import Order, OrderDepth, TradingState, Trade
 except ImportError:
-    from backtester.datamodel import Order, OrderDepth, TradingState
+    from backtester.datamodel import Order, OrderDepth, TradingState, Trade
 
 from typing import Dict, List, Optional, Tuple
 from statistics import NormalDist
@@ -97,66 +80,97 @@ STRIKES = {
     VEV_5400: 5400, VEV_5500: 5500, VEV_6000: 6000, VEV_6500: 6500,
 }
 
-# === Cross-strike spread MR pairs (per analysis/round3/final_audit.md sec 7).
-# 3-day historical replay PnL totals (size shown):
-#   (5200, 5400) size 30: +11,265 over 3 days, 436 trades, all days +
-#   (5300, 5400) size 40: +4,540  over 3 days, 101 trades, all days +
-#   (5300, 5500) size 20: +3,470  over 3 days, 176 trades, all days +
 CS_PAIRS: List[Tuple[str, str, int]] = [
     (VEV_5200, VEV_5400, 30),
     (VEV_5300, VEV_5400, 40),
     (VEV_5300, VEV_5500, 20),
 ]
 
-# Diagnostic toggle - when False, skip cross-strike layer entirely so we
-# can attribute PnL impact of IV-scalping in isolation.
 CS_LAYER_ENABLED = False
-
-# Diagnostic toggle - when False, route HYDROGEL through stratton's OBI MM
-# handler (which makes +8,861 in R4 replay) instead of porush's _trade_hydrogel
-# handler (which silently produces 0 PnL in prosperity3bt replay).
 HYDROGEL_PORUSH_HANDLER = False
-
-# Diagnostic toggle - when False, use stratton's lean BASE_MM_SIZE behavior
-# for VEV_4000/4500 (search-2 baseline, no porush 37-lot floor).
 VEV_MM_BASE_SIZE_FLOOR = False
 
 
+# === Mark defensive-widen signals (high-confidence only, from
+#     calibration/marks/signals.json). Each entry is keyed by
+#     (mark, product, mark_side) and stores (action_side_for_us, |drift|).
+# action_side_for_us == "BUY"  => mid will RISE  => widen our ASK
+# action_side_for_us == "SELL" => mid will FALL  => widen our BID
+# Inlined to keep submission self-contained. ====================
+HIGH_CONF_SIGNALS: Dict[Tuple[str, str, str], Tuple[str, float]] = {
+    # HYDROGEL_PACK
+    ("Mark 14", "HYDROGEL_PACK", "buyer"):  ("BUY",  8.938),
+    ("Mark 38", "HYDROGEL_PACK", "seller"): ("BUY",  8.554),
+    ("Mark 14", "HYDROGEL_PACK", "seller"): ("SELL", 7.415),
+    ("Mark 38", "HYDROGEL_PACK", "buyer"):  ("SELL", 7.321),
+    # VEV_4000
+    ("Mark 14", "VEV_4000", "seller"): ("SELL", 11.263),
+    ("Mark 38", "VEV_4000", "buyer"):  ("SELL", 11.081),
+    ("Mark 38", "VEV_4000", "seller"): ("BUY",  9.938),
+    ("Mark 14", "VEV_4000", "buyer"):  ("BUY",  9.892),
+    # VELVETFRUIT_EXTRACT
+    ("Mark 01", "VELVETFRUIT_EXTRACT", "seller"): ("SELL", 2.730),
+    ("Mark 55", "VELVETFRUIT_EXTRACT", "buyer"):  ("SELL", 1.622),
+    ("Mark 55", "VELVETFRUIT_EXTRACT", "seller"): ("BUY",  1.363),
+    ("Mark 01", "VELVETFRUIT_EXTRACT", "buyer"):  ("BUY",  2.054),
+    ("Mark 14", "VELVETFRUIT_EXTRACT", "buyer"):  ("BUY",  0.910),
+    # VEV_5300
+    ("Mark 22", "VEV_5300", "seller"): ("BUY",  1.270),
+    ("Mark 01", "VEV_5300", "buyer"):  ("BUY",  1.205),
+    # VEV_5400
+    ("Mark 01", "VEV_5400", "buyer"):  ("BUY",  0.660),
+    ("Mark 22", "VEV_5400", "seller"): ("BUY",  0.601),
+    # VEV_5500
+    ("Mark 01", "VEV_5500", "buyer"):  ("BUY",  0.538),
+    ("Mark 22", "VEV_5500", "seller"): ("BUY",  0.518),
+    # VEV_6000 / VEV_6500 (effectively dead — pinned at 0/1)
+    ("Mark 01", "VEV_6000", "buyer"):  ("BUY",  0.500),
+    ("Mark 01", "VEV_6500", "buyer"):  ("BUY",  0.500),
+    ("Mark 22", "VEV_6000", "seller"): ("BUY",  0.500),
+    ("Mark 22", "VEV_6500", "seller"): ("BUY",  0.500),
+}
+
+# Lookback for "did a relevant Mark trade in the last 50 ticks"
+MARK_LOOKBACK_TICKS = 50
+# Position-fraction at which we consider ourselves "already on the safe side"
+SAFE_SIDE_POS_FRAC = 0.10
+
+
+def _widen_ticks_for_drift(abs_drift: float) -> int:
+    if abs_drift < 0.5:
+        return 0
+    if abs_drift < 2.0:
+        return 1
+    if abs_drift < 5.0:
+        return 2
+    return 3
+
+
 class Trader:
-    # === BS smile (analysis/round4/bachelier_vs_bs.md, audited 2026-04-26) =
-    # iv = a + b*m + c*m^2 with m = log(K/S) / sqrt(T_years).
-    # b, c stable across the 3 R3 days; a drifts 0.41 -> 0.50 -> 0.88.
-    # Trader refits `a` online via EMA over per-tick avg residual.
     SMILE_A_INIT = 0.580261
     SMILE_B = 0.033704
     SMILE_C = 0.089775
-    SMILE_A_ALPHA = 0.01            # EMA speed for online a refit
+    SMILE_A_ALPHA = 0.01
 
-    # Time convention: assume "this is day 0" each session (we cannot tell
-    # which day the portal feeds us). T_years constant-bias is absorbed by
-    # the IV-scalp EMA, so this is robust.
-    SESSION_TICKS = 30_000          # 3 days * 10K
-    TICKS_PER_YEAR = 365 * 10_000   # = 3_650_000
+    SESSION_TICKS = 30_000
+    TICKS_PER_YEAR = 365 * 10_000
     T_YEARS_FLOOR = 1e-4
 
-    # === IV-deviation scalping (Timo style, p3_options_reference.md sec 3b) =
-    THEO_NORM_WINDOW = 100          # EMA window for mean_theo_diff
-    IV_SCALPING_WINDOW = 100        # EMA window for switch_mean
-    THR_OPEN = 0.5                  # XIRECs deviation needed to open
-    THR_CLOSE = 0.0                 # close when dev returns to mean
-    IV_SCALPING_THR = 0.7           # min vol-of-deviation to enable scalping
-    LOW_VEGA_THR_ADJ = 0.5          # extra threshold when vega <= 1
+    THEO_NORM_WINDOW = 100
+    IV_SCALPING_WINDOW = 100
+    THR_OPEN = 0.5
+    THR_CLOSE = 0.0
+    IV_SCALPING_THR = 0.7
+    LOW_VEGA_THR_ADJ = 0.5
     LOW_VEGA_CUTOFF = 1.0
-    SCALP_MAX_PER_TICK = 60         # ladder into the limit, not single-shot
+    SCALP_MAX_PER_TICK = 60
 
-    # === Cross-strike spread MR ===========================================
-    CS_K_SIGMA = 1.5                # lowered from wolf 2.0 (correct std)
+    CS_K_SIGMA = 1.5
     CS_HOLD_TICKS = 30
     CS_DEV_STD_FALLBACK = 1.0
     CS_TAKE_MAX_PER_TICK = 6
     CS_PASSIVE_SIZE = 10
 
-    # === Porush (search-4 OOS winner) HYDROGEL params (locked) ============
     HY_OBI_THRESH = 0.11598037104847925
     HY_OBI_SKEW_TICKS = 1
     HY_OBI_SIZE_K_CONF = 1.0
@@ -171,7 +185,6 @@ class Trader:
     HY_SOFT_POS_FRAC = 0.43174743324315
     HY_TIGHT_SPREAD_MIN = 2
 
-    # === Stratton/porush MR + OBI MM params (locked) ======================
     EMA_ALPHA = 4.308428675778431e-05
     VAR_ALPHA = 0.03588256506509171
     MR_K = 0.04481152690538941
@@ -264,11 +277,6 @@ class Trader:
     # === Market state ======================================================
     def _build_market_ctx(self, state: TradingState, td: dict
                            ) -> Dict[str, dict]:
-        """Compute per-voucher fair, dev, mean_dev, switch_mean. Refit
-        smile_a online from observed IVs across the 6 core strikes.
-        Returns ctx[symbol] -> {S, T, fair, dev, mean_dev, switch_mean,
-                                vega, iv, mid}.
-        """
         ctx: Dict[str, dict] = {}
         velvet_od = state.order_depths.get(VELVETFRUIT)
         S = self._mid(velvet_od) if velvet_od else None
@@ -332,11 +340,76 @@ class Trader:
         ctx["__S__"] = {"S": S, "T": T_years, "smile_a": smile_a}
         return ctx
 
-    # === IV-deviation scalping (Timo) =====================================
+    # === Mark trade log + danger-side widen ==============================
+    def _update_mark_trades(self, state: TradingState, td: dict) -> None:
+        """Append every market_trade with both buyer+seller populated to the
+        rolling per-product log (timestamp, mark_buyer, mark_seller, qty).
+        Drop entries older than MARK_LOOKBACK_TICKS * 100 timestamp units.
+        """
+        log: dict = td.get("mark_trades", {})
+        cutoff = state.timestamp - MARK_LOOKBACK_TICKS * 100
+        for product, trades in (state.market_trades or {}).items():
+            buf: List[List] = log.get(product, [])
+            for tr in trades or []:
+                buyer = getattr(tr, "buyer", None)
+                seller = getattr(tr, "seller", None)
+                if not buyer or not seller:
+                    continue
+                ts = getattr(tr, "timestamp", state.timestamp)
+                buf.append([int(ts), str(buyer), str(seller),
+                             int(getattr(tr, "quantity", 0))])
+            buf = [e for e in buf if e[0] >= cutoff]
+            if buf:
+                log[product] = buf
+            elif product in log:
+                del log[product]
+        td["mark_trades"] = log
+
+    def _danger_widen(self, product: str, td: dict, pos: int
+                       ) -> Tuple[int, int]:
+        """Return (bid_widen_ticks, ask_widen_ticks) for this product based on
+        the strongest high-conf Mark signal in the last 50t.
+
+        action_side_for_us == BUY  => price will rise  => danger = our ASK.
+        action_side_for_us == SELL => price will fall  => danger = our BID.
+
+        Skip widening if our existing position is already on the safe side
+        (long & price rising / short & price falling).
+        """
+        log: dict = td.get("mark_trades", {})
+        trades = log.get(product, [])
+        if not trades:
+            return 0, 0
+
+        limit = LIMITS.get(product, 1)
+        safe_long = pos >= max(1, int(SAFE_SIDE_POS_FRAC * limit))
+        safe_short = pos <= -max(1, int(SAFE_SIDE_POS_FRAC * limit))
+
+        bid_widen, ask_widen = 0, 0
+        for ts, buyer, seller, _qty in trades:
+            for mark, side in ((buyer, "buyer"), (seller, "seller")):
+                key = (mark, product, side)
+                sig = HIGH_CONF_SIGNALS.get(key)
+                if sig is None:
+                    continue
+                action, abs_drift = sig
+                w = _widen_ticks_for_drift(abs_drift)
+                if w <= 0:
+                    continue
+                if action == "BUY":
+                    # mid rising => widen ASK; safe if already long
+                    if not safe_long and w > ask_widen:
+                        ask_widen = w
+                else:  # SELL
+                    # mid falling => widen BID; safe if already short
+                    if not safe_short and w > bid_widen:
+                        bid_widen = w
+        return bid_widen, ask_widen
+
+    # === IV-deviation scalping (Timo) ===================================
     def _iv_scalp_orders(self, sym: str, od: OrderDepth, pos: int,
-                          ctx: Dict[str, dict]) -> Tuple[List[Order], bool]:
-        """Returns (orders, fired). When fired, caller skips other handlers
-        for this voucher (we own the inventory decision)."""
+                          ctx: Dict[str, dict], td: dict
+                          ) -> Tuple[List[Order], bool]:
         info = ctx.get(sym)
         if not info:
             return [], False
@@ -356,31 +429,48 @@ class Trader:
         buy_room = limit - pos
         sell_room = limit + pos
 
-        # Activity gate: only scalp if recent vol-of-deviation is large enough
-        # to expect signal > noise. Pinned vouchers fail this gate.
+        # Defensive widen for the close-back leg: when we're flattening into
+        # the book, don't bother defending — we want the fill. So only honor
+        # widen for the "open new position" branch below.
+        bid_widen, ask_widen = self._danger_widen(sym, td, pos)
+
         if switch_mean < self.IV_SCALPING_THR:
-            # Force-flatten residual position if we previously took one
             orders: List[Order] = []
+            # Force-flatten residual position. We're SELLING (pos>0) at
+            # best_bid; danger is "price will rise" => ask_widen > 0 =>
+            # lift the sell px so we don't sell into a rise. Symmetric for
+            # BUYING (pos<0): danger is bid_widen > 0 => lower the buy px.
             if pos > 0:
                 qty = min(pos, sell_room)
                 if qty > 0:
-                    orders.append(Order(sym, best_bid, -qty))
+                    px = best_bid
+                    if ask_widen > 0:
+                        px2 = best_bid + ask_widen
+                        if px2 < best_ask:
+                            px = px2
+                    orders.append(Order(sym, px, -qty))
             elif pos < 0:
                 qty = min(-pos, buy_room)
                 if qty > 0:
-                    orders.append(Order(sym, best_ask, qty))
+                    px = best_ask
+                    if bid_widen > 0:
+                        px2 = best_ask - bid_widen
+                        if px2 > best_bid:
+                            px = px2
+                    orders.append(Order(sym, px, qty))
             return orders, bool(orders)
 
         thr = self.THR_OPEN + (self.LOW_VEGA_THR_ADJ
                                 if vega <= self.LOW_VEGA_CUTOFF else 0.0)
-        # Timo's exact trigger:
-        #   sell @ best_bid when (best_bid - fair) - mean_dev >= thr
-        #   buy  @ best_ask when (best_ask - fair) - mean_dev <= -thr
         sell_dev = (best_bid - fair) - mean_dev
         buy_dev = (best_ask - fair) - mean_dev
 
         orders: List[Order] = []
         fired = False
+        # Active-scalp opens are still aggressive (cross-spread). Defensive
+        # widen does not gate them per spec ("don't take cross-spread" applies
+        # to the widen layer adding new takes — IV-scalp's existing takes are
+        # part of submission.py and untouched).
         if sell_dev >= thr and sell_room > 0:
             qty = min(self.SCALP_MAX_PER_TICK, sell_room,
                        od.buy_orders[best_bid])
@@ -394,20 +484,37 @@ class Trader:
                 orders.append(Order(sym, best_ask, qty))
                 fired = True
 
-        # Close-back logic: when dev has reverted past THR_CLOSE relative to
-        # mean_dev, unwind the existing position.
+        # Close-back leg — passive against the same book level. Widen if
+        # the danger side aligns with our exit side.
         sell_close_dev = (best_bid - fair) - mean_dev
         buy_close_dev = (best_ask - fair) - mean_dev
         if not fired:
             if pos > 0 and sell_close_dev >= self.THR_CLOSE:
                 qty = min(pos, sell_room, od.buy_orders[best_bid])
                 if qty > 0:
-                    orders.append(Order(sym, best_bid, -qty))
+                    px = best_bid
+                    # We're SELLING at best_bid. Widening the BID = post lower
+                    # = sell cheaper = bad. So if signal says price will FALL
+                    # (bid_widen>0 for our normal MM), we actually want to
+                    # accelerate the exit; just hit best_bid as before.
+                    # Conversely, if ASK is in danger (price will rise), our
+                    # close-back sell is risky — widen up by ask_widen ticks
+                    # so we sell into the rise.
+                    if ask_widen > 0:
+                        px2 = best_bid + ask_widen
+                        if px2 < best_ask:
+                            px = px2
+                    orders.append(Order(sym, px, -qty))
                     fired = True
             elif pos < 0 and buy_close_dev <= -self.THR_CLOSE:
                 qty = min(-pos, buy_room, -od.sell_orders[best_ask])
                 if qty > 0:
-                    orders.append(Order(sym, best_ask, qty))
+                    px = best_ask
+                    if bid_widen > 0:
+                        px2 = best_ask - bid_widen
+                        if px2 > best_bid:
+                            px = px2
+                    orders.append(Order(sym, px, qty))
                     fired = True
         return orders, fired
 
@@ -519,6 +626,9 @@ class Trader:
         td: dict = self._parse_td(state.traderData)
         result: Dict[str, List[Order]] = {}
 
+        # Maintain rolling 50t Mark trade log BEFORE handlers consume it.
+        self._update_mark_trades(state, td)
+
         ctx = self._build_market_ctx(state, td)
         S = ctx.get("__S__", {}).get("S", FALLBACK_FV[VELVETFRUIT])
         if CS_LAYER_ENABLED:
@@ -533,29 +643,29 @@ class Trader:
                 if HYDROGEL_PORUSH_HANDLER:
                     result[product] = self._trade_hydrogel(od, pos, td)
                 else:
-                    result[product] = self._trade_vev_mm(product, od, pos)
+                    result[product] = self._trade_vev_mm(product, od, pos, td)
             elif product in SCALP_VOUCHERS:
-                # Priority 1: IV-scalping (Timo)
-                scalp_orders, fired = self._iv_scalp_orders(product, od, pos, ctx)
+                scalp_orders, fired = self._iv_scalp_orders(
+                    product, od, pos, ctx, td)
                 if fired:
                     result[product] = scalp_orders
                 else:
-                    # Priority 2: cross-strike target
                     target = cs_targets.get(product, 0)
                     if target != 0:
                         result[product] = self._trade_cross_strike_target(
                             product, od, pos, target)
                     else:
-                        # Priority 3: fallback MR or MM (matches wolf)
                         fallback = SCALP_FALLBACK_HANDLER[product]
                         if fallback == "mr":
-                            result[product] = self._trade_mr(product, od, pos, td)
+                            result[product] = self._trade_mr(
+                                product, od, pos, td)
                         else:
-                            result[product] = self._trade_vev_mm(product, od, pos)
+                            result[product] = self._trade_vev_mm(
+                                product, od, pos, td)
             elif product in MR_ONLY_ASSETS:
                 result[product] = self._trade_mr(product, od, pos, td)
             elif product in VEV_MM_ASSETS:
-                result[product] = self._trade_vev_mm(product, od, pos)
+                result[product] = self._trade_vev_mm(product, od, pos, td)
             else:
                 result[product] = []
         return result, 0, json.dumps(td)
@@ -768,16 +878,46 @@ class Trader:
         obi = 0.0 if tot == 0 else (b1_vol - a1_vol) / tot
         rem_buy = max(0, buy_room - buy_ordered)
         rem_sell = max(0, sell_room - sell_ordered)
+
+        # Defensive widen on the passive levels.
+        bid_widen, ask_widen = self._danger_widen(product, td, pos)
+
         for level in range(self.MR_MM_LEVELS):
             if level == 0:
-                our_bid, our_ask = self._obi_skewed_quotes(best_bid, best_ask, obi)
+                our_bid, our_ask = self._obi_skewed_quotes(
+                    best_bid, best_ask, obi)
             else:
                 our_bid = best_bid + 1 + level
                 our_ask = best_ask - 1 - level
-            if our_bid >= our_ask:
-                break
+
+            # Apply widen: bid lower, ask higher (= farther from market).
+            if bid_widen > 0:
+                our_bid -= bid_widen
+            if ask_widen > 0:
+                our_ask += ask_widen
+
             bqty = min(buy_size_each, rem_buy)
             aqty = min(sell_size_each, rem_sell)
+
+            if our_bid >= our_ask:
+                # Widen would invert -> drop the dangerous side(s).
+                if ask_widen >= bid_widen:
+                    aqty = 0
+                    if bid_widen > 0:
+                        # if bid widen also active, also drop bid
+                        bqty = 0
+                else:
+                    bqty = 0
+                # Reset other side to original aggressive level
+                if aqty > 0:
+                    our_bid = best_bid + 1 + level
+                    if our_bid >= our_ask:
+                        aqty = 0
+                if bqty > 0:
+                    our_ask = best_ask - 1 - level
+                    if our_bid >= our_ask:
+                        bqty = 0
+
             if bqty > 0:
                 orders.append(Order(product, our_bid, bqty))
                 rem_buy -= bqty
@@ -806,8 +946,8 @@ class Trader:
         sigma = max(1.0, new_var) ** 0.5
         return new_ema, sigma, new_n
 
-    def _trade_vev_mm(self, product: str, od: OrderDepth, pos: int
-                       ) -> List[Order]:
+    def _trade_vev_mm(self, product: str, od: OrderDepth, pos: int,
+                       td: dict) -> List[Order]:
         bids = sorted(od.buy_orders.keys(), reverse=True) if od.buy_orders else []
         asks = sorted(od.sell_orders.keys()) if od.sell_orders else []
         if not bids or not asks:
@@ -827,8 +967,14 @@ class Trader:
             else:
                 sell_size = max(sell_size, self.BASE_MM_SIZE)
         our_bid, our_ask = self._obi_skewed_quotes(best_bid, best_ask, obi)
-        if our_bid >= our_ask:
-            return []
+
+        # Defensive widen.
+        bid_widen, ask_widen = self._danger_widen(product, td, pos)
+        if bid_widen > 0:
+            our_bid -= bid_widen
+        if ask_widen > 0:
+            our_ask += ask_widen
+
         limit = LIMITS[product]
         soft_thresh = int(self.VEV_SOFT_POS_FRAC * limit)
         buy_room = limit - pos
@@ -839,6 +985,28 @@ class Trader:
             buy_qty = 0
         elif pos <= -soft_thresh:
             sell_qty = 0
+
+        if our_bid >= our_ask:
+            # Widen inverted: prefer to drop the dangerous side and keep the
+            # safe one. Re-derive a safe price for the surviving side.
+            if ask_widen >= bid_widen and ask_widen > 0:
+                # Ask is the dangerous side -> drop it.
+                sell_qty = 0
+                our_bid_safe = best_bid + 1
+                if bid_widen > 0:
+                    our_bid_safe -= bid_widen
+                our_bid = our_bid_safe
+            elif bid_widen > 0:
+                buy_qty = 0
+                our_ask_safe = best_ask - 1
+                if ask_widen > 0:
+                    our_ask_safe += ask_widen
+                our_ask = our_ask_safe
+            else:
+                # No widen but still inverted -> fall back to inside quotes
+                our_bid = best_bid + 1
+                our_ask = best_ask - 1
+
         orders: List[Order] = []
         if buy_qty > 0:
             orders.append(Order(product, our_bid, buy_qty))

@@ -1,51 +1,30 @@
-"""Active R4 submission — stratton baseline + Timo IV-deviation scalping.
+"""VARIANT B - Mark-gated cross-spread takes.
 
-R4 historical replay (prosperity3bt --merge-pnl):
-    R3 stratton baseline:        +20,954 (D1 14,100 / D2 406  / D3 6,448)
-    THIS submission:             +27,444 (D1 14,961 / D2 582  / D3 11,901)
-    Net IV-scalping uplift:      +6,490 (+31%)
-MC --quick: mean +7,858, std 5,509, p5-p95 [-2,498, +18,030].
-Honest portal estimate (1.88x replay/portal ratio from stratton): ~14,600
-XIRECs vs stratton's actual 11,140.
+Built on top of `traders/round4/submission.py` (stratton + Timo IV-scalp).
+Adds an aggressive Mark-gated take layer that fires BEFORE the per-product
+handler. When a strong informed-Mark signal triggers in the trailing 50-tick
+window of `state.market_trades`, we take the corresponding side at top-of-book.
 
-Layers:
-  HYDROGEL                  -> stratton _trade_vev_mm  (porush handler returned
-                                                        0 PnL in replay)
-  VELVETFRUIT               -> stratton _trade_mr      (slow EMA, tiny MR_K)
-  VEV_5000..VEV_5500        -> stratton MR/MM baseline
-                               + NEW Timo IV-deviation scalping (priority)
-  VEV_4000/VEV_4500/5500    -> stratton _trade_vev_mm  (no porush BASE_MM
-                                                        floor that bled VEV_4000)
-  VEV_6000/VEV_6500         -> skip (pinned at 0/1)
-  Cross-strike spread MR    -> DISABLED (cost -37k in replay; can't reconcile
-                                          audit's +11k vs replay -3k for 5200/5400)
-  Counterparty IDs          -> NOT YET USED (R4 baseline first)
+Selection of Mark signals (from calibration/marks/signals.json):
+    confidence == "high"  AND  |drift_H200_mean| >= 5.0
+    -> 8 signals total: Mark 14 / Mark 38 on HYDROGEL_PACK and VEV_4000.
 
-IV-scalping (analysis/round4/bachelier_vs_bs.md, audited 2026-04-26):
-  - BS smile, m = log(K/S)/sqrt(T_years), dynamic T from session timestamp,
-    online EMA refit of smile_a (curvature b,c stable across days, level a
-    drifts 0.41 -> 0.88 day-to-day).
-  - Per voucher: dev = mid - bs_fair, mean_dev EMA, switch_mean = EMA(|dev-mean|).
-    Activity gate switch_mean >= 0.7. Open when |dev - mean| > THR_OPEN=0.5
-    (sell at best_bid / buy at best_ask). Close on signal-flip through 0.
-  - Diagnostic on R4 day-1 confirmed signal direction: post-fire mid drift
-    -7 to -12 XIRECs at horizon 200 across all 6 strikes (+17k per-fire PnL
-    if executed in isolation).
-
-Diagnostic toggles below let us reactivate the rejected layers for future
-experiments without re-rolling the file.
+Caveats / safety:
+  - Rate-limited: each product can only fire one take per `MARK_TAKE_COOLDOWN`
+    ticks (default 30) to avoid stacking on the same Mark trade.
+  - Take size capped by remaining position-limit room AND by best-of-book size.
+  - Effective post-take position is passed to the existing handler so that
+    the worst-case position-limit cancellation rule is honored.
 
 Lineage:
-  stratton (R3 search-2 #233): portal +11,140  passive MM (saved as round4/stratton.py)
-  porush   (R3 search-4 #119): MC +11,774      adds HYDROGEL handler (broken in replay)
-  wolf     (porush + CS):      MC +6,157       adds CS spread MR
-  THIS:                        replay +27,444  IV-scalp on stratton, CS off, HYDROGEL=stratton
+  submission.py (R4 baseline, +27,444 in 3-day replay)
+  -> THIS adds a Mark-gated take layer on top.
 """
 
 try:
-    from datamodel import Order, OrderDepth, TradingState
+    from datamodel import Order, OrderDepth, TradingState, Trade
 except ImportError:
-    from backtester.datamodel import Order, OrderDepth, TradingState
+    from backtester.datamodel import Order, OrderDepth, TradingState, Trade
 
 from typing import Dict, List, Optional, Tuple
 from statistics import NormalDist
@@ -97,66 +76,68 @@ STRIKES = {
     VEV_5400: 5400, VEV_5500: 5500, VEV_6000: 6000, VEV_6500: 6500,
 }
 
-# === Cross-strike spread MR pairs (per analysis/round3/final_audit.md sec 7).
-# 3-day historical replay PnL totals (size shown):
-#   (5200, 5400) size 30: +11,265 over 3 days, 436 trades, all days +
-#   (5300, 5400) size 40: +4,540  over 3 days, 101 trades, all days +
-#   (5300, 5500) size 20: +3,470  over 3 days, 176 trades, all days +
 CS_PAIRS: List[Tuple[str, str, int]] = [
     (VEV_5200, VEV_5400, 30),
     (VEV_5300, VEV_5400, 40),
     (VEV_5300, VEV_5500, 20),
 ]
 
-# Diagnostic toggle - when False, skip cross-strike layer entirely so we
-# can attribute PnL impact of IV-scalping in isolation.
 CS_LAYER_ENABLED = False
-
-# Diagnostic toggle - when False, route HYDROGEL through stratton's OBI MM
-# handler (which makes +8,861 in R4 replay) instead of porush's _trade_hydrogel
-# handler (which silently produces 0 PnL in prosperity3bt replay).
 HYDROGEL_PORUSH_HANDLER = False
-
-# Diagnostic toggle - when False, use stratton's lean BASE_MM_SIZE behavior
-# for VEV_4000/4500 (search-2 baseline, no porush 37-lot floor).
 VEV_MM_BASE_SIZE_FLOOR = False
 
 
+# === Mark signals (filtered: confidence == "high" AND |drift_H200| >= 5.0)
+# Each entry: (mark, product, mark_side, action_for_us, drift_H200_mean)
+# Source: calibration/marks/signals.json (8 entries)
+MARK_SIGNALS: List[Dict] = [
+    {"mark": "Mark 14", "product": HYDROGEL,  "mark_side": "buyer",  "action": "BUY",  "drift": 8.938},
+    {"mark": "Mark 38", "product": HYDROGEL,  "mark_side": "seller", "action": "BUY",  "drift": -8.554},
+    {"mark": "Mark 14", "product": HYDROGEL,  "mark_side": "seller", "action": "SELL", "drift": 7.415},
+    {"mark": "Mark 38", "product": HYDROGEL,  "mark_side": "buyer",  "action": "SELL", "drift": -7.321},
+    {"mark": "Mark 14", "product": VEV_4000,  "mark_side": "seller", "action": "SELL", "drift": 11.263},
+    {"mark": "Mark 38", "product": VEV_4000,  "mark_side": "buyer",  "action": "SELL", "drift": -11.081},
+    {"mark": "Mark 38", "product": VEV_4000,  "mark_side": "seller", "action": "BUY",  "drift": -9.938},
+    {"mark": "Mark 14", "product": VEV_4000,  "mark_side": "buyer",  "action": "BUY",  "drift": 9.892},
+]
+
+# Build a fast lookup: (product, mark, mark_side) -> action
+MARK_LOOKUP: Dict[Tuple[str, str, str], str] = {
+    (s["product"], s["mark"], s["mark_side"]): s["action"] for s in MARK_SIGNALS
+}
+MARK_PRODUCTS = set(s["product"] for s in MARK_SIGNALS)
+
+# === Tunable take layer params ========================================
+MARK_LOOKBACK_TICKS = 50      # window for matching Mark trades
+MARK_TAKE_COOLDOWN = 30       # min ticks between successive takes per product
+MARK_TAKE_SIZE = 5            # best of {5, 10, 20} sweep on R4 replay (least bad)
+
+
 class Trader:
-    # === BS smile (analysis/round4/bachelier_vs_bs.md, audited 2026-04-26) =
-    # iv = a + b*m + c*m^2 with m = log(K/S) / sqrt(T_years).
-    # b, c stable across the 3 R3 days; a drifts 0.41 -> 0.50 -> 0.88.
-    # Trader refits `a` online via EMA over per-tick avg residual.
     SMILE_A_INIT = 0.580261
     SMILE_B = 0.033704
     SMILE_C = 0.089775
-    SMILE_A_ALPHA = 0.01            # EMA speed for online a refit
+    SMILE_A_ALPHA = 0.01
 
-    # Time convention: assume "this is day 0" each session (we cannot tell
-    # which day the portal feeds us). T_years constant-bias is absorbed by
-    # the IV-scalp EMA, so this is robust.
-    SESSION_TICKS = 30_000          # 3 days * 10K
-    TICKS_PER_YEAR = 365 * 10_000   # = 3_650_000
+    SESSION_TICKS = 30_000
+    TICKS_PER_YEAR = 365 * 10_000
     T_YEARS_FLOOR = 1e-4
 
-    # === IV-deviation scalping (Timo style, p3_options_reference.md sec 3b) =
-    THEO_NORM_WINDOW = 100          # EMA window for mean_theo_diff
-    IV_SCALPING_WINDOW = 100        # EMA window for switch_mean
-    THR_OPEN = 0.5                  # XIRECs deviation needed to open
-    THR_CLOSE = 0.0                 # close when dev returns to mean
-    IV_SCALPING_THR = 0.7           # min vol-of-deviation to enable scalping
-    LOW_VEGA_THR_ADJ = 0.5          # extra threshold when vega <= 1
+    THEO_NORM_WINDOW = 100
+    IV_SCALPING_WINDOW = 100
+    THR_OPEN = 0.5
+    THR_CLOSE = 0.0
+    IV_SCALPING_THR = 0.7
+    LOW_VEGA_THR_ADJ = 0.5
     LOW_VEGA_CUTOFF = 1.0
-    SCALP_MAX_PER_TICK = 60         # ladder into the limit, not single-shot
+    SCALP_MAX_PER_TICK = 60
 
-    # === Cross-strike spread MR ===========================================
-    CS_K_SIGMA = 1.5                # lowered from wolf 2.0 (correct std)
+    CS_K_SIGMA = 1.5
     CS_HOLD_TICKS = 30
     CS_DEV_STD_FALLBACK = 1.0
     CS_TAKE_MAX_PER_TICK = 6
     CS_PASSIVE_SIZE = 10
 
-    # === Porush (search-4 OOS winner) HYDROGEL params (locked) ============
     HY_OBI_THRESH = 0.11598037104847925
     HY_OBI_SKEW_TICKS = 1
     HY_OBI_SIZE_K_CONF = 1.0
@@ -171,7 +152,6 @@ class Trader:
     HY_SOFT_POS_FRAC = 0.43174743324315
     HY_TIGHT_SPREAD_MIN = 2
 
-    # === Stratton/porush MR + OBI MM params (locked) ======================
     EMA_ALPHA = 4.308428675778431e-05
     VAR_ALPHA = 0.03588256506509171
     MR_K = 0.04481152690538941
@@ -264,11 +244,6 @@ class Trader:
     # === Market state ======================================================
     def _build_market_ctx(self, state: TradingState, td: dict
                            ) -> Dict[str, dict]:
-        """Compute per-voucher fair, dev, mean_dev, switch_mean. Refit
-        smile_a online from observed IVs across the 6 core strikes.
-        Returns ctx[symbol] -> {S, T, fair, dev, mean_dev, switch_mean,
-                                vega, iv, mid}.
-        """
         ctx: Dict[str, dict] = {}
         velvet_od = state.order_depths.get(VELVETFRUIT)
         S = self._mid(velvet_od) if velvet_od else None
@@ -332,11 +307,97 @@ class Trader:
         ctx["__S__"] = {"S": S, "T": T_years, "smile_a": smile_a}
         return ctx
 
+    # === Mark-gated take layer ============================================
+    def _update_mark_trade_log(self, state: TradingState, td: dict) -> None:
+        """Append fresh market_trades to td["mark_trades"] (bounded buffer)."""
+        log: List[Dict] = td.get("mark_trades", [])
+        cur_ts = state.timestamp
+        cutoff = cur_ts - MARK_LOOKBACK_TICKS * 100
+        # Drop stale entries
+        log = [e for e in log if e["ts"] >= cutoff]
+        # Append new
+        seen = {(e["sym"], e["ts"], e["price"], e["qty"], e["buyer"], e["seller"])
+                for e in log}
+        for sym, trades in (state.market_trades or {}).items():
+            if sym not in MARK_PRODUCTS:
+                continue
+            for t in trades:
+                buyer = t.buyer or ""
+                seller = t.seller or ""
+                if not buyer and not seller:
+                    continue
+                # We only care about Marks we have signals for
+                if (sym, buyer, "buyer") not in MARK_LOOKUP and \
+                   (sym, seller, "seller") not in MARK_LOOKUP:
+                    continue
+                key = (sym, t.timestamp, t.price, t.quantity, buyer, seller)
+                if key in seen:
+                    continue
+                log.append({
+                    "sym": sym, "ts": t.timestamp, "price": t.price,
+                    "qty": t.quantity, "buyer": buyer, "seller": seller,
+                })
+                seen.add(key)
+        td["mark_trades"] = log
+
+    def _mark_take_for(self, product: str, td: dict, cur_ts: int
+                        ) -> Optional[str]:
+        """Returns 'BUY'/'SELL' if a Mark signal fires for `product`, else None.
+        Picks the most recent matching Mark trade in the lookback window.
+        """
+        # Cooldown gate
+        last_ts_map: Dict[str, int] = td.get("last_mark_take_ts", {})
+        last = last_ts_map.get(product, -10**9)
+        if cur_ts - last < MARK_TAKE_COOLDOWN * 100:
+            return None
+        log: List[Dict] = td.get("mark_trades", [])
+        cutoff = cur_ts - MARK_LOOKBACK_TICKS * 100
+        # Walk newest -> oldest to find the most recent matching signal.
+        best_action: Optional[str] = None
+        best_ts = -1
+        for e in log:
+            if e["sym"] != product:
+                continue
+            if e["ts"] < cutoff:
+                continue
+            buyer, seller = e["buyer"], e["seller"]
+            act = MARK_LOOKUP.get((product, buyer, "buyer"))
+            if act is not None and e["ts"] > best_ts:
+                best_action = act
+                best_ts = e["ts"]
+            act2 = MARK_LOOKUP.get((product, seller, "seller"))
+            if act2 is not None and e["ts"] > best_ts:
+                best_action = act2
+                best_ts = e["ts"]
+        return best_action
+
+    def _emit_mark_take(self, product: str, action: str, od: OrderDepth,
+                         pos: int) -> Tuple[List[Order], int]:
+        """Returns (orders, signed_qty). signed_qty>0 means we bought."""
+        bids = sorted(od.buy_orders.keys(), reverse=True) if od.buy_orders else []
+        asks = sorted(od.sell_orders.keys()) if od.sell_orders else []
+        if not bids or not asks:
+            return [], 0
+        best_bid, best_ask = bids[0], asks[0]
+        limit = LIMITS[product]
+        buy_room = limit - pos
+        sell_room = limit + pos
+        if action == "BUY":
+            ask_vol = -od.sell_orders[best_ask]
+            qty = min(MARK_TAKE_SIZE, buy_room, ask_vol)
+            if qty <= 0:
+                return [], 0
+            return [Order(product, best_ask, qty)], +qty
+        else:  # SELL
+            bid_vol = od.buy_orders[best_bid]
+            qty = min(MARK_TAKE_SIZE, sell_room, bid_vol)
+            if qty <= 0:
+                return [], 0
+            return [Order(product, best_bid, -qty)], -qty
+
     # === IV-deviation scalping (Timo) =====================================
     def _iv_scalp_orders(self, sym: str, od: OrderDepth, pos: int,
                           ctx: Dict[str, dict]) -> Tuple[List[Order], bool]:
-        """Returns (orders, fired). When fired, caller skips other handlers
-        for this voucher (we own the inventory decision)."""
         info = ctx.get(sym)
         if not info:
             return [], False
@@ -356,10 +417,7 @@ class Trader:
         buy_room = limit - pos
         sell_room = limit + pos
 
-        # Activity gate: only scalp if recent vol-of-deviation is large enough
-        # to expect signal > noise. Pinned vouchers fail this gate.
         if switch_mean < self.IV_SCALPING_THR:
-            # Force-flatten residual position if we previously took one
             orders: List[Order] = []
             if pos > 0:
                 qty = min(pos, sell_room)
@@ -373,9 +431,6 @@ class Trader:
 
         thr = self.THR_OPEN + (self.LOW_VEGA_THR_ADJ
                                 if vega <= self.LOW_VEGA_CUTOFF else 0.0)
-        # Timo's exact trigger:
-        #   sell @ best_bid when (best_bid - fair) - mean_dev >= thr
-        #   buy  @ best_ask when (best_ask - fair) - mean_dev <= -thr
         sell_dev = (best_bid - fair) - mean_dev
         buy_dev = (best_ask - fair) - mean_dev
 
@@ -394,8 +449,6 @@ class Trader:
                 orders.append(Order(sym, best_ask, qty))
                 fired = True
 
-        # Close-back logic: when dev has reverted past THR_CLOSE relative to
-        # mean_dev, unwind the existing position.
         sell_close_dev = (best_bid - fair) - mean_dev
         buy_close_dev = (best_ask - fair) - mean_dev
         if not fired:
@@ -519,6 +572,9 @@ class Trader:
         td: dict = self._parse_td(state.traderData)
         result: Dict[str, List[Order]] = {}
 
+        # Maintain rolling Mark trade log
+        self._update_mark_trade_log(state, td)
+
         ctx = self._build_market_ctx(state, td)
         S = ctx.get("__S__", {}).get("S", FALLBACK_FV[VELVETFRUIT])
         if CS_LAYER_ENABLED:
@@ -526,41 +582,70 @@ class Trader:
         else:
             cs_targets = {}
 
+        cur_ts = state.timestamp
+
         for product in state.order_depths:
             od: OrderDepth = state.order_depths[product]
             pos = state.position.get(product, 0)
+
+            # === Mark-gated take layer (priority 0) =====================
+            mark_orders: List[Order] = []
+            mark_qty_signed = 0
+            if product in MARK_PRODUCTS:
+                action = self._mark_take_for(product, td, cur_ts)
+                if action is not None:
+                    mark_orders, mark_qty_signed = self._emit_mark_take(
+                        product, action, od, pos)
+                    if mark_orders:
+                        # Record cooldown
+                        last_map = td.get("last_mark_take_ts", {})
+                        last_map[product] = cur_ts
+                        td["last_mark_take_ts"] = last_map
+
+            # Effective post-take position so the existing handler computes
+            # quote sizes against worst-case post-fill (avoids position-limit
+            # cancellation when our take + handler quote could combined exceed
+            # the limit).
+            eff_pos = pos + mark_qty_signed
+
             if product == HYDROGEL:
                 if HYDROGEL_PORUSH_HANDLER:
-                    result[product] = self._trade_hydrogel(od, pos, td)
+                    handler_orders = self._trade_hydrogel(od, eff_pos, td)
                 else:
-                    result[product] = self._trade_vev_mm(product, od, pos)
+                    handler_orders = self._trade_vev_mm(product, od, eff_pos)
             elif product in SCALP_VOUCHERS:
                 # Priority 1: IV-scalping (Timo)
-                scalp_orders, fired = self._iv_scalp_orders(product, od, pos, ctx)
+                scalp_orders, fired = self._iv_scalp_orders(
+                    product, od, eff_pos, ctx)
                 if fired:
-                    result[product] = scalp_orders
+                    handler_orders = scalp_orders
                 else:
-                    # Priority 2: cross-strike target
                     target = cs_targets.get(product, 0)
                     if target != 0:
-                        result[product] = self._trade_cross_strike_target(
-                            product, od, pos, target)
+                        handler_orders = self._trade_cross_strike_target(
+                            product, od, eff_pos, target)
                     else:
-                        # Priority 3: fallback MR or MM (matches wolf)
                         fallback = SCALP_FALLBACK_HANDLER[product]
                         if fallback == "mr":
-                            result[product] = self._trade_mr(product, od, pos, td)
+                            handler_orders = self._trade_mr(
+                                product, od, eff_pos, td)
                         else:
-                            result[product] = self._trade_vev_mm(product, od, pos)
+                            handler_orders = self._trade_vev_mm(
+                                product, od, eff_pos)
             elif product in MR_ONLY_ASSETS:
-                result[product] = self._trade_mr(product, od, pos, td)
+                handler_orders = self._trade_mr(product, od, eff_pos, td)
             elif product in VEV_MM_ASSETS:
-                result[product] = self._trade_vev_mm(product, od, pos)
+                handler_orders = self._trade_vev_mm(product, od, eff_pos)
             else:
-                result[product] = []
+                handler_orders = []
+
+            # Combine: Mark take FIRST, then handler quotes
+            combined = list(mark_orders) + list(handler_orders)
+            result[product] = combined
+
         return result, 0, json.dumps(td)
 
-    # === Helpers (ported from wolf) ======================================
+    # === Helpers (verbatim from submission.py) ============================
     def _obi_skewed_quotes(self, best_bid: int, best_ask: int, obi: float
                             ) -> Tuple[int, int]:
         our_bid = best_bid + 1

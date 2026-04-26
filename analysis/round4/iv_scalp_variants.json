@@ -1,0 +1,798 @@
+{
+  "per_day_per_sym": {
+    "day1__VEV_5000__V1": {
+      "n_fires": 5,
+      "n_force_flats": 1,
+      "n_close_backs": 0,
+      "n_at_limit": 365,
+      "final_pos": 0,
+      "final_cash": 3420.0,
+      "final_pnl": 3420.0
+    },
+    "day1__VEV_5000__V2": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9978,
+      "final_pos": -300,
+      "final_cash": 76020.0,
+      "final_pnl": -4530.0
+    },
+    "day1__VEV_5000__V3": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 195,
+      "final_pos": 0,
+      "final_cash": 4020.0,
+      "final_pnl": 4020.0
+    },
+    "day1__VEV_5000__V4": {
+      "n_fires": 1,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9983,
+      "final_pos": -50,
+      "final_cash": 12700.0,
+      "final_pnl": -725.0
+    },
+    "day1__VEV_5100__V1": {
+      "n_fires": 6,
+      "n_force_flats": 1,
+      "n_close_backs": 1,
+      "n_at_limit": 384,
+      "final_pos": 0,
+      "final_cash": 4380.0,
+      "final_pnl": 4380.0
+    },
+    "day1__VEV_5100__V2": {
+      "n_fires": 6,
+      "n_force_flats": 0,
+      "n_close_backs": 1,
+      "n_at_limit": 384,
+      "final_pos": 60,
+      "final_cash": -5520.0,
+      "final_pnl": 5130.0
+    },
+    "day1__VEV_5100__V3": {
+      "n_fires": 11,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 392,
+      "final_pos": 60,
+      "final_cash": -6420.0,
+      "final_pnl": 4230.0
+    },
+    "day1__VEV_5100__V4": {
+      "n_fires": 2,
+      "n_force_flats": 0,
+      "n_close_backs": 1,
+      "n_at_limit": 9954,
+      "final_pos": 50,
+      "final_cash": -7050.0,
+      "final_pnl": 1825.0
+    },
+    "day1__VEV_5200__V1": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 1,
+      "n_at_limit": 366,
+      "final_pos": 0,
+      "final_cash": 3240.0,
+      "final_pnl": 3240.0
+    },
+    "day1__VEV_5200__V2": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 1,
+      "n_at_limit": 366,
+      "final_pos": 0,
+      "final_cash": 3240.0,
+      "final_pnl": 3240.0
+    },
+    "day1__VEV_5200__V3": {
+      "n_fires": 10,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 392,
+      "final_pos": 0,
+      "final_cash": 2580.0,
+      "final_pnl": 2580.0
+    },
+    "day1__VEV_5200__V4": {
+      "n_fires": 1,
+      "n_force_flats": 0,
+      "n_close_backs": 1,
+      "n_at_limit": 370,
+      "final_pos": 0,
+      "final_cash": 550.0,
+      "final_pnl": 550.0
+    },
+    "day1__VEV_5300__V1": {
+      "n_fires": 5,
+      "n_force_flats": 1,
+      "n_close_backs": 0,
+      "n_at_limit": 469,
+      "final_pos": 0,
+      "final_cash": 300.0,
+      "final_pnl": 300.0
+    },
+    "day1__VEV_5300__V2": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9981,
+      "final_pos": -300,
+      "final_cash": 14400.0,
+      "final_pnl": -1200.0
+    },
+    "day1__VEV_5300__V3": {
+      "n_fires": 10,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 392,
+      "final_pos": 0,
+      "final_cash": 1440.0,
+      "final_pnl": 1440.0
+    },
+    "day1__VEV_5300__V4": {
+      "n_fires": 1,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9985,
+      "final_pos": -50,
+      "final_cash": 2400.0,
+      "final_pnl": -200.0
+    },
+    "day1__VEV_5400__V1": {
+      "n_fires": 5,
+      "n_force_flats": 1,
+      "n_close_backs": 0,
+      "n_at_limit": 427,
+      "final_pos": 0,
+      "final_cash": 300.0,
+      "final_pnl": 300.0
+    },
+    "day1__VEV_5400__V2": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9981,
+      "final_pos": -300,
+      "final_cash": 5100.0,
+      "final_pnl": 0.0
+    },
+    "day1__VEV_5400__V3": {
+      "n_fires": 10,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 392,
+      "final_pos": 0,
+      "final_cash": 300.0,
+      "final_pnl": 300.0
+    },
+    "day1__VEV_5400__V4": {
+      "n_fires": 1,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9985,
+      "final_pos": -50,
+      "final_cash": 850.0,
+      "final_pnl": 0.0
+    },
+    "day1__VEV_5500__V1": {
+      "n_fires": 5,
+      "n_force_flats": 1,
+      "n_close_backs": 0,
+      "n_at_limit": 378,
+      "final_pos": 0,
+      "final_cash": 0.0,
+      "final_pnl": 0.0
+    },
+    "day1__VEV_5500__V2": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9978,
+      "final_pos": -300,
+      "final_cash": 2100.0,
+      "final_pnl": 150.0
+    },
+    "day1__VEV_5500__V3": {
+      "n_fires": 10,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9973,
+      "final_pos": -300,
+      "final_cash": 1620.0,
+      "final_pnl": -330.0
+    },
+    "day1__VEV_5500__V4": {
+      "n_fires": 1,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9982,
+      "final_pos": -50,
+      "final_cash": 350.0,
+      "final_pnl": 25.0
+    },
+    "day2__VEV_5000__V1": {
+      "n_fires": 5,
+      "n_force_flats": 1,
+      "n_close_backs": 0,
+      "n_at_limit": 347,
+      "final_pos": 0,
+      "final_cash": -1380.0,
+      "final_pnl": -1380.0
+    },
+    "day2__VEV_5000__V2": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9978,
+      "final_pos": -300,
+      "final_cash": 80220.0,
+      "final_pnl": -8730.0
+    },
+    "day2__VEV_5000__V3": {
+      "n_fires": 6,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 195,
+      "final_pos": -60,
+      "final_cash": 12900.0,
+      "final_pnl": -4890.0
+    },
+    "day2__VEV_5000__V4": {
+      "n_fires": 1,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9983,
+      "final_pos": -50,
+      "final_cash": 13300.0,
+      "final_pnl": -1525.0
+    },
+    "day2__VEV_5100__V1": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 1,
+      "n_at_limit": 399,
+      "final_pos": 0,
+      "final_cash": 3480.0,
+      "final_pnl": 3480.0
+    },
+    "day2__VEV_5100__V2": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 1,
+      "n_at_limit": 399,
+      "final_pos": 0,
+      "final_cash": 3480.0,
+      "final_pnl": 3480.0
+    },
+    "day2__VEV_5100__V3": {
+      "n_fires": 10,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 389,
+      "final_pos": 0,
+      "final_cash": 840.0,
+      "final_pnl": 840.0
+    },
+    "day2__VEV_5100__V4": {
+      "n_fires": 1,
+      "n_force_flats": 0,
+      "n_close_backs": 1,
+      "n_at_limit": 403,
+      "final_pos": 0,
+      "final_cash": 500.0,
+      "final_pnl": 500.0
+    },
+    "day2__VEV_5200__V1": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 1,
+      "n_at_limit": 401,
+      "final_pos": 0,
+      "final_cash": 2460.0,
+      "final_pnl": 2460.0
+    },
+    "day2__VEV_5200__V2": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 1,
+      "n_at_limit": 401,
+      "final_pos": 0,
+      "final_cash": 2460.0,
+      "final_pnl": 2460.0
+    },
+    "day2__VEV_5200__V3": {
+      "n_fires": 10,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 392,
+      "final_pos": 0,
+      "final_cash": 960.0,
+      "final_pnl": 960.0
+    },
+    "day2__VEV_5200__V4": {
+      "n_fires": 1,
+      "n_force_flats": 0,
+      "n_close_backs": 1,
+      "n_at_limit": 405,
+      "final_pos": 0,
+      "final_cash": 350.0,
+      "final_pnl": 350.0
+    },
+    "day2__VEV_5300__V1": {
+      "n_fires": 5,
+      "n_force_flats": 1,
+      "n_close_backs": 0,
+      "n_at_limit": 450,
+      "final_pos": 0,
+      "final_cash": 540.0,
+      "final_pnl": 540.0
+    },
+    "day2__VEV_5300__V2": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9982,
+      "final_pos": -300,
+      "final_cash": 15240.0,
+      "final_pnl": -2160.0
+    },
+    "day2__VEV_5300__V3": {
+      "n_fires": 10,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 392,
+      "final_pos": 0,
+      "final_cash": 660.0,
+      "final_pnl": 660.0
+    },
+    "day2__VEV_5300__V4": {
+      "n_fires": 1,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9986,
+      "final_pos": -50,
+      "final_cash": 2500.0,
+      "final_pnl": -400.0
+    },
+    "day2__VEV_5400__V1": {
+      "n_fires": 5,
+      "n_force_flats": 1,
+      "n_close_backs": 0,
+      "n_at_limit": 439,
+      "final_pos": 0,
+      "final_cash": 0.0,
+      "final_pnl": 0.0
+    },
+    "day2__VEV_5400__V2": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9984,
+      "final_pos": -300,
+      "final_cash": 4800.0,
+      "final_pnl": -1200.0
+    },
+    "day2__VEV_5400__V3": {
+      "n_fires": 10,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 392,
+      "final_pos": 0,
+      "final_cash": 0.0,
+      "final_pnl": 0.0
+    },
+    "day2__VEV_5400__V4": {
+      "n_fires": 1,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9988,
+      "final_pos": -50,
+      "final_cash": 800.0,
+      "final_pnl": -200.0
+    },
+    "day2__VEV_5500__V1": {
+      "n_fires": 5,
+      "n_force_flats": 1,
+      "n_close_backs": 0,
+      "n_at_limit": 394,
+      "final_pos": 0,
+      "final_cash": 0.0,
+      "final_pnl": 0.0
+    },
+    "day2__VEV_5500__V2": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9983,
+      "final_pos": -300,
+      "final_cash": 1800.0,
+      "final_pnl": -300.0
+    },
+    "day2__VEV_5500__V3": {
+      "n_fires": 10,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9978,
+      "final_pos": -300,
+      "final_cash": 1500.0,
+      "final_pnl": -600.0
+    },
+    "day2__VEV_5500__V4": {
+      "n_fires": 1,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9987,
+      "final_pos": -50,
+      "final_cash": 300.0,
+      "final_pnl": -50.0
+    },
+    "day3__VEV_5000__V1": {
+      "n_fires": 7,
+      "n_force_flats": 1,
+      "n_close_backs": 0,
+      "n_at_limit": 307,
+      "final_pos": 0,
+      "final_cash": 6600.0,
+      "final_pnl": 6600.0
+    },
+    "day3__VEV_5000__V2": {
+      "n_fires": 7,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 307,
+      "final_pos": -180,
+      "final_cash": 56280.0,
+      "final_pnl": 14160.0
+    },
+    "day3__VEV_5000__V3": {
+      "n_fires": 7,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 196,
+      "final_pos": 120,
+      "final_cash": -28620.0,
+      "final_pnl": -540.0
+    },
+    "day3__VEV_5000__V4": {
+      "n_fires": 3,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9975,
+      "final_pos": 50,
+      "final_cash": -12230.0,
+      "final_pnl": -530.0
+    },
+    "day3__VEV_5100__V1": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 1,
+      "n_at_limit": 310,
+      "final_pos": 0,
+      "final_cash": 7380.0,
+      "final_pnl": 7380.0
+    },
+    "day3__VEV_5100__V2": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 1,
+      "n_at_limit": 310,
+      "final_pos": 0,
+      "final_cash": 7380.0,
+      "final_pnl": 7380.0
+    },
+    "day3__VEV_5100__V3": {
+      "n_fires": 10,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 388,
+      "final_pos": 0,
+      "final_cash": 10380.0,
+      "final_pnl": 10380.0
+    },
+    "day3__VEV_5100__V4": {
+      "n_fires": 1,
+      "n_force_flats": 0,
+      "n_close_backs": 1,
+      "n_at_limit": 314,
+      "final_pos": 0,
+      "final_cash": 1200.0,
+      "final_pnl": 1200.0
+    },
+    "day3__VEV_5200__V1": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 1,
+      "n_at_limit": 438,
+      "final_pos": 0,
+      "final_cash": 10020.0,
+      "final_pnl": 10020.0
+    },
+    "day3__VEV_5200__V2": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 1,
+      "n_at_limit": 438,
+      "final_pos": 0,
+      "final_cash": 10020.0,
+      "final_pnl": 10020.0
+    },
+    "day3__VEV_5200__V3": {
+      "n_fires": 10,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 392,
+      "final_pos": 0,
+      "final_cash": 8460.0,
+      "final_pnl": 8460.0
+    },
+    "day3__VEV_5200__V4": {
+      "n_fires": 1,
+      "n_force_flats": 0,
+      "n_close_backs": 1,
+      "n_at_limit": 442,
+      "final_pos": 0,
+      "final_cash": 1650.0,
+      "final_pnl": 1650.0
+    },
+    "day3__VEV_5300__V1": {
+      "n_fires": 5,
+      "n_force_flats": 1,
+      "n_close_backs": 0,
+      "n_at_limit": 480,
+      "final_pos": 0,
+      "final_cash": 5400.0,
+      "final_pnl": 5400.0
+    },
+    "day3__VEV_5300__V2": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9983,
+      "final_pos": -300,
+      "final_cash": 17400.0,
+      "final_pnl": 9600.0
+    },
+    "day3__VEV_5300__V3": {
+      "n_fires": 11,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 392,
+      "final_pos": -60,
+      "final_cash": 7260.0,
+      "final_pnl": 5700.0
+    },
+    "day3__VEV_5300__V4": {
+      "n_fires": 1,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9987,
+      "final_pos": -50,
+      "final_cash": 2900.0,
+      "final_pnl": 1600.0
+    },
+    "day3__VEV_5400__V1": {
+      "n_fires": 5,
+      "n_force_flats": 1,
+      "n_close_backs": 0,
+      "n_at_limit": 444,
+      "final_pos": 0,
+      "final_cash": 2460.0,
+      "final_pnl": 2460.0
+    },
+    "day3__VEV_5400__V2": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9982,
+      "final_pos": -300,
+      "final_cash": 6060.0,
+      "final_pnl": 4410.0
+    },
+    "day3__VEV_5400__V3": {
+      "n_fires": 10,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 392,
+      "final_pos": 0,
+      "final_cash": 1980.0,
+      "final_pnl": 1980.0
+    },
+    "day3__VEV_5400__V4": {
+      "n_fires": 1,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9986,
+      "final_pos": -50,
+      "final_cash": 1000.0,
+      "final_pnl": 725.0
+    },
+    "day3__VEV_5500__V1": {
+      "n_fires": 5,
+      "n_force_flats": 1,
+      "n_close_backs": 0,
+      "n_at_limit": 407,
+      "final_pos": 0,
+      "final_cash": 900.0,
+      "final_pnl": 900.0
+    },
+    "day3__VEV_5500__V2": {
+      "n_fires": 5,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9982,
+      "final_pos": -300,
+      "final_cash": 2100.0,
+      "final_pnl": 1650.0
+    },
+    "day3__VEV_5500__V3": {
+      "n_fires": 10,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 392,
+      "final_pos": 0,
+      "final_cash": 480.0,
+      "final_pnl": 480.0
+    },
+    "day3__VEV_5500__V4": {
+      "n_fires": 1,
+      "n_force_flats": 0,
+      "n_close_backs": 0,
+      "n_at_limit": 9986,
+      "final_pos": -50,
+      "final_cash": 350.0,
+      "final_pnl": 275.0
+    }
+  },
+  "totals_per_sym_variant": {
+    "VEV_5000__V1": {
+      "total_pnl": 8640.0,
+      "fires": 17,
+      "force_flats": 3,
+      "close_backs": 0
+    },
+    "VEV_5000__V2": {
+      "total_pnl": 900.0,
+      "fires": 17,
+      "force_flats": 0,
+      "close_backs": 0
+    },
+    "VEV_5000__V3": {
+      "total_pnl": -1410.0,
+      "fires": 18,
+      "force_flats": 0,
+      "close_backs": 0
+    },
+    "VEV_5000__V4": {
+      "total_pnl": -2780.0,
+      "fires": 5,
+      "force_flats": 0,
+      "close_backs": 0
+    },
+    "VEV_5100__V1": {
+      "total_pnl": 15240.0,
+      "fires": 16,
+      "force_flats": 1,
+      "close_backs": 3
+    },
+    "VEV_5100__V2": {
+      "total_pnl": 15990.0,
+      "fires": 16,
+      "force_flats": 0,
+      "close_backs": 3
+    },
+    "VEV_5100__V3": {
+      "total_pnl": 15450.0,
+      "fires": 31,
+      "force_flats": 0,
+      "close_backs": 0
+    },
+    "VEV_5100__V4": {
+      "total_pnl": 3525.0,
+      "fires": 4,
+      "force_flats": 0,
+      "close_backs": 3
+    },
+    "VEV_5200__V1": {
+      "total_pnl": 15720.0,
+      "fires": 15,
+      "force_flats": 0,
+      "close_backs": 3
+    },
+    "VEV_5200__V2": {
+      "total_pnl": 15720.0,
+      "fires": 15,
+      "force_flats": 0,
+      "close_backs": 3
+    },
+    "VEV_5200__V3": {
+      "total_pnl": 12000.0,
+      "fires": 30,
+      "force_flats": 0,
+      "close_backs": 0
+    },
+    "VEV_5200__V4": {
+      "total_pnl": 2550.0,
+      "fires": 3,
+      "force_flats": 0,
+      "close_backs": 3
+    },
+    "VEV_5300__V1": {
+      "total_pnl": 6240.0,
+      "fires": 15,
+      "force_flats": 3,
+      "close_backs": 0
+    },
+    "VEV_5300__V2": {
+      "total_pnl": 6240.0,
+      "fires": 15,
+      "force_flats": 0,
+      "close_backs": 0
+    },
+    "VEV_5300__V3": {
+      "total_pnl": 7800.0,
+      "fires": 31,
+      "force_flats": 0,
+      "close_backs": 0
+    },
+    "VEV_5300__V4": {
+      "total_pnl": 1000.0,
+      "fires": 3,
+      "force_flats": 0,
+      "close_backs": 0
+    },
+    "VEV_5400__V1": {
+      "total_pnl": 2760.0,
+      "fires": 15,
+      "force_flats": 3,
+      "close_backs": 0
+    },
+    "VEV_5400__V2": {
+      "total_pnl": 3210.0,
+      "fires": 15,
+      "force_flats": 0,
+      "close_backs": 0
+    },
+    "VEV_5400__V3": {
+      "total_pnl": 2280.0,
+      "fires": 30,
+      "force_flats": 0,
+      "close_backs": 0
+    },
+    "VEV_5400__V4": {
+      "total_pnl": 525.0,
+      "fires": 3,
+      "force_flats": 0,
+      "close_backs": 0
+    },
+    "VEV_5500__V1": {
+      "total_pnl": 900.0,
+      "fires": 15,
+      "force_flats": 3,
+      "close_backs": 0
+    },
+    "VEV_5500__V2": {
+      "total_pnl": 1500.0,
+      "fires": 15,
+      "force_flats": 0,
+      "close_backs": 0
+    },
+    "VEV_5500__V3": {
+      "total_pnl": -450.0,
+      "fires": 30,
+      "force_flats": 0,
+      "close_backs": 0
+    },
+    "VEV_5500__V4": {
+      "total_pnl": 250.0,
+      "fires": 3,
+      "force_flats": 0,
+      "close_backs": 0
+    }
+  }
+}

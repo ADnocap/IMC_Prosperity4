@@ -1,45 +1,24 @@
-"""Active R4 submission — stratton baseline + Timo IV-deviation scalping.
+"""VARIANT A — Mark-driven quote skew / size bias (R4).
 
-R4 historical replay (prosperity3bt --merge-pnl):
-    R3 stratton baseline:        +20,954 (D1 14,100 / D2 406  / D3 6,448)
-    THIS submission:             +27,444 (D1 14,961 / D2 582  / D3 11,901)
-    Net IV-scalping uplift:      +6,490 (+31%)
-MC --quick: mean +7,858, std 5,509, p5-p95 [-2,498, +18,030].
-Honest portal estimate (1.88x replay/portal ratio from stratton): ~14,600
-XIRECs vs stratton's actual 11,140.
+Layered ON TOP of submission.py (stratton baseline + Timo IV-deviation
+scalping). Non-disruptive: DISABLE_TAKES stays True, IV-scalping continues
+to act as before (priority 1 inside SCALP_VOUCHERS), and the Mark layer
+only nudges *quote sizes & prices* inside the passive-MM handlers
+(_trade_vev_mm and _trade_mr).
 
-Layers:
-  HYDROGEL                  -> stratton _trade_vev_mm  (porush handler returned
-                                                        0 PnL in replay)
-  VELVETFRUIT               -> stratton _trade_mr      (slow EMA, tiny MR_K)
-  VEV_5000..VEV_5500        -> stratton MR/MM baseline
-                               + NEW Timo IV-deviation scalping (priority)
-  VEV_4000/VEV_4500/5500    -> stratton _trade_vev_mm  (no porush BASE_MM
-                                                        floor that bled VEV_4000)
-  VEV_6000/VEV_6500         -> skip (pinned at 0/1)
-  Cross-strike spread MR    -> DISABLED (cost -37k in replay; can't reconcile
-                                          audit's +11k vs replay -3k for 5200/5400)
-  Counterparty IDs          -> NOT YET USED (R4 baseline first)
-
-IV-scalping (analysis/round4/bachelier_vs_bs.md, audited 2026-04-26):
-  - BS smile, m = log(K/S)/sqrt(T_years), dynamic T from session timestamp,
-    online EMA refit of smile_a (curvature b,c stable across days, level a
-    drifts 0.41 -> 0.88 day-to-day).
-  - Per voucher: dev = mid - bs_fair, mean_dev EMA, switch_mean = EMA(|dev-mean|).
-    Activity gate switch_mean >= 0.7. Open when |dev - mean| > THR_OPEN=0.5
-    (sell at best_bid / buy at best_ask). Close on signal-flip through 0.
-  - Diagnostic on R4 day-1 confirmed signal direction: post-fire mid drift
-    -7 to -12 XIRECs at horizon 200 across all 6 strikes (+17k per-fire PnL
-    if executed in isolation).
-
-Diagnostic toggles below let us reactivate the rejected layers for future
-experiments without re-rolling the file.
-
-Lineage:
-  stratton (R3 search-2 #233): portal +11,140  passive MM (saved as round4/stratton.py)
-  porush   (R3 search-4 #119): MC +11,774      adds HYDROGEL handler (broken in replay)
-  wolf     (porush + CS):      MC +6,157       adds CS spread MR
-  THIS:                        replay +27,444  IV-scalp on stratton, CS off, HYDROGEL=stratton
+How it works
+------------
+- Each tick we ingest `state.market_trades` and append every Mark-tagged
+  trade to a rolling 50-tick (= 5,000 timestamp units) log in traderData.
+- For every product we compute a *signed bias* by summing matching
+  signal scores from signals.json (high-conf only, |drift| >= 0.5):
+      signed_score = +drift if action_side_for_us == "BUY" else -drift
+- bias > 0  -> we want to BUY -> grow bid size, shrink ask size,
+              optionally improve bid by +1 tick when |bias| > 6
+- bias < 0  -> symmetric for SELL
+- Net size adjustment is hard-capped at 2x existing handler max sizes,
+  and the existing soft-pos guardrails (HY_SOFT_POS_FRAC,
+  VEV_SOFT_POS_FRAC) are NOT overridden.
 """
 
 try:
@@ -97,66 +76,107 @@ STRIKES = {
     VEV_5400: 5400, VEV_5500: 5500, VEV_6000: 6000, VEV_6500: 6500,
 }
 
-# === Cross-strike spread MR pairs (per analysis/round3/final_audit.md sec 7).
-# 3-day historical replay PnL totals (size shown):
-#   (5200, 5400) size 30: +11,265 over 3 days, 436 trades, all days +
-#   (5300, 5400) size 40: +4,540  over 3 days, 101 trades, all days +
-#   (5300, 5500) size 20: +3,470  over 3 days, 176 trades, all days +
 CS_PAIRS: List[Tuple[str, str, int]] = [
     (VEV_5200, VEV_5400, 30),
     (VEV_5300, VEV_5400, 40),
     (VEV_5300, VEV_5500, 20),
 ]
 
-# Diagnostic toggle - when False, skip cross-strike layer entirely so we
-# can attribute PnL impact of IV-scalping in isolation.
 CS_LAYER_ENABLED = False
-
-# Diagnostic toggle - when False, route HYDROGEL through stratton's OBI MM
-# handler (which makes +8,861 in R4 replay) instead of porush's _trade_hydrogel
-# handler (which silently produces 0 PnL in prosperity3bt replay).
 HYDROGEL_PORUSH_HANDLER = False
-
-# Diagnostic toggle - when False, use stratton's lean BASE_MM_SIZE behavior
-# for VEV_4000/4500 (search-2 baseline, no porush 37-lot floor).
 VEV_MM_BASE_SIZE_FLOOR = False
 
 
+# === Mark counterparty signals (from calibration/marks/signals.json) ====
+# Filtered: confidence == "high" AND |drift_H200_mean| >= 0.5.
+# Each entry: (mark_id, product, mark_side, action_for_us, drift_abs)
+# action_for_us in {"BUY", "SELL"}; positive bias when we want to buy.
+MARK_SIGNALS: List[Tuple[str, str, str, str, float]] = [
+    # HYDROGEL — strong (drift ~7-9 ticks)
+    ("Mark 14", HYDROGEL,    "buyer",  "BUY",  8.938),
+    ("Mark 38", HYDROGEL,    "seller", "BUY",  8.554),
+    ("Mark 14", HYDROGEL,    "seller", "SELL", 7.415),
+    ("Mark 38", HYDROGEL,    "buyer",  "SELL", 7.321),
+    # VEV_4000 — strong (drift ~10-11 ticks)
+    ("Mark 14", VEV_4000,    "seller", "SELL", 11.263),
+    ("Mark 38", VEV_4000,    "buyer",  "SELL", 11.081),
+    ("Mark 38", VEV_4000,    "seller", "BUY",  9.938),
+    ("Mark 14", VEV_4000,    "buyer",  "BUY",  9.892),
+    # VELVETFRUIT — moderate (drift ~1-3 ticks)
+    ("Mark 01", VELVETFRUIT, "seller", "SELL", 2.730),
+    ("Mark 55", VELVETFRUIT, "buyer",  "SELL", 1.622),
+    ("Mark 55", VELVETFRUIT, "seller", "BUY",  1.363),
+    ("Mark 01", VELVETFRUIT, "buyer",  "BUY",  2.054),
+    ("Mark 14", VELVETFRUIT, "buyer",  "BUY",  0.910),
+    # VEV_5300/5400/5500 — weak
+    ("Mark 22", VEV_5300,    "seller", "BUY",  1.270),
+    ("Mark 01", VEV_5300,    "buyer",  "BUY",  1.205),
+    ("Mark 01", VEV_5400,    "buyer",  "BUY",  0.660),
+    ("Mark 22", VEV_5400,    "seller", "BUY",  0.601),
+    ("Mark 01", VEV_5500,    "buyer",  "BUY",  0.538),
+    ("Mark 22", VEV_5500,    "seller", "BUY",  0.518),
+    # VEV_6000/6500 — pinned (kept for completeness, |drift| == 0.5)
+    ("Mark 01", VEV_6000,    "buyer",  "BUY",  0.500),
+    ("Mark 01", VEV_6500,    "buyer",  "BUY",  0.500),
+    ("Mark 22", VEV_6000,    "seller", "BUY",  0.500),
+    ("Mark 22", VEV_6500,    "seller", "BUY",  0.500),
+]
+
+# Index for fast lookup: (product, mark, side) -> signed_score
+# signed_score = +drift if action_for_us == BUY else -drift
+_MARK_SIGNAL_LOOKUP: Dict[Tuple[str, str, str], float] = {}
+for _mk, _prod, _side, _action, _drift in MARK_SIGNALS:
+    _signed = _drift if _action == "BUY" else -_drift
+    _MARK_SIGNAL_LOOKUP[(_prod, _mk, _side)] = _signed
+
+
+# Mark layer hyperparams ------------------------------------------------
+MARK_WINDOW_TS = 5000      # 50 ticks * 100 ts/tick
+MARK_BIAS_IMPROVE_THRESH = 6.0   # |bias| above this -> improve quote 1 tick
+MARK_BIAS_BOOST_DENOM = 5.0      # bid_size *= 1 + min(2, |bias|/5)
+MARK_BIAS_SHRINK_DENOM = 10.0    # ask_size *= 1 - min(0.5, |bias|/10)
+MARK_BIAS_BOOST_CAP = 2.0        # max +200% size
+MARK_BIAS_SHRINK_CAP = 0.5       # max -50% size
+MARK_HARD_SIZE_MULT = 2.0        # size cap = 2x original handler size
+
+# Products where we apply the Mark layer at all. Exclude the IV-scalp
+# vouchers (VEV_5000..VEV_5400) per task: scalping takes priority for them
+# and our Mark layer is only applied via the fallback handler below.
+MARK_TARGETS = {
+    HYDROGEL,
+    VELVETFRUIT,
+    VEV_4000,
+    VEV_4500,
+    VEV_5000, VEV_5100, VEV_5200, VEV_5300, VEV_5400, VEV_5500,
+    VEV_6000, VEV_6500,
+}
+
+
 class Trader:
-    # === BS smile (analysis/round4/bachelier_vs_bs.md, audited 2026-04-26) =
-    # iv = a + b*m + c*m^2 with m = log(K/S) / sqrt(T_years).
-    # b, c stable across the 3 R3 days; a drifts 0.41 -> 0.50 -> 0.88.
-    # Trader refits `a` online via EMA over per-tick avg residual.
     SMILE_A_INIT = 0.580261
     SMILE_B = 0.033704
     SMILE_C = 0.089775
-    SMILE_A_ALPHA = 0.01            # EMA speed for online a refit
+    SMILE_A_ALPHA = 0.01
 
-    # Time convention: assume "this is day 0" each session (we cannot tell
-    # which day the portal feeds us). T_years constant-bias is absorbed by
-    # the IV-scalp EMA, so this is robust.
-    SESSION_TICKS = 30_000          # 3 days * 10K
-    TICKS_PER_YEAR = 365 * 10_000   # = 3_650_000
+    SESSION_TICKS = 30_000
+    TICKS_PER_YEAR = 365 * 10_000
     T_YEARS_FLOOR = 1e-4
 
-    # === IV-deviation scalping (Timo style, p3_options_reference.md sec 3b) =
-    THEO_NORM_WINDOW = 100          # EMA window for mean_theo_diff
-    IV_SCALPING_WINDOW = 100        # EMA window for switch_mean
-    THR_OPEN = 0.5                  # XIRECs deviation needed to open
-    THR_CLOSE = 0.0                 # close when dev returns to mean
-    IV_SCALPING_THR = 0.7           # min vol-of-deviation to enable scalping
-    LOW_VEGA_THR_ADJ = 0.5          # extra threshold when vega <= 1
+    THEO_NORM_WINDOW = 100
+    IV_SCALPING_WINDOW = 100
+    THR_OPEN = 0.5
+    THR_CLOSE = 0.0
+    IV_SCALPING_THR = 0.7
+    LOW_VEGA_THR_ADJ = 0.5
     LOW_VEGA_CUTOFF = 1.0
-    SCALP_MAX_PER_TICK = 60         # ladder into the limit, not single-shot
+    SCALP_MAX_PER_TICK = 60
 
-    # === Cross-strike spread MR ===========================================
-    CS_K_SIGMA = 1.5                # lowered from wolf 2.0 (correct std)
+    CS_K_SIGMA = 1.5
     CS_HOLD_TICKS = 30
     CS_DEV_STD_FALLBACK = 1.0
     CS_TAKE_MAX_PER_TICK = 6
     CS_PASSIVE_SIZE = 10
 
-    # === Porush (search-4 OOS winner) HYDROGEL params (locked) ============
     HY_OBI_THRESH = 0.11598037104847925
     HY_OBI_SKEW_TICKS = 1
     HY_OBI_SIZE_K_CONF = 1.0
@@ -171,7 +191,6 @@ class Trader:
     HY_SOFT_POS_FRAC = 0.43174743324315
     HY_TIGHT_SPREAD_MIN = 2
 
-    # === Stratton/porush MR + OBI MM params (locked) ======================
     EMA_ALPHA = 4.308428675778431e-05
     VAR_ALPHA = 0.03588256506509171
     MR_K = 0.04481152690538941
@@ -264,11 +283,6 @@ class Trader:
     # === Market state ======================================================
     def _build_market_ctx(self, state: TradingState, td: dict
                            ) -> Dict[str, dict]:
-        """Compute per-voucher fair, dev, mean_dev, switch_mean. Refit
-        smile_a online from observed IVs across the 6 core strikes.
-        Returns ctx[symbol] -> {S, T, fair, dev, mean_dev, switch_mean,
-                                vega, iv, mid}.
-        """
         ctx: Dict[str, dict] = {}
         velvet_od = state.order_depths.get(VELVETFRUIT)
         S = self._mid(velvet_od) if velvet_od else None
@@ -332,11 +346,9 @@ class Trader:
         ctx["__S__"] = {"S": S, "T": T_years, "smile_a": smile_a}
         return ctx
 
-    # === IV-deviation scalping (Timo) =====================================
+    # === IV-deviation scalping (Timo) — UNCHANGED =========================
     def _iv_scalp_orders(self, sym: str, od: OrderDepth, pos: int,
                           ctx: Dict[str, dict]) -> Tuple[List[Order], bool]:
-        """Returns (orders, fired). When fired, caller skips other handlers
-        for this voucher (we own the inventory decision)."""
         info = ctx.get(sym)
         if not info:
             return [], False
@@ -356,10 +368,7 @@ class Trader:
         buy_room = limit - pos
         sell_room = limit + pos
 
-        # Activity gate: only scalp if recent vol-of-deviation is large enough
-        # to expect signal > noise. Pinned vouchers fail this gate.
         if switch_mean < self.IV_SCALPING_THR:
-            # Force-flatten residual position if we previously took one
             orders: List[Order] = []
             if pos > 0:
                 qty = min(pos, sell_room)
@@ -373,9 +382,6 @@ class Trader:
 
         thr = self.THR_OPEN + (self.LOW_VEGA_THR_ADJ
                                 if vega <= self.LOW_VEGA_CUTOFF else 0.0)
-        # Timo's exact trigger:
-        #   sell @ best_bid when (best_bid - fair) - mean_dev >= thr
-        #   buy  @ best_ask when (best_ask - fair) - mean_dev <= -thr
         sell_dev = (best_bid - fair) - mean_dev
         buy_dev = (best_ask - fair) - mean_dev
 
@@ -394,8 +400,6 @@ class Trader:
                 orders.append(Order(sym, best_ask, qty))
                 fired = True
 
-        # Close-back logic: when dev has reverted past THR_CLOSE relative to
-        # mean_dev, unwind the existing position.
         sell_close_dev = (best_bid - fair) - mean_dev
         buy_close_dev = (best_ask - fair) - mean_dev
         if not fired:
@@ -513,10 +517,102 @@ class Trader:
                 orders.append(Order(sym, our_ask, -aqty))
         return orders
 
+    # === Mark-flow ingestion & bias =======================================
+    def _ingest_mark_trades(self, state: TradingState, td: dict) -> None:
+        """Append every Mark-tagged trade in this tick's market_trades to a
+        rolling 50-tick window keyed in td["mark_trades"]."""
+        log: List[List] = td.get("mark_trades", [])
+        # log entry compact form: [ts, product, side ('buy'/'sell'), mark]
+        # 'side' = side that the Mark took (their action) — we store both
+        # buyer and seller for each trade so downstream lookup is symmetric.
+        now = int(state.timestamp)
+        for prod, trades in (state.market_trades or {}).items():
+            for t in trades:
+                ts = int(getattr(t, "timestamp", now) or now)
+                # Trades reported this tick can be slightly older than now;
+                # keep them and rely on the trim below to age them out.
+                buyer = getattr(t, "buyer", None)
+                seller = getattr(t, "seller", None)
+                if buyer and isinstance(buyer, str) and buyer.startswith("Mark"):
+                    log.append([ts, prod, "buyer", buyer])
+                if seller and isinstance(seller, str) and seller.startswith("Mark"):
+                    log.append([ts, prod, "seller", seller])
+        # Trim to ts > now - MARK_WINDOW_TS
+        cutoff = now - MARK_WINDOW_TS
+        if log:
+            log = [e for e in log if e[0] > cutoff]
+        td["mark_trades"] = log
+
+    def _mark_bias(self, td: dict, product: str) -> float:
+        """Sum signed Mark-signal scores for trades in the rolling window
+        that match `product`. +ve -> we want to BUY, -ve -> we want to SELL."""
+        if product not in MARK_TARGETS:
+            return 0.0
+        log: List[List] = td.get("mark_trades", [])
+        if not log:
+            return 0.0
+        bias = 0.0
+        for ts, prod, side, mark in log:
+            if prod != product:
+                continue
+            score = _MARK_SIGNAL_LOOKUP.get((prod, mark, side))
+            if score is None:
+                continue
+            bias += score
+        return bias
+
+    def _apply_mark_bias_to_quotes(self, bias: float,
+                                     buy_size: int, sell_size: int,
+                                     our_bid: int, our_ask: int,
+                                     best_bid: int, best_ask: int,
+                                     orig_max_size: int
+                                     ) -> Tuple[int, int, int, int]:
+        """Apply size & price nudges from the Mark bias.
+
+        Args:
+          bias: signed mark bias (+ -> we want to buy)
+          buy_size, sell_size: handler's intended passive sizes
+          our_bid, our_ask: handler's intended quote prices
+          best_bid, best_ask: book best
+          orig_max_size: original handler's ceiling for the bigger side
+                          (used for the 2x hard cap).
+        Returns: (buy_size, sell_size, our_bid, our_ask) post-bias.
+        """
+        if bias == 0.0:
+            return buy_size, sell_size, our_bid, our_ask
+        ab = abs(bias)
+        boost = 1.0 + min(MARK_BIAS_BOOST_CAP, ab / MARK_BIAS_BOOST_DENOM)
+        shrink = 1.0 - min(MARK_BIAS_SHRINK_CAP, ab / MARK_BIAS_SHRINK_DENOM)
+        cap = int(orig_max_size * MARK_HARD_SIZE_MULT) if orig_max_size > 0 else None
+
+        if bias > 0:
+            new_buy = int(round(buy_size * boost))
+            new_sell = int(round(sell_size * shrink))
+            if cap is not None:
+                new_buy = min(new_buy, cap)
+            if ab > MARK_BIAS_IMPROVE_THRESH:
+                cand_bid = best_bid + 2
+                if cand_bid < our_ask:
+                    our_bid = cand_bid
+            return new_buy, max(0, new_sell), our_bid, our_ask
+        else:
+            new_sell = int(round(sell_size * boost))
+            new_buy = int(round(buy_size * shrink))
+            if cap is not None:
+                new_sell = min(new_sell, cap)
+            if ab > MARK_BIAS_IMPROVE_THRESH:
+                cand_ask = best_ask - 2
+                if cand_ask > our_bid:
+                    our_ask = cand_ask
+            return max(0, new_buy), new_sell, our_bid, our_ask
+
     # === Run loop =========================================================
     def run(self, state: TradingState
              ) -> Tuple[Dict[str, List[Order]], int, str]:
         td: dict = self._parse_td(state.traderData)
+        # Refresh rolling Mark-trade log up front — every handler will
+        # query td["mark_trades"] via _mark_bias().
+        self._ingest_mark_trades(state, td)
         result: Dict[str, List[Order]] = {}
 
         ctx = self._build_market_ctx(state, td)
@@ -533,29 +629,28 @@ class Trader:
                 if HYDROGEL_PORUSH_HANDLER:
                     result[product] = self._trade_hydrogel(od, pos, td)
                 else:
-                    result[product] = self._trade_vev_mm(product, od, pos)
+                    result[product] = self._trade_vev_mm(product, od, pos, td)
             elif product in SCALP_VOUCHERS:
-                # Priority 1: IV-scalping (Timo)
+                # Priority 1: IV-scalping (Timo) — UNCHANGED, no bias
                 scalp_orders, fired = self._iv_scalp_orders(product, od, pos, ctx)
                 if fired:
                     result[product] = scalp_orders
                 else:
-                    # Priority 2: cross-strike target
                     target = cs_targets.get(product, 0)
                     if target != 0:
                         result[product] = self._trade_cross_strike_target(
                             product, od, pos, target)
                     else:
-                        # Priority 3: fallback MR or MM (matches wolf)
+                        # Priority 3: fallback MR or MM, with Mark bias
                         fallback = SCALP_FALLBACK_HANDLER[product]
                         if fallback == "mr":
                             result[product] = self._trade_mr(product, od, pos, td)
                         else:
-                            result[product] = self._trade_vev_mm(product, od, pos)
+                            result[product] = self._trade_vev_mm(product, od, pos, td)
             elif product in MR_ONLY_ASSETS:
                 result[product] = self._trade_mr(product, od, pos, td)
             elif product in VEV_MM_ASSETS:
-                result[product] = self._trade_vev_mm(product, od, pos)
+                result[product] = self._trade_vev_mm(product, od, pos, td)
             else:
                 result[product] = []
         return result, 0, json.dumps(td)
@@ -768,16 +863,33 @@ class Trader:
         obi = 0.0 if tot == 0 else (b1_vol - a1_vol) / tot
         rem_buy = max(0, buy_room - buy_ordered)
         rem_sell = max(0, sell_room - sell_ordered)
+
+        # === Mark-bias layer ============================================
+        # Apply only on the level-0 (best-improving) quote pair. Hard size
+        # cap = 2x the original handler's bigger size (big_side_size).
+        bias = self._mark_bias(td, product)
+
         for level in range(self.MR_MM_LEVELS):
             if level == 0:
                 our_bid, our_ask = self._obi_skewed_quotes(best_bid, best_ask, obi)
+                lvl_buy = buy_size_each
+                lvl_sell = sell_size_each
+                if bias != 0.0:
+                    lvl_buy, lvl_sell, our_bid, our_ask = (
+                        self._apply_mark_bias_to_quotes(
+                            bias, lvl_buy, lvl_sell, our_bid, our_ask,
+                            best_bid, best_ask, big_side_size,
+                        )
+                    )
             else:
                 our_bid = best_bid + 1 + level
                 our_ask = best_ask - 1 - level
+                lvl_buy = buy_size_each
+                lvl_sell = sell_size_each
             if our_bid >= our_ask:
                 break
-            bqty = min(buy_size_each, rem_buy)
-            aqty = min(sell_size_each, rem_sell)
+            bqty = min(lvl_buy, rem_buy)
+            aqty = min(lvl_sell, rem_sell)
             if bqty > 0:
                 orders.append(Order(product, our_bid, bqty))
                 rem_buy -= bqty
@@ -806,8 +918,8 @@ class Trader:
         sigma = max(1.0, new_var) ** 0.5
         return new_ema, sigma, new_n
 
-    def _trade_vev_mm(self, product: str, od: OrderDepth, pos: int
-                       ) -> List[Order]:
+    def _trade_vev_mm(self, product: str, od: OrderDepth, pos: int,
+                       td: dict) -> List[Order]:
         bids = sorted(od.buy_orders.keys(), reverse=True) if od.buy_orders else []
         asks = sorted(od.sell_orders.keys()) if od.sell_orders else []
         if not bids or not asks:
@@ -829,6 +941,23 @@ class Trader:
         our_bid, our_ask = self._obi_skewed_quotes(best_bid, best_ask, obi)
         if our_bid >= our_ask:
             return []
+
+        # === Mark-bias layer ============================================
+        # Hard cap = 2x the larger of (buy_size, sell_size) — i.e. the
+        # "big" size from the OBI-tier table.
+        bias = self._mark_bias(td, product)
+        orig_max = max(buy_size, sell_size)
+        if bias != 0.0:
+            buy_size, sell_size, our_bid, our_ask = (
+                self._apply_mark_bias_to_quotes(
+                    bias, buy_size, sell_size, our_bid, our_ask,
+                    best_bid, best_ask, orig_max,
+                )
+            )
+            if our_bid >= our_ask:
+                # bias-induced collision: revert to neutral quotes
+                our_bid, our_ask = self._obi_skewed_quotes(best_bid, best_ask, obi)
+
         limit = LIMITS[product]
         soft_thresh = int(self.VEV_SOFT_POS_FRAC * limit)
         buy_room = limit - pos

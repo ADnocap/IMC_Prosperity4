@@ -1,45 +1,28 @@
-"""Active R4 submission — stratton baseline + Timo IV-deviation scalping.
-
-R4 historical replay (prosperity3bt --merge-pnl):
-    R3 stratton baseline:        +20,954 (D1 14,100 / D2 406  / D3 6,448)
-    THIS submission:             +27,444 (D1 14,961 / D2 582  / D3 11,901)
-    Net IV-scalping uplift:      +6,490 (+31%)
-MC --quick: mean +7,858, std 5,509, p5-p95 [-2,498, +18,030].
-Honest portal estimate (1.88x replay/portal ratio from stratton): ~14,600
-XIRECs vs stratton's actual 11,140.
-
-Layers:
-  HYDROGEL                  -> stratton _trade_vev_mm  (porush handler returned
-                                                        0 PnL in replay)
-  VELVETFRUIT               -> stratton _trade_mr      (slow EMA, tiny MR_K)
-  VEV_5000..VEV_5500        -> stratton MR/MM baseline
-                               + NEW Timo IV-deviation scalping (priority)
-  VEV_4000/VEV_4500/5500    -> stratton _trade_vev_mm  (no porush BASE_MM
-                                                        floor that bled VEV_4000)
-  VEV_6000/VEV_6500         -> skip (pinned at 0/1)
-  Cross-strike spread MR    -> DISABLED (cost -37k in replay; can't reconcile
-                                          audit's +11k vs replay -3k for 5200/5400)
-  Counterparty IDs          -> NOT YET USED (R4 baseline first)
-
-IV-scalping (analysis/round4/bachelier_vs_bs.md, audited 2026-04-26):
-  - BS smile, m = log(K/S)/sqrt(T_years), dynamic T from session timestamp,
-    online EMA refit of smile_a (curvature b,c stable across days, level a
-    drifts 0.41 -> 0.88 day-to-day).
-  - Per voucher: dev = mid - bs_fair, mean_dev EMA, switch_mean = EMA(|dev-mean|).
-    Activity gate switch_mean >= 0.7. Open when |dev - mean| > THR_OPEN=0.5
-    (sell at best_bid / buy at best_ask). Close on signal-flip through 0.
-  - Diagnostic on R4 day-1 confirmed signal direction: post-fire mid drift
-    -7 to -12 XIRECs at horizon 200 across all 6 strikes (+17k per-fire PnL
-    if executed in isolation).
-
-Diagnostic toggles below let us reactivate the rejected layers for future
-experiments without re-rolling the file.
+"""Timo (R4 candidate) — adds IV-deviation scalping on top of wolf.
 
 Lineage:
-  stratton (R3 search-2 #233): portal +11,140  passive MM (saved as round4/stratton.py)
-  porush   (R3 search-4 #119): MC +11,774      adds HYDROGEL handler (broken in replay)
-  wolf     (porush + CS):      MC +6,157       adds CS spread MR
-  THIS:                        replay +27,444  IV-scalp on stratton, CS off, HYDROGEL=stratton
+  stratton (R3 search-2 #233):    portal +11,140  — passive MM only
+  porush   (R3 search-4 #119):    MC mean +11,774 — adds porush HYDROGEL
+  wolf     (porush + CS):         MC ~+6k         — adds cross-strike spread MR
+  timo     (wolf + IV scalp):     MC unknown      — adds Timo IV-deviation scalping
+
+What changed vs wolf:
+  1. SMILE: use audit-validated BS coefs with proper moneyness
+     m = log(K/S) / sqrt(T_years) and dynamic T_years from session timestamp.
+     Online EMA refit of `a` (the level) since per-day stability shows
+     a drifts 0.41 -> 0.50 -> 0.88 across days; b,c are stable.
+     See analysis/round4/bachelier_vs_bs.md.
+  2. IV-deviation scalping (Timo P3, ~100-150k/round on the same problem
+     shape). Per voucher, compute BS_fair from the smile, dev = mid - fair.
+     EMA mean_dev over a window. EMA switch_mean of |dev - mean_dev|. When
+     switch_mean exceeds an activity gate AND |dev - mean_dev| breaches
+     THR_OPEN, slam toward fair; close when revert through THR_CLOSE.
+     Active for VEV_5000..VEV_5500 only (deep ITM/OTM are pinned).
+  3. Cross-strike K_SIGMA lowered 2.0 -> 1.5 since correct-model residual
+     std is ~2.5x smaller than the (Bachelier-anchored) wolf number, so
+     the same nominal threshold under-fires.
+  4. IV-scalp takes priority over CS target for the 6 core vouchers when
+     the scalping signal is strong; otherwise falls through to CS or MM.
 """
 
 try:
