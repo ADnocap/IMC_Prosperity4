@@ -1,0 +1,78 @@
+# Round 3 search 4 — HYDROGEL-only focused search.
+#
+# Locks VELVETFRUIT/voucher params at v3 search trial #301 winner.
+# Searches ONLY the HYDROGEL handler (Layers A + B per hydrogel_deep.md):
+#   A) OBI passive skew (workhorse): confidence-sized, OBI-direction skew
+#   B) rev_z + OBI agreement-gate take (window 200-1000, NOT v3's 50)
+#
+# Why focused: v3 trial 301 (current MC leader) shows symbol breakdown
+# HYDROGEL_PACK = -1,099 vs VELVETFRUIT +4,462. HYDROGEL is the only
+# product losing money. hydrogel_deep.md (Sec 1) found v3's REVZ_WINDOW=50
+# is wrong — best Sharpe is at w=500. We need a search that operates in
+# the right region of the space.
+#
+# Hard removals (per hydrogel_deep.md):
+#   - HY_REVZ_WINDOW < 200       (Sec 1: 50 over-fires on noise)
+#   - BUY-cluster fade           (Sec 3: doesn't replicate)
+#   - aggressive cross-spread take (16-tick spread > drift)
+#
+# Path-length / sessions: 80 train + 20 val per trial, 200 OOS test.
+# Same seed structure as v3 so we can compare apples-to-apples.
+
+name: round3_param_search_v4
+trader: studies/round3_tunable_v4.py
+
+sim:
+  train_sessions: 80
+  val_sessions:   20
+  test_sessions:  200
+  ticks_per_day:  10000
+  seed:           42
+  test_seed:      40042
+
+params:
+  # ---- Layer A: OBI passive skew (workhorse) ---------------------------
+  # hydrogel_deep.md Sec 5: OBI bucket boundary at 0.05 captures full edge.
+  # Size = ceil(LIMIT * |OBI| * k_conf), capped at HY_OBI_SIZE_MAX.
+  HY_OBI_THRESH:        { type: float, low: 0.04, high: 0.20 }
+  HY_OBI_SKEW_TICKS:    { type: int,   low: 1,    high: 5 }
+  HY_OBI_SIZE_K_CONF:   { type: float, low: 0.5,  high: 2.5 }
+  HY_OBI_SIZE_MAX:      { type: int,   low: 30,   high: 150 }
+  HY_MM_BASE_SIZE:      { type: int,   low: 8,    high: 60 }
+
+  # ---- Layer B: rev_z + OBI agreement-gate take ------------------------
+  # WINDOW restricted to 200-1000 — Sec 1 showed w=50 over-fires on noise.
+  # THRESHOLD lower than v3 (1.0-2.5) because gate filters bad fires.
+  # SIZE smaller than v3 (30-100 not 140) — we hold longer.
+  HY_REVZ_WINDOW:       { type: int,   low: 200,  high: 1000, log: true }
+  HY_REVZ_THRESHOLD:    { type: float, low: 1.0,  high: 2.5 }
+  HY_REVZ_OBI_GATE:     { type: float, low: 0.03, high: 0.15 }
+  HY_REVZ_TAKE_SIZE:    { type: int,   low: 0,    high: 100 }
+  HY_REVZ_HOLD:         { type: int,   low: 100,  high: 800 }
+
+  # ---- Inventory bleed -------------------------------------------------
+  HY_SOFT_POS_FRAC:     { type: float, low: 0.40, high: 0.85 }
+
+# No constraints — all params independent.
+
+objective:
+  # Same reliability tilt as v3.
+  terms:
+    - { name: sharpe,                       weight: 1.0 }
+    - { name: p05_pnl,                      weight: 0.0002 }
+    - { name: mean_pnl,                     weight: 0.0001 }
+    - { name: cvar_5,                       weight: 0.0001 }
+    - { name: "mean_pnl[HYDROGEL_PACK]",    weight: 0.0003 }   # extra weight on HYDROGEL contribution
+    - { name: std_pnl,                      weight: 0.0 }
+    - { name: median_pnl,                   weight: 0.0 }
+
+search:
+  sampler: tpe
+  n_trials: 300             # 11 params, focused space
+  n_jobs:   4
+  seed:     5680
+  sampler_options:
+    n_startup_trials: 50
+
+report:
+  top_k: 15

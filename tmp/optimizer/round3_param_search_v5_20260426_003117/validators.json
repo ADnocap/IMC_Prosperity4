@@ -1,0 +1,71 @@
+{
+  "n_completed_trials": 350,
+  "n_trials_with_pnl_matrix": 350,
+  "best_trial": {
+    "number": 302,
+    "value": -4.615503696787543,
+    "params": {
+      "VEL_OBI_THRESH": 0.38702363416629326,
+      "VEL_OBI_SIZE_MAX": 60,
+      "VEL_OBI_SIZE_K_CONF": 1.2905448567463145,
+      "VEL_MM_BASE_SIZE": 8,
+      "VEL_OBI_SKEW_TICKS": 2,
+      "V4K_OBI_THRESH": 0.35500017336208295,
+      "V4K_OBI_SIZE_MAX": 187,
+      "V4K_OBI_SIZE_K_CONF": 0.8792473773210026,
+      "V45_OBI_SIZE_MAX": 69,
+      "MAF_BID": 1198
+    }
+  },
+  "dsr": {
+    "sharpe": 0.3169707226240737,
+    "probability": 0.9975678883850642,
+    "expected_max_sr_under_null": 0.027670794844635922,
+    "n_trials": 350,
+    "n_sessions": 100,
+    "skew": -0.1304224119731039,
+    "kurt_excess": 0.1441791652435258,
+    "reasoning": "SR=0.317 vs null-max SR0=0.028; z=2.82; P(true SR > 0)=0.998. Pass."
+  },
+  "pbo": {
+    "pbo": 0.15625,
+    "n_trials": 350,
+    "n_sessions": 100,
+    "n_partitions_used": 64,
+    "reasoning": "best-in-A below median in B: 10/64 partitions \u2192 PBO = 0.156. Winners generalize."
+  },
+  "cluster": {
+    "top_k": 15,
+    "median_top_dist": 3.377848457119273,
+    "median_random_dist": 4.1058915072816795,
+    "ratio": 0.8226833200849941,
+    "reasoning": "top-K is 0.82\u00d7 spread of random-K \u2014 moderate clustering.",
+    "numeric_params": [
+      "MAF_BID",
+      "V45_OBI_SIZE_MAX",
+      "V4K_OBI_SIZE_K_CONF",
+      "V4K_OBI_SIZE_MAX",
+      "V4K_OBI_THRESH",
+      "VEL_MM_BASE_SIZE",
+      "VEL_OBI_SIZE_K_CONF",
+      "VEL_OBI_SIZE_MAX",
+      "VEL_OBI_SKEW_TICKS",
+      "VEL_OBI_THRESH"
+    ]
+  },
+  "importance": {
+    "importances": {
+      "VEL_OBI_SKEW_TICKS": 0.5217679179665083,
+      "VEL_OBI_THRESH": 0.4570846599225301,
+      "VEL_MM_BASE_SIZE": 0.01341957983725685,
+      "V4K_OBI_THRESH": 0.0024129787803648835,
+      "VEL_OBI_SIZE_K_CONF": 0.0017868408258278961,
+      "V4K_OBI_SIZE_K_CONF": 0.0009183155839685551,
+      "V45_OBI_SIZE_MAX": 0.0008359604609291748,
+      "V4K_OBI_SIZE_MAX": 0.000726593615537736,
+      "MAF_BID": 0.0005659527087248597,
+      "VEL_OBI_SIZE_MAX": 0.0004812002983514789
+    },
+    "reasoning": "param importances (fANOVA, normalized to sum 1):\n  VEL_OBI_SKEW_TICKS   0.522\n  VEL_OBI_THRESH       0.457\n  VEL_MM_BASE_SIZE     0.013\n  V4K_OBI_THRESH       0.002\n  VEL_OBI_SIZE_K_CONF  0.002\n  V4K_OBI_SIZE_K_CONF  0.001\n  V45_OBI_SIZE_MAX     0.001\n  V4K_OBI_SIZE_MAX     0.001\n  MAF_BID              0.001\n  VEL_OBI_SIZE_MAX     0.000"
+  }
+}

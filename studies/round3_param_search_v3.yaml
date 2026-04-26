@@ -1,0 +1,86 @@
+# Round 3 search 3 — layer NEW signals on stratton baseline.
+#
+# Builds on stratton (search 2 #233): same MR core + DISABLE_TAKES=True, but
+# adds three independently-toggleable layers from FINDINGS_v2.md:
+#   B: HYDROGEL rev_z50 directional take (signal_decay.md: H=200, ~50% size)
+#   C: L1-OBI tiered passive skew on every quote (drift is PERMANENT per
+#      signal_decay.md, so leaning is safe; Sharpe 22-56 per multi_tick_signals)
+#   F: BASE_MM_SIZE override (lifts the penny-jump floor on OBI-MM products)
+#
+# Defaults reproduce stratton MC (~+11k mean, std 6.5k vs stratton +10.7k/6.8k).
+# Per-trial overrides will turn on the new layers; the optimizer decides whether
+# they actually help.
+#
+# Path-length / sessions: 80 train + 20 val per trial (matches v1/v2 pattern)
+# with 200 OOS test sessions for end-of-study reliability check.
+#
+# Objective re-tilted toward TAIL RELIABILITY since the user explicitly wants
+# something that survives a 10x tick-count change at portal final eval:
+#   sharpe (primary)
+#   p05_pnl (heavy: penalize negative tails harder than v2)
+#   mean_pnl (small floor weight to break ties)
+
+name: round3_param_search_v3
+trader: studies/round3_tunable_v3.py
+
+sim:
+  train_sessions: 80
+  val_sessions:   20
+  test_sessions:  200       # OOS retest at end of study (200 fresh seeds)
+  ticks_per_day:  10000
+  seed:           42
+  test_seed:      30042
+
+params:
+  # ---- Layer B: HYDROGEL rev_z50 directional ---------------------------
+  # Search range covers "essentially off" (small SIZE, high THRESHOLD) up to
+  # the signal_decay.md recommendation (SIZE 100, THRESHOLD 1.0, HOLD 200).
+  HYDROGEL_REVZ_THRESHOLD: { type: float, low: 0.5,  high: 2.5 }
+  HYDROGEL_REVZ_SIZE:      { type: int,   low: 0,    high: 150 }
+  HYDROGEL_REVZ_HOLD:      { type: int,   low: 50,   high: 500 }
+
+  # ---- Layer C: L1-OBI tiered passive skew -----------------------------
+  # T1 = mild lean, T2 = strong lean. Ticks=0 in either tier disables it.
+  # Constraint enforced below: T2_THRESH > T1_THRESH and T2_TICKS >= T1_TICKS.
+  OBI_SKEW_T1_THRESH: { type: float, low: 0.05, high: 0.30 }
+  OBI_SKEW_T2_THRESH: { type: float, low: 0.30, high: 0.80 }
+  OBI_SKEW_T1_TICKS:  { type: int,   low: 0,    high: 3 }
+  OBI_SKEW_T2_TICKS:  { type: int,   low: 1,    high: 4 }
+
+  # ---- Layer F: penny-jump base size -----------------------------------
+  # Stratton kept this at 3 (very passive). Test up to 50 to see if the
+  # extra fill volume is worth the wider exposure. Dominant param per
+  # FINDINGS.md "Quote size 60x too small" hypothesis.
+  BASE_MM_SIZE: { type: int, low: 3, high: 50 }
+
+  # ---- Re-search core MR around stratton #233 winner -------------------
+  # Tight ranges around 0.06/14 — let optimizer fine-tune now that other
+  # layers are present. (#233 had MR_K=0.061, MR_MM_LEVEL_SIZE=14.)
+  MR_K:             { type: float, low: 0.04, high: 0.20 }
+  MR_MM_LEVEL_SIZE: { type: int,   low: 10,   high: 30 }
+
+constraints:
+  - "OBI_SKEW_T2_THRESH > OBI_SKEW_T1_THRESH"
+  - "OBI_SKEW_T2_TICKS >= OBI_SKEW_T1_TICKS"
+
+objective:
+  # Reliability-tilted: heavy p05 weight (vs v2's 0.0001) to push optimizer
+  # away from any solution with a fat negative tail.
+  terms:
+    - { name: sharpe,     weight: 1.0 }
+    - { name: p05_pnl,    weight: 0.0002 }
+    - { name: mean_pnl,   weight: 0.0001 }
+    - { name: cvar_5,     weight: 0.0001 }
+    - { name: std_pnl,    weight: 0.0 }
+    - { name: median_pnl, weight: 0.0 }
+
+search:
+  sampler: tpe
+  n_trials: 400             # 11 params, 400 trials = ~36 trials per param
+  n_jobs:   4
+  seed:     5679
+  sampler_options:
+    n_startup_trials: 60    # LHS-like exploration before TPE kicks in
+
+report:
+  top_k: 15

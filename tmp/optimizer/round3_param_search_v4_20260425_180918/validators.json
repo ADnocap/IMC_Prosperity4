@@ -1,0 +1,74 @@
+{
+  "n_completed_trials": 300,
+  "n_trials_with_pnl_matrix": 300,
+  "best_trial": {
+    "number": 270,
+    "value": 4.256496096142369,
+    "params": {
+      "HY_OBI_THRESH": 0.04961372059663531,
+      "HY_OBI_SKEW_TICKS": 2,
+      "HY_OBI_SIZE_K_CONF": 0.7344144246278806,
+      "HY_OBI_SIZE_MAX": 90,
+      "HY_MM_BASE_SIZE": 47,
+      "HY_REVZ_WINDOW": 201,
+      "HY_REVZ_THRESHOLD": 2.394392654833143,
+      "HY_REVZ_OBI_GATE": 0.11579468505183554,
+      "HY_REVZ_TAKE_SIZE": 0,
+      "HY_REVZ_HOLD": 168,
+      "HY_SOFT_POS_FRAC": 0.8469051663927176
+    }
+  },
+  "dsr": {
+    "sharpe": 1.8030897508759618,
+    "probability": 0.9828649927141944,
+    "expected_max_sr_under_null": 1.4118580922613857,
+    "n_trials": 300,
+    "n_sessions": 100,
+    "skew": -0.8864835745863756,
+    "kurt_excess": 0.9634796061142277,
+    "reasoning": "SR=1.803 vs null-max SR0=1.412; z=2.12; P(true SR > 0)=0.983. Pass."
+  },
+  "pbo": {
+    "pbo": 0.03125,
+    "n_trials": 300,
+    "n_sessions": 100,
+    "n_partitions_used": 64,
+    "reasoning": "best-in-A below median in B: 2/64 partitions \u2192 PBO = 0.031. Winners generalize."
+  },
+  "cluster": {
+    "top_k": 15,
+    "median_top_dist": 3.671468236779748,
+    "median_random_dist": 3.9720638708243854,
+    "ratio": 0.9243225577885157,
+    "reasoning": "top-K is 0.92\u00d7 spread of random-K \u2014 moderate clustering.",
+    "numeric_params": [
+      "HY_MM_BASE_SIZE",
+      "HY_OBI_SIZE_K_CONF",
+      "HY_OBI_SIZE_MAX",
+      "HY_OBI_SKEW_TICKS",
+      "HY_OBI_THRESH",
+      "HY_REVZ_HOLD",
+      "HY_REVZ_OBI_GATE",
+      "HY_REVZ_TAKE_SIZE",
+      "HY_REVZ_THRESHOLD",
+      "HY_REVZ_WINDOW",
+      "HY_SOFT_POS_FRAC"
+    ]
+  },
+  "importance": {
+    "importances": {
+      "HY_REVZ_THRESHOLD": 0.877582091631504,
+      "HY_REVZ_TAKE_SIZE": 0.11810854576376587,
+      "HY_OBI_THRESH": 0.0009149615431892278,
+      "HY_SOFT_POS_FRAC": 0.000844518489624749,
+      "HY_REVZ_OBI_GATE": 0.0006161642569882979,
+      "HY_REVZ_WINDOW": 0.0005788704231361687,
+      "HY_REVZ_HOLD": 0.0004065803355196847,
+      "HY_OBI_SIZE_K_CONF": 0.0003763624854785192,
+      "HY_OBI_SIZE_MAX": 0.0002430430512048805,
+      "HY_MM_BASE_SIZE": 0.0001811507099098897,
+      "HY_OBI_SKEW_TICKS": 0.00014771130967864793
+    },
+    "reasoning": "param importances (fANOVA, normalized to sum 1):\n  HY_REVZ_THRESHOLD    0.878\n  HY_REVZ_TAKE_SIZE    0.118\n  HY_OBI_THRESH        0.001\n  HY_SOFT_POS_FRAC     0.001\n  HY_REVZ_OBI_GATE     0.001\n  HY_REVZ_WINDOW       0.001\n  HY_REVZ_HOLD         0.000\n  HY_OBI_SIZE_K_CONF   0.000\n  HY_OBI_SIZE_MAX      0.000\n  HY_MM_BASE_SIZE      0.000\n  HY_OBI_SKEW_TICKS    0.000"
+  }
+}

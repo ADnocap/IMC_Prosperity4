@@ -1,0 +1,237 @@
+{
+  "rebalance_freq_sweep_full": [
+    {
+      "rebalance_every": 1,
+      "net_pnl_per_day": 633,
+      "hedge_spread_cost_per_day": 200,
+      "opt_spread_cost_per_day": 400,
+      "residual_delta_std": 33.99,
+      "n_rebalances": 30000
+    },
+    {
+      "rebalance_every": 10,
+      "net_pnl_per_day": 633,
+      "hedge_spread_cost_per_day": 200,
+      "opt_spread_cost_per_day": 400,
+      "residual_delta_std": 34.04,
+      "n_rebalances": 3001
+    },
+    {
+      "rebalance_every": 50,
+      "net_pnl_per_day": 633,
+      "hedge_spread_cost_per_day": 200,
+      "opt_spread_cost_per_day": 400,
+      "residual_delta_std": 33.95,
+      "n_rebalances": 601
+    },
+    {
+      "rebalance_every": 100,
+      "net_pnl_per_day": 633,
+      "hedge_spread_cost_per_day": 200,
+      "opt_spread_cost_per_day": 400,
+      "residual_delta_std": 34.06,
+      "n_rebalances": 301
+    },
+    {
+      "rebalance_every": 500,
+      "net_pnl_per_day": 633,
+      "hedge_spread_cost_per_day": 200,
+      "opt_spread_cost_per_day": 400,
+      "residual_delta_std": 35.66,
+      "n_rebalances": 61
+    },
+    {
+      "rebalance_every": 1000,
+      "net_pnl_per_day": 633,
+      "hedge_spread_cost_per_day": 200,
+      "opt_spread_cost_per_day": 400,
+      "residual_delta_std": 32.33,
+      "n_rebalances": 31
+    }
+  ],
+  "rebalance_freq_sweep_small": [
+    {
+      "rebalance_every": 1,
+      "net_pnl_per_day": -18401,
+      "hedge_spread_cost_per_day": 15210,
+      "residual_delta_std": 0.29,
+      "n_rebalances": 30000
+    },
+    {
+      "rebalance_every": 10,
+      "net_pnl_per_day": -6344,
+      "hedge_spread_cost_per_day": 4463,
+      "residual_delta_std": 0.29,
+      "n_rebalances": 3001
+    },
+    {
+      "rebalance_every": 50,
+      "net_pnl_per_day": -3969,
+      "hedge_spread_cost_per_day": 2084,
+      "residual_delta_std": 0.28,
+      "n_rebalances": 601
+    },
+    {
+      "rebalance_every": 100,
+      "net_pnl_per_day": -2985,
+      "hedge_spread_cost_per_day": 1470,
+      "residual_delta_std": 0.29,
+      "n_rebalances": 301
+    },
+    {
+      "rebalance_every": 500,
+      "net_pnl_per_day": -1494,
+      "hedge_spread_cost_per_day": 641,
+      "residual_delta_std": 0.27,
+      "n_rebalances": 61
+    },
+    {
+      "rebalance_every": 1000,
+      "net_pnl_per_day": 166,
+      "hedge_spread_cost_per_day": 352,
+      "residual_delta_std": 0.27,
+      "n_rebalances": 31
+    }
+  ],
+  "hedge_vs_unhedged": [
+    {
+      "size_per_strike": 300,
+      "label": "full_300",
+      "freq": 1000,
+      "hedged_pnl_per_day": 633,
+      "hedged_spread_cost_per_day": 200,
+      "hedged_resid_delta_std": 32.33,
+      "unhedged_pnl_per_day": -2200,
+      "unhedged_resid_delta_std": 32.33,
+      "delta_per_day": 2833
+    },
+    {
+      "size_per_strike": 100,
+      "label": "small_100",
+      "freq": 1000,
+      "hedged_pnl_per_day": 166,
+      "hedged_spread_cost_per_day": 352,
+      "hedged_resid_delta_std": 0.27,
+      "unhedged_pnl_per_day": -733,
+      "unhedged_resid_delta_std": 10.78,
+      "delta_per_day": 900
+    }
+  ],
+  "signal_sweep_short": [
+    {
+      "k_sigma": 0.0,
+      "net_pnl_per_day": 633,
+      "hedge_spread_cost_per_day": 200
+    },
+    {
+      "k_sigma": 0.5,
+      "net_pnl_per_day": -1487,
+      "hedge_spread_cost_per_day": 893
+    },
+    {
+      "k_sigma": 1.0,
+      "net_pnl_per_day": -1482,
+      "hedge_spread_cost_per_day": 1616
+    },
+    {
+      "k_sigma": 1.5,
+      "net_pnl_per_day": 465,
+      "hedge_spread_cost_per_day": 1296
+    },
+    {
+      "k_sigma": 2.0,
+      "net_pnl_per_day": -7420,
+      "hedge_spread_cost_per_day": 2994
+    }
+  ],
+  "signal_sweep_long": [
+    {
+      "k_sigma": 0.0,
+      "net_pnl_per_day": -1833
+    },
+    {
+      "k_sigma": 0.5,
+      "net_pnl_per_day": -1741
+    },
+    {
+      "k_sigma": 1.0,
+      "net_pnl_per_day": -611
+    },
+    {
+      "k_sigma": 1.5,
+      "net_pnl_per_day": 0
+    },
+    {
+      "k_sigma": 2.0,
+      "net_pnl_per_day": 0
+    }
+  ],
+  "mispricing_symmetry": {
+    "mean_mid_minus_fair": 3.799,
+    "median_mid_minus_fair": 3.28,
+    "std": 3.847,
+    "frac_positive": 0.815,
+    "frac_negative": 0.185
+  },
+  "hedge_cost_analysis": {
+    "avg_spot_spread": 4.99,
+    "voucher_book_size": 1200,
+    "avg_total_delta_at_full_short": 363.9,
+    "spot_limit": 200,
+    "delta_capped_by_spot_limit": true
+  },
+  "vega_exposure": {
+    "total_vega_per_unit_vol": 199940.4,
+    "pnl_impact_per_1pct_vol_move": 1999.4,
+    "pnl_impact_per_residual_smile_std": 2039.4,
+    "residual_smile_std_iv": 0.0102
+  },
+  "passive_mid_fill": [
+    {
+      "size": 300,
+      "hedged_pnl_per_day": 1033,
+      "unhedged_pnl_per_day": -1800,
+      "hedge_spread_cost_per_day": 200
+    },
+    {
+      "size": 100,
+      "hedged_pnl_per_day": 300,
+      "unhedged_pnl_per_day": -600,
+      "hedge_spread_cost_per_day": 352
+    }
+  ],
+  "per_strike_pnl_unhedged": {
+    "5200": -1900,
+    "5300": -600,
+    "5400": 200,
+    "5500": 100
+  },
+  "per_day_stability": [
+    {
+      "day": 0,
+      "net_pnl": 2850,
+      "hedge_spread_cost": 600
+    },
+    {
+      "day": 1,
+      "net_pnl": -1000,
+      "hedge_spread_cost": 600
+    },
+    {
+      "day": 2,
+      "net_pnl": -3300,
+      "hedge_spread_cost": 500
+    }
+  ],
+  "headline": {
+    "best_rebalance_freq_ticks": 1000,
+    "best_rebalance_pnl_per_day": 166,
+    "best_signal_threshold_sigma_short": 0.0,
+    "best_signal_pnl_per_day_short": 633,
+    "best_signal_threshold_sigma_long": 1.5,
+    "best_signal_pnl_per_day_long": 0,
+    "hedged_minus_unhedged_per_day_full_book": 2833,
+    "hedged_minus_unhedged_per_day_small_book": 900,
+    "recommendation": "DELTA HEDGE WORTHWHILE"
+  }
+}

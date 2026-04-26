@@ -1,0 +1,67 @@
+# Round 3 search 5 — final search before submission.
+#
+# Locks porush (search-4 OOS winner) HYDROGEL params and stratton MR core.
+# Searches 9 NEW params per final_audit.md:
+#   - VELVETFRUIT confidence-sized OBI handler (5 params)
+#   - VEV_4000 / VEV_4500 deep-ITM OBI handler (3 params)
+#   - MAF bid (1 param)
+#
+# Per final_audit.md sec 10:
+#   - VEL/VEV4K confidence-sized OBI matches the porush HYDROGEL pattern
+#     that worked. Defaults from analysis recommendations.
+#   - All other porush params LOCKED (already OOS-validated).
+#
+# Search budget: 350 trials, 80 train + 20 val + 200 OOS test.
+
+name: round3_param_search_v5
+trader: studies/round3_tunable_v5.py
+
+sim:
+  train_sessions: 80
+  val_sessions:   20
+  test_sessions:  200
+  ticks_per_day:  10000
+  seed:           42
+  test_seed:      50042
+
+params:
+  # ---- VELVETFRUIT OBI handler (5 params) -----------------------------
+  VEL_OBI_THRESH:        { type: float, low: 0.20, high: 0.40 }
+  VEL_OBI_SIZE_MAX:      { type: int,   low: 30,   high: 120 }
+  VEL_OBI_SIZE_K_CONF:   { type: float, low: 0.3,  high: 1.5 }
+  VEL_MM_BASE_SIZE:      { type: int,   low: 8,    high: 40 }
+  VEL_OBI_SKEW_TICKS:    { type: int,   low: 0,    high: 2 }
+
+  # ---- VEV_4000 / VEV_4500 deep-ITM OBI handler (3 params) ------------
+  V4K_OBI_THRESH:        { type: float, low: 0.20, high: 0.40 }
+  V4K_OBI_SIZE_MAX:      { type: int,   low: 60,   high: 200 }
+  V4K_OBI_SIZE_K_CONF:   { type: float, low: 0.3,  high: 1.5 }
+  V45_OBI_SIZE_MAX:      { type: int,   low: 50,   high: 150 }
+
+  # ---- MAF bid --------------------------------------------------------
+  MAF_BID:               { type: int,   low: 0,    high: 1500 }
+
+# No constraints needed.
+
+objective:
+  terms:
+    - { name: sharpe,                            weight: 1.0 }
+    - { name: p05_pnl,                           weight: 0.0002 }
+    - { name: mean_pnl,                          weight: 0.0001 }
+    - { name: cvar_5,                            weight: 0.0001 }
+    - { name: "mean_pnl[VELVETFRUIT_EXTRACT]",   weight: 0.0001 }
+    - { name: "mean_pnl[VEV_4000]",              weight: 0.0001 }
+    - { name: "mean_pnl[VEV_4500]",              weight: 0.0001 }
+    - { name: std_pnl,                           weight: 0.0 }
+    - { name: median_pnl,                        weight: 0.0 }
+
+search:
+  sampler: tpe
+  n_trials: 350
+  n_jobs:   4
+  seed:     5681
+  sampler_options:
+    n_startup_trials: 60
+
+report:
+  top_k: 15

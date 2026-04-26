@@ -1,0 +1,71 @@
+{
+  "n_completed_trials": 374,
+  "n_trials_with_pnl_matrix": 374,
+  "best_trial": {
+    "number": 300,
+    "value": 1.4687674654863927,
+    "params": {
+      "HYDROGEL_REVZ_THRESHOLD": 2.459643381223547,
+      "HYDROGEL_REVZ_SIZE": 150,
+      "HYDROGEL_REVZ_HOLD": 418,
+      "OBI_SKEW_T1_THRESH": 0.054795677895366914,
+      "OBI_SKEW_T2_THRESH": 0.7742814440216867,
+      "OBI_SKEW_T1_TICKS": 0,
+      "OBI_SKEW_T2_TICKS": 3,
+      "BASE_MM_SIZE": 46,
+      "MR_K": 0.051057071712341195,
+      "MR_MM_LEVEL_SIZE": 13
+    }
+  },
+  "dsr": {
+    "sharpe": 1.453512519348764,
+    "probability": 0.01970739042162767,
+    "expected_max_sr_under_null": 1.850379641100513,
+    "n_trials": 374,
+    "n_sessions": 100,
+    "skew": -0.5241745131270527,
+    "kurt_excess": 3.6221926772387647,
+    "reasoning": "SR=1.454 vs null-max SR0=1.850; z=-2.06; P(true SR > 0)=0.020. Below the 0.95 threshold \u2014 flag."
+  },
+  "pbo": {
+    "pbo": 0.015625,
+    "n_trials": 374,
+    "n_sessions": 100,
+    "n_partitions_used": 64,
+    "reasoning": "best-in-A below median in B: 1/64 partitions \u2192 PBO = 0.016. Winners generalize."
+  },
+  "cluster": {
+    "top_k": 15,
+    "median_top_dist": 2.29450934029471,
+    "median_random_dist": 3.585366366274675,
+    "ratio": 0.6399650986514909,
+    "reasoning": "top-K is 0.64\u00d7 spread of random-K \u2014 tightly clustered, robust winner.",
+    "numeric_params": [
+      "BASE_MM_SIZE",
+      "HYDROGEL_REVZ_HOLD",
+      "HYDROGEL_REVZ_SIZE",
+      "HYDROGEL_REVZ_THRESHOLD",
+      "MR_K",
+      "MR_MM_LEVEL_SIZE",
+      "OBI_SKEW_T1_THRESH",
+      "OBI_SKEW_T1_TICKS",
+      "OBI_SKEW_T2_THRESH",
+      "OBI_SKEW_T2_TICKS"
+    ]
+  },
+  "importance": {
+    "importances": {
+      "HYDROGEL_REVZ_THRESHOLD": 0.8757115640541687,
+      "HYDROGEL_REVZ_SIZE": 0.0935309196678801,
+      "HYDROGEL_REVZ_HOLD": 0.0112029183024199,
+      "BASE_MM_SIZE": 0.010379539596677489,
+      "MR_MM_LEVEL_SIZE": 0.002957278308424311,
+      "OBI_SKEW_T1_THRESH": 0.002350935144838457,
+      "OBI_SKEW_T2_THRESH": 0.001704764420259749,
+      "MR_K": 0.0009167255526387134,
+      "OBI_SKEW_T1_TICKS": 0.0007769986486855724,
+      "OBI_SKEW_T2_TICKS": 0.0004683563040069483
+    },
+    "reasoning": "param importances (fANOVA, normalized to sum 1):\n  HYDROGEL_REVZ_THRESHOLD 0.876\n  HYDROGEL_REVZ_SIZE   0.094\n  HYDROGEL_REVZ_HOLD   0.011\n  BASE_MM_SIZE         0.010\n  MR_MM_LEVEL_SIZE     0.003\n  OBI_SKEW_T1_THRESH   0.002\n  OBI_SKEW_T2_THRESH   0.002\n  MR_K                 0.001\n  OBI_SKEW_T1_TICKS    0.001\n  OBI_SKEW_T2_TICKS    0.000"
+  }
+}
