@@ -400,7 +400,7 @@ export function EmptyMonteCarloView(): ReactNode {
           </Text>
           <Text size="sm" c="dimmed">
             Either start one from the Run tab below, or from a terminal run{' '}
-            <Text span ff="monospace">prosperity4mcbt traders/round3/a.py --quick</Text>.
+            <Text span ff="monospace">prosperity4mcbt traders/round4/submission.py --quick</Text>.
           </Text>
           <Group>
             <Button component={Link} to="/run">

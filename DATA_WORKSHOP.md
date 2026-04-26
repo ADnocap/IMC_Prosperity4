@@ -309,7 +309,7 @@ The round might be missing required files. Open the **Schema** tab — if it say
 
 ### "No backtests yet" on Results tab
 
-Unrelated to Workshop — the MC dashboard just hasn't been populated. Run `prosperity4mcbt traders/round3/a.py --quick` from a terminal or use the Run tab.
+Unrelated to Workshop — the MC dashboard just hasn't been populated. Run `prosperity4mcbt traders/round4/submission.py --quick` from a terminal or use the Run tab.
 
 ---
 

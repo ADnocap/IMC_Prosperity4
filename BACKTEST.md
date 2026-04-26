@@ -10,10 +10,10 @@ pip install -e .
 # Download from https://rustup.rs
 
 # Run Monte Carlo backtest with dashboard (points at the active round's trader)
-prosperity4mcbt traders/round3/a.py --quick --vis
+prosperity4mcbt traders/round4/submission.py --quick --vis
 ```
 
-Both CLIs auto-resolve bare filenames — e.g. `a.py` → `traders/round3/a.py` (active round). Pass a full path like `traders/round1/submission.py` to backtest a historical submission.
+Both CLIs auto-resolve bare filenames — e.g. `submission.py` → `traders/round4/submission.py` (active round). Pass a full path like `traders/round1/submission.py` to backtest a historical submission.
 
 ---
 
@@ -86,18 +86,20 @@ data/
 ├── prosperity4/round0/            # P4 tutorial round (EMERALDS, TOMATOES)
 ├── prosperity4/round1/            # P4 round 1 (ASH_COATED_OSMIUM, INTARIAN_PEPPER_ROOT)
 ├── prosperity4/round2/            # P4 round 2 (same products + MAF auction)
-├── prosperity4/round3/            # placeholder — CSVs drop here when IMC publishes
+├── prosperity4/round3/            # P4 round 3 (HYDROGEL_PACK, VELVETFRUIT_EXTRACT, VEV_*)
+├── prosperity4/round4/            # P4 round 4 (same as R3 + buyer/seller fields populated)
 └── prosperity3/round1-8/          # P3 historical data (reference only)
 ```
 
 Active-round traders live in `traders/round<N>/`. Both CLIs auto-resolve bare filenames to the active round's trader.
 
-| File                           | Purpose                                                 |
-| ------------------------------ | ------------------------------------------------------- |
-| `traders/round3/a.py`          | ACTIVE submission (seeded from R2 final)                |
-| `traders/round2/submission.py` | R2 shipped (portal sub 360419)                          |
-| `traders/round1/submission.py` | R1 shipped (portal sub 269599, OSMIUM MM + PEPPER long) |
-| `traders/trader_hold1.py`      | Buy 1 unit, hold forever — used to extract server FV    |
+| File                           | Purpose                                                                  |
+| ------------------------------ | ------------------------------------------------------------------------ |
+| `traders/round4/submission.py` | ACTIVE submission (seeded from R3 stratton)                              |
+| `traders/round3/submission.py` | R3 shipped (portal sub 485183, "stratton" — search-2 OOS winner #233)    |
+| `traders/round2/submission.py` | R2 shipped (portal sub 360419)                                           |
+| `traders/round1/submission.py` | R1 shipped (portal sub 269599, OSMIUM MM + PEPPER long)                  |
+| `traders/trader_hold1.py`      | Buy 1 unit, hold forever — used to extract server FV                     |
 
 ---
 
@@ -107,13 +109,13 @@ Rust-backed Monte Carlo simulator. Generates hundreds/thousands of synthetic mar
 
 ```bash
 # Quick (100 sessions, ~6s) -- good for iteration
-prosperity4mcbt traders/round3/a.py --quick
+prosperity4mcbt traders/round4/submission.py --quick
 
 # Heavy (1000 sessions, ~55s) -- final eval before submission
-prosperity4mcbt traders/round3/a.py --heavy
+prosperity4mcbt traders/round4/submission.py --heavy
 
 # With dashboard auto-open
-prosperity4mcbt traders/round3/a.py --quick --vis
+prosperity4mcbt traders/round4/submission.py --quick --vis
 ```
 
 Output defaults to `tmp/backtests/<timestamp>_monte_carlo/dashboard.json`. Pass `--out path.json` only when you need a specific path — and keep it under `tmp/`.
@@ -121,22 +123,21 @@ Output defaults to `tmp/backtests/<timestamp>_monte_carlo/dashboard.json`. Pass 
 ### Advanced options
 
 ```bash
-prosperity4mcbt traders/round3/a.py --quick --seed 42
-prosperity4mcbt traders/round3/a.py --quick --fv-mode simulate
-prosperity4mcbt traders/round3/a.py --quick --trade-mode simulate
-prosperity4mcbt traders/round3/a.py --sessions 3000 --sample-sessions 150
+prosperity4mcbt traders/round4/submission.py --quick --seed 42
+prosperity4mcbt traders/round4/submission.py --quick --fv-mode simulate
+prosperity4mcbt traders/round4/submission.py --quick --trade-mode simulate
+prosperity4mcbt traders/round4/submission.py --sessions 3000 --sample-sessions 150
 ```
 
 ---
 
-## Running a backtest for the active round (R3)
+## Running a backtest for the active round (R4)
 
-R3 kicked off 2026-04-21. Until IMC publishes new products, the active submission (`traders/round3/a.py`) trades the same R1/R2 symbols (OSMIUM + PEPPER_ROOT) — prior-round products remain tradeable throughout the competition. Two R2 gotchas that still apply:
+R4 kicked off 2026-04-26 ("The More The Merrier"). Same products as R3 — OSMIUM and PEPPER stopped being tradeable at R3, so no PEPPER `--start-fv` flags are needed. The new R4 wrinkle is that `Trade.buyer` and `Trade.seller` are now populated with `Mark <NN>` IDs instead of `None` (7 distinct Marks: 01, 14, 22, 38, 49, 55, 67).
 
-1. **PEPPER FV continues from R1's end.** R1 day 0 ended at FV ≈ 13,000. Hold-1 submission 274082 confirmed R2 day 1 starts at 13,000 (not 10,000). Pass `--intarian-pepper-root-start-fv 13000` (or the legacy alias `--ipr-start-fv 13000`). R3 day 1 continues from there until we know otherwise.
-2. **MAF auction** (R2 specific). Add a `bid()` method to your `Trader` class and use the MAF flags below to simulate the +25% quote uplift a winner would see. Ignored in non-R2 scoring but the flags still let you stress-test quote-volume sensitivity.
+Note: P4 does **not** carry prior-round products forward. At each new round only that round's listed products appear on the portal. R4 trades exactly the R3 book — `HYDROGEL_PACK`, `VELVETFRUIT_EXTRACT`, and the 10 `VEV_<strike>` vouchers. See per-asset Rust modules under `rust_simulator/src/assets/` and per-asset calibration in `calibration/<asset>/`.
 
-When R3's new products drop, add a Rust asset file under `rust_simulator/src/assets/<asset>.rs` and register it in `mod.rs` — see the "Recalibrating + adding a new asset to the sim" section at the bottom of this doc.
+R4 days 1 and 2 reproduce R3 days 1 and 2 exactly (same FV path, same trades) — only the buyer/seller fields differ. Day 3 is fresh data. So existing R3 calibration of FV processes and bot models still applies; the new analysis surface is bot/Mark identification.
 
 ### Portal tick counts (important!)
 
@@ -150,33 +151,24 @@ Use `--ticks-per-day 1000` when you want MC numbers comparable to the portal UI 
 
 ```bash
 # Quick iteration (100 sessions, 10,000 ticks each)
-prosperity4mcbt traders/round3/a.py --quick --intarian-pepper-root-start-fv 13000
+prosperity4mcbt traders/round4/submission.py --quick
 
 # Pre-submission eval (1000 sessions, 10,000 ticks each — matches final-eval scale)
-prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000
+prosperity4mcbt traders/round4/submission.py --heavy
 
 # Match portal UI backtest (1,000 ticks) for apples-to-apples with portal submissions
-prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000 --ticks-per-day 1000
+prosperity4mcbt traders/round4/submission.py --heavy --ticks-per-day 1000
 ```
 
-### MAF analysis (R2-style)
+### MAF analysis (R2-only — kept here for reference)
+
+The MAF auction was R2-specific and is not active in R3 or R4. The `--quote-fraction` and `--maf-bid` flags still work (they let you stress-test quote-volume sensitivity in any round), but they don't affect R3/R4 scoring.
+
+### CSV replay against R4 historical data
 
 ```bash
-# Loser (R2 testing default: 80% of generated quotes visible)
-prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 0.8
-
-# Winner (MAF accepted: +25% quote-volume uplift)
-prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 1.25
-
-# Net PnL if we bid 500 XIRECs and win (subtracts bid from reported total)
-prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 1.25 --maf-bid 500
-```
-
-### CSV replay against R1 historical data
-
-```bash
-prosperity3bt traders/round3/a.py 1                    # replay against R1 days
-py -3.13 scripts/bt_stats.py traders/round3/a.py 1     # fill breakdown
+prosperity3bt traders/round4/submission.py 4                    # replay against R4 days 1–3
+py -3.13 scripts/bt_stats.py traders/round4/submission.py 4     # fill breakdown
 ```
 
 ### Flag reference
@@ -212,14 +204,14 @@ The sim is calibrated against portal reality on matched FV paths (within 0.8% to
 To validate on a fresh portal backtest, drop the `activitiesLog` into the extractor and regenerate `calibration/intarian_pepper_root/data/r2_day1_fv.json`, then:
 
 ```bash
-prosperity4mcbt traders/round3/a.py --sessions 200 --ticks-per-day 1000 \
+prosperity4mcbt traders/round4/submission.py --sessions 200 --ticks-per-day 1000 \
   --intarian-pepper-root-replay-fv calibration/intarian_pepper_root/data/r2_day1_fv.json \
   --ash-coated-osmium-replay-fv   calibration/intarian_pepper_root/data/r2_day1_fv.json
 ```
 
-### R2 MAF uplift sensitivity (post-calibration, 200 sessions × 10,000 ticks = portal final scale)
+### R2 MAF uplift sensitivity (historical, recorded against the R2 trader on R2 calibration)
 
-Run against `traders/round3/a.py` with `--intarian-pepper-root-start-fv 13000`:
+Run against the R2 submission with `--intarian-pepper-root-start-fv 13000`:
 
 | `--quote-fraction`          | Mean PnL per final eval | Std   |
 | --------------------------- | ----------------------- | ----- |
@@ -249,7 +241,7 @@ tmp/backtests/<timestamp>_monte_carlo/
 Before changing the trader, grab a reference MC run so you can detect regressions:
 
 ```bash
-prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000
+prosperity4mcbt traders/round4/submission.py --heavy
 ```
 
 Post-calibration, MC absolute numbers are trustworthy within ~1% on matched FV paths — not just relative deltas. Record mean / std / P5–P95 from the `run_summary.csv` in the output dir and diff after each change. The R2 MAF-uplift table above is the current reference for what "good" looks like on OSMIUM + PEPPER.
@@ -261,11 +253,11 @@ Post-calibration, MC absolute numbers are trustworthy within ~1% on matched FV p
 Deterministic replay against a historical order book from prior rounds. The CLI takes a round number and replays all days for that round from `data/prosperity4/round<N>/`.
 
 ```bash
-prosperity3bt traders/round3/a.py 1           # replay R1 data
-prosperity3bt traders/round3/a.py 1 --print
+prosperity3bt traders/round4/submission.py 4           # replay R4 data
+prosperity3bt traders/round4/submission.py 4 --print
 
 # Fill analytics (maker vs taker breakdown)
-py -3.13 scripts/bt_stats.py traders/round3/a.py 1
+py -3.13 scripts/bt_stats.py traders/round4/submission.py 4
 ```
 
 **Warning**: `--match-trades all` (default) over-reports PnL for market making (26× in our testing on tutorial data). Use for relative A/B comparison only — Monte Carlo + portal submissions are the ground truth.
@@ -276,11 +268,11 @@ py -3.13 scripts/bt_stats.py traders/round3/a.py 1
 
 | Scenario            | Tool                      | Command                                              |
 | ------------------- | ------------------------- | ---------------------------------------------------- |
-| Dev iteration       | `prosperity4mcbt --quick` | `prosperity4mcbt traders/round3/a.py --quick --vis`  |
-| Pre-submission eval | `prosperity4mcbt --heavy` | `prosperity4mcbt traders/round3/a.py --heavy`        |
+| Dev iteration       | `prosperity4mcbt --quick` | `prosperity4mcbt traders/round4/submission.py --quick --vis`  |
+| Pre-submission eval | `prosperity4mcbt --heavy` | `prosperity4mcbt traders/round4/submission.py --heavy`        |
 | Tune params         | `prosperity4opt`          | `prosperity4opt studies/<name>.yaml --fresh`         |
-| Quick sanity check  | `prosperity3bt`           | `prosperity3bt traders/round3/a.py 1`                |
-| Fill breakdown      | `bt_stats.py`             | `py -3.13 scripts/bt_stats.py traders/round3/a.py 1` |
+| Quick sanity check  | `prosperity3bt`           | `prosperity3bt traders/round4/submission.py 4`                |
+| Fill breakdown      | `bt_stats.py`             | `py -3.13 scripts/bt_stats.py traders/round4/submission.py 4` |
 | Ground truth        | Portal                    | Submit on prosperity.imc.com                         |
 
 For parameter tuning, see [OPTIMIZER.md](OPTIMIZER.md) — Bayesian optimization on top of the MC sim with train/val/test seed splits, Deflated Sharpe Ratio, PBO, and fANOVA importance.
@@ -375,8 +367,8 @@ When a new product drops, the work splits cleanly between calibration (statistic
    - CLI flags via `flag_specs()` + consumed in `build()`
 6. Register the asset in `rust_simulator/src/assets/mod.rs` by adding an entry to the `REGISTRY` constant.
 7. `cargo build --release` (from `rust_simulator/`).
-8. Extend `traders/round<N>/a.py` with handlers for the new product, and declare the symbol near the top: `NEW = "YOUR_SYMBOL"`. The simulator scans the first 40 lines of the trader for `NAME = "SYMBOL"` patterns and activates the matching assets from the registry automatically — no other wiring needed.
+8. Extend `traders/round<N>/submission.py` with handlers for the new product, and declare the symbol near the top: `NEW = "YOUR_SYMBOL"`. The simulator scans the first 40 lines of the trader for `NAME = "SYMBOL"` patterns and activates the matching assets from the registry automatically — no other wiring needed.
 
-Prior-round products remain tradeable in later rounds, so keep existing handlers intact in the trader.
+Note: P4 does **not** carry prior-round products forward (R3 dropped OSMIUM/PEPPER, R4 keeps the R3 book). Trim handlers for products no longer listed when porting between rounds, otherwise the simulator will reject unknown per-asset flags.
 
 See `calibration/ash_coated_osmium/calibration.md` and `calibration/intarian_pepper_root/calibration.md` for the output format to aim for, and `rust_simulator/src/asset.rs` for the `AssetSim` trait contract.

@@ -9,13 +9,13 @@ Algorithmic trading competition workspace with a Rust-backed Monte Carlo backtes
 pip install -e .
 
 # Run Monte Carlo backtest (active round's trader)
-prosperity4mcbt traders/round3/a.py --quick
+prosperity4mcbt traders/round4/submission.py --quick
 
 # Tune trader params via Bayesian optimization
 prosperity4opt studies/round2_signal_tuning.yaml --fresh
 
 # Run with dashboard (Workshop + Optimize + Calibration + Submissions tabs)
-prosperity4mcbt traders/round3/a.py --quick --vis
+prosperity4mcbt traders/round4/submission.py --quick --vis
 
 # Or launch the full dashboard (frontend + data server + WASM compute) directly:
 ./run.sh        # macOS / Linux
@@ -36,27 +36,30 @@ See:
 
 ```
 IMC_trading_hack/
-├── traders/                       # Shipped submission per round (single file each)
-│   ├── round3/a.py                #   ACTIVE — submit this
-│   ├── round2/submission.py       #   R2 final (portal sub 360419)
+├── traders/                       # Per-round trader code
+│   ├── round4/submission.py       #   ACTIVE — submit this for R4
+│   ├── round3/                    #   submission.py = portal sub 485183 ("stratton") + 25 named experiments
+│   ├── round2/                    #   submission.py + spongebob_v1-v4 experiments
 │   ├── round1/submission.py       #   R1 final (portal sub 269599)
 │   ├── datamodel.py               #   Official Prosperity 4 data model
 │   └── trader_hold1.py            #   Hold-1-unit FV-extraction strategy
-├── results/round{1,2,3}/          # Post-round-close submission snapshots (.png / .log / .json)
+├── results/round{1,2,3,4}/        # Post-round-close submission snapshots (.png / .log / .json)
 ├── data/
-│   ├── prosperity4/round{0,1,2}/  #   P4 CSVs (R3 placeholder until IMC drops data)
-│   └── prosperity3/round1-8/      #   P3 historical data (reference)
+│   ├── prosperity4/round{0,1,2,3,4}/  #   P4 CSVs (R4 has buyer/seller fields populated)
+│   └── prosperity3/round1-8/          #   P3 historical data (reference)
 ├── backtester/                    # Backtester package (prosperity3bt + prosperity4mcbt CLIs)
-├── rust_simulator/                # Rust Monte Carlo simulation engine
+├── rust_simulator/                # Rust Monte Carlo simulation engine (one .rs per asset under src/assets/)
 ├── wasm_compute/                  # Rust/WASM kernels for the Workshop (13 microstructure kernels)
 ├── visualizer/                    # Local dashboard frontend (Vite/React) — Workshop + Optimize tabs
 ├── optimizer/                     # Parameter-optimization framework (Optuna + validators)
 ├── studies/                       # Declarative YAML studies (one per tuning campaign)
-├── calibration/                   # Bot reverse-engineering, one dir per asset (emeralds, tomatoes, ash_coated_osmium, intarian_pepper_root)
-├── manual/                        # Manual trading challenges (round{1,2,3}/)
+├── calibration/                   # Bot reverse-engineering, one dir per asset
+│                                  #   (emeralds, tomatoes, ash_coated_osmium, intarian_pepper_root,
+│                                  #    hydrogel_pack, velvetfruit_extract, vev_4000..vev_6500, marks/)
+├── manual/                        # Manual trading challenges (round{1,2,3,4}/)
 ├── submissions/                   # Portal-downloaded submission bundles (.zip)
-├── tmp/                           # Backtest + optimizer artifacts (MC dashboards, study DBs)
-├── scripts/                       # Helper utilities (strategy worker, fill analytics)
+├── tmp/                           # Backtest + optimizer + portal-snapshot artifacts
+├── scripts/                       # Helper utilities (strategy worker, fill analytics, R3 generators)
 ├── BACKTEST.md                    # Backtesting & calibration guide
 ├── OPTIMIZER.md                   # Parameter-optimization framework guide
 ├── DATA_WORKSHOP.md               # Data Analysis Workshop guide
@@ -116,9 +119,9 @@ Parameters were extracted by submitting the asset-agnostic `traders/trader_hold1
 
 ## Competition
 
-- **IMC Prosperity 4** (2026): April 14-30 (5 rounds). Round 3 active from 2026-04-21; R1 and R2 cleared.
+- **IMC Prosperity 4** (2026): April 14-30 (5 rounds). Round 4 active from 2026-04-26; R1, R2, R3 all cleared (R3 final algo PnL 11,140.94).
 - **Wiki**: https://imc-prosperity.notion.site/prosperity-4-wiki
-- **Submission**: Single Python file (currently `traders/round3/a.py`) with `Trader.run(state)` method
+- **Submission**: Single Python file (currently `traders/round4/submission.py`) with `Trader.run(state)` method
 - **Constraints**: stdlib + numpy + jsonpickle only, ~100MB memory, no file/network access
 
 ## Attribution

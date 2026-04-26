@@ -45,11 +45,11 @@ Format output as a concise dashboard:
 
 ```
 ## Prosperity Status
-**Active round**: 3 (traders/round3/a.py)
-**Products**: ASH_COATED_OSMIUM, INTARIAN_PEPPER_ROOT  (R3 products pending data)
+**Active round**: 4 (traders/round4/submission.py)
+**Products**: HYDROGEL_PACK, VELVETFRUIT_EXTRACT, VEV_4000..6500 (same as R3 + buyer/seller now populated)
 **Last Backtest**: MC heavy -- Mean: 10,600 XIRECs (std: 820, P05: 9,200, P95: 12,000)
-**Data available**: round0, round1, round2   |   round3 EMPTY (waiting on IMC)
-**Recent submissions**: 360419 (R2 final), 269599 (R1 final) — see results/round{1,2}/
+**Data available**: round0, round1, round2, round3, round4
+**Recent submissions**: 485183 (R3 final, 11,141), 360419 (R2 final), 269599 (R1 final) — see results/round{1,2,3}/
 ```
 
 ---

@@ -140,7 +140,7 @@ def cli(
         sample_sessions = 100
 
     if not algorithm.exists():
-        for subdir in ["traders/round3", "traders/round2", "traders/round1", "traders"]:
+        for subdir in ["traders/round4", "traders/round3", "traders/round2", "traders/round1", "traders"]:
             candidate = Path(subdir) / algorithm.name
             if candidate.exists():
                 algorithm = candidate.resolve()

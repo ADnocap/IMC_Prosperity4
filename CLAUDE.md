@@ -11,29 +11,33 @@ This is our workspace for **IMC Prosperity 4** (2026), a multi-round algorithmic
 
 ## Current Round
 
-**Round 3** (active from 2026-04-21). R1 and R2 both passed. R3 introduces a derivatives book — `HYDROGEL_PACK` and `VELVETFRUIT_EXTRACT` (spots, position limit 200) plus 10 `VEV_<strike>` call options on VELVETFRUIT (each at limit 300). OSMIUM and PEPPER are NOT tradeable in R3. The shipped submissions live at `traders/round1/submission.py` (portal sub 269599 — R1 algo PnL 99,546) and `traders/round2/submission.py` (portal sub 360419). The **active submission file** for R3 is `traders/round3/a.py` (penny-jump MM on the 10 active assets — dead options VEV_6000/6500 skipped). All R3 calibration in `calibration/<asset>/`.
+**Round 4** (active from 2026-04-26, "The More The Merrier"). R1, R2, R3 all passed. R4 trades the **same products as R3** (`HYDROGEL_PACK`, `VELVETFRUIT_EXTRACT`, 10 `VEV_<strike>` vouchers) — the new wrinkle is **counterparty IDs are now disclosed**: every `Trade` has `buyer` and `seller` populated with one of seven `Mark <NN>` IDs (Mark 01, 14, 22, 38, 49, 55, 67). R4 days 1–2 are identical to R3 days 1–2 (same FV path, same trades) re-released with buyer/seller fields filled in; day 3 is fresh data. The shipped submissions live at `traders/round{1,2,3}/submission.py` (portal subs 269599 / 360419 / **485183** — R3 final PnL **11,140.94**). The **active submission file** for R4 is `traders/round4/submission.py` (seeded from R3 stratton). All calibration lives in `calibration/<asset>/`; per-Mark calibration goes in `calibration/marks/`.
 
 ## Directory Structure
 
 ```
 IMC_trading_hack/
-├── traders/                           # Shipped submission per round (single file each)
-│   ├── round3/a.py                    #   ACTIVE — submit this
-│   ├── round2/submission.py           #   R2 final (portal sub 360419)
+├── traders/                           # Per-round trader code (submission.py + experiments)
+│   ├── round4/submission.py           #   ACTIVE — submit this for R4
+│   ├── round3/                        #   R3 final = submission.py (portal sub 485183, "stratton.py")
+│   │                                  #   Plus ~25 named experiments (max, porush, jordan, wolf,
+│   │                                  #   harry_potter_v4, etc.) — kept since R4 reuses the same products
+│   ├── round2/                        #   submission.py (portal sub 360419) + spongebob_v1-v4 experiments
 │   ├── round1/submission.py           #   R1 final (portal sub 269599)
 │   ├── datamodel.py                   #   Official Prosperity 4 data model
 │   └── trader_hold1.py                #   Hold-1-unit strategy for FV extraction
 ├── results/                           # Post-round-close submission snapshots
 │   ├── round1/                        #   round1_results.png + 269599.{log,json}
 │   ├── round2/                        #   round2_results.png + 360419.{log,json}
-│   └── round3/                        #   (ready for R3)
+│   ├── round3/                        #   round3_results.png + 485183.{log,json,py}
+│   └── round4/                        #   (ready for R4)
 ├── analysis/                          # Market-data analysis scripts (by round)
 │   ├── round1/                        #   R1 OSMIUM/PEPPER EDA + FINDINGS.md
-│   ├── round2/                        #   (ready for R2 follow-up)
-│   └── round3/                        #   (ready for R3)
+│   ├── round3/                        #   R3 derivatives EDA: FINDINGS, FINDINGS_v2,
+│   │                                  #   SUBMISSION_PLAN, PARAM_SEARCHES + per-topic .md/.py/.json
+│   └── round4/                        #   (ready for R4 — focus on Mark counterparty profiling)
 ├── data/                              # Market data
-│   ├── prosperity4/round{0,1,2}/      #   P4 historical CSVs
-│   ├── prosperity4/round3/            #   placeholder — CSVs drop here
+│   ├── prosperity4/round{0,1,2,3,4}/  #   P4 historical CSVs (R4 has buyer/seller fields populated)
 │   └── prosperity3/round1-8/          #   P3 historical data (reference)
 ├── backtester/                        # Backtester package (install with pip install -e .)
 │   ├── prosperity4mcbt/               #   Monte Carlo CLI (primary backtester)
@@ -60,14 +64,22 @@ IMC_trading_hack/
 │   ├── emeralds/                      #   Round 0 constant-FV
 │   ├── tomatoes/                      #   Round 0 random-walk reference
 │   ├── ash_coated_osmium/             #   R1/R2 random-walk
-│   └── intarian_pepper_root/          #   R1/R2 deterministic-drift
-├── manual/                            # Manual trading challenges (round1/, round2/, round3/)
+│   ├── intarian_pepper_root/          #   R1/R2 deterministic-drift
+│   ├── hydrogel_pack/                 #   R3/R4 spot, drifting random-walk
+│   ├── velvetfruit_extract/           #   R3/R4 spot underlying (random-walk)
+│   ├── vev_4000..vev_6500/            #   R3/R4 voucher options on VELVETFRUIT
+│   └── marks/                         #   R4 per-counterparty profiling (Mark 01..67)
+├── manual/                            # Manual trading challenges (round1/, round2/, round3/, round4/)
 ├── tmp/                               # Backtest + optimizer artifacts
-│   ├── backtests/                     #   Default output dir for prosperity4mcbt / prosperity3bt runs
-│   └── optimizer/                     #   Per-study SQLite + parquet + validators.json (prosperity4opt)
+│   ├── backtests/                     #   Default output dir for prosperity4mcbt / prosperity3bt runs (gitignored)
+│   ├── optimizer/                     #   Per-study SQLite + parquet + validators.json (prosperity4opt)
+│   └── portal_<id>/                   #   Extracted portal-submission .log/.json/.py snapshots
 ├── scripts/                           # Helper utilities
 │   ├── python_strategy_worker.py      #   Rust sim ↔ Python bridge
-│   └── bt_stats.py                    #   Fill analytics wrapper
+│   ├── bt_stats.py                    #   Fill analytics wrapper
+│   ├── csv_to_parquet.py              #   Convert raw CSVs to parquet for the Workshop
+│   ├── generate_r3_asset_rs.py        #   Auto-generate Rust AssetSim modules from calibration/<asset>/params.json
+│   └── write_r3_calibration_md.py     #   Generate calibration.md per asset from params.json
 ├── CLAUDE.md                          # This file - project context
 ├── BACKTEST.md                        # Backtesting & calibration guide
 ├── DATA_WORKSHOP.md                   # Browser-based data analysis workshop guide
@@ -79,7 +91,7 @@ IMC_trading_hack/
 
 ### Submission Format
 
-- **Single Python file** (currently `traders/round3/a.py`) containing a `Trader` class with a `run()` method
+- **Single Python file** (currently `traders/round4/submission.py`) containing a `Trader` class with a `run()` method
 - No external file access, no network, no pip installs at runtime
 - Available: standard library + numpy + jsonpickle
 - Memory limit: ~100 MB (AWS Lambda)
@@ -143,9 +155,9 @@ Bot calibration for R1 is fully solved — see `calibration/ash_coated_osmium/ca
 
 Manual challenge was "Invest & Expand" (allocate % across Research/Scale/Speed; `PnL = Research × Scale × Speed − Budget_Used`). See `manual/round2/` for notes.
 
-### Round 3 — ACTIVE (2026-04-21 →)
+### Round 3 — shipped (Apr 21–25, 2026, "Frontier Trade Watch I")
 
-R3 introduces a derivatives book. **OSMIUM and PEPPER_ROOT are no longer tradeable** — only the products below appear on the portal:
+R3 introduced a derivatives book. **OSMIUM and PEPPER_ROOT became un-tradeable**; only HYDROGEL/VELVETFRUIT + 10 VEV vouchers were live (same products carry over to R4):
 
 | Product | Position Limit | Behavior | Notes |
 | --- | --- | --- | --- |
@@ -156,25 +168,36 @@ R3 introduces a derivatives book. **OSMIUM and PEPPER_ROOT are no longer tradeab
 | VEV_5000 / 5100 / 5200 / 5300 / 5400 / 5500 | **300** each | ATM-area calls | Tight spreads (1-2 ticks), narrow MM edge |
 | VEV_6000 / VEV_6500 (voucher) | **300** each | Deep OTM (FV ≈ 0) | Effectively dead; no MM room |
 
-`VEV_<strike>` = `VELVETFRUIT_EXTRACT_VOUCHER` at strike `<strike>`. Per-product calibration lives in `calibration/<asset>/calibration.md`; FV-process and bot models in `calibration/<asset>/params.json` and `rust_simulator/src/assets/<asset>.rs`.
+`VEV_<strike>` = `VELVETFRUIT_EXTRACT_VOUCHER` at strike `<strike>`. Per-product calibration in `calibration/<asset>/calibration.md`, `params.json`, and `rust_simulator/src/assets/<asset>.rs`.
 
-The active R3 submission file is `traders/round3/a.py` (penny-jump MM on the 10 active assets; dead options skipped).
+R3 final shipped trader = `traders/round3/submission.py` ("stratton" — search-2 OOS winner, trial #233; mean-reversion + tight passive MM, takes disabled). Portal final eval **11,140.94 XIRECs**. Result snapshot in `results/round3/`. The other ~25 named files in `traders/round3/` are intermediate experiments preserved because R4 reuses the same products.
+
+### Round 4 — ACTIVE (2026-04-26 →, "The More The Merrier")
+
+**Same products and limits as R3.** Two new wrinkles:
+
+1. **Counterparty disclosure.** Every `Trade` now has `buyer` and `seller` populated with one of seven `Mark <NN>` IDs: **Mark 01, 14, 22, 38, 49, 55, 67**. In R1–R3 these fields were always `None`. R4 day 1 and day 2 are the *exact same FV path and trades* as R3 days 1 and 2 — re-released with the buyer/seller fields filled — so we can map our calibrated bots to specific Marks by behavior. Day 3 is genuinely new data.
+   - Quick R4 day-1 pair frequency: `Mark 01 → Mark 22` (393 trades) is the dominant flow, `Mark 14 ↔ Mark 38` (~270 each direction), `Mark 14 ↔ Mark 55` (~110), `Mark 67 → Mark 22` (~32). Mark 22 and Mark 38 look passive (typically on the opposite side of more directional Marks); Mark 67 is asymmetric (only ever buyer).
+2. **Manual challenge: Aether Crystal exotics.** Independent from the algo book — out of scope for `traders/round4/submission.py`. See `manual/round4/` for notes.
+
+Active R4 submission file: `traders/round4/submission.py` (seeded from R3 stratton — replace once we have a Mark-aware strategy).
+
+Per-Mark profiling lives in `calibration/marks/`. The R4 strategy thesis: figure out which Marks are aggressive takers vs passive MMs, and which signal direction. Then size more aggressively against directional Marks and avoid being adversely selected by the smart ones.
 
 ### Data Format (CSV, semicolon-delimited)
 
 - **prices**: day;timestamp;product;bid_price_1-3;bid_volume_1-3;ask_price_1-3;ask_volume_1-3;mid_price;profit_and_loss
 - **trades**: timestamp;buyer;seller;symbol;currency;price;quantity
+  - Through R3, `buyer` and `seller` were always empty. From R4 onward they're populated with `Mark <NN>` counterparty IDs (7 Marks total in the R4 dataset).
 - Currency: XIRECs
 - Timestamps: increment by 100 (0, 100, 200, ...)
-- 2,000 timesteps per day (portal server)
+- 10,000 timesteps per day in the final eval (1,000 in portal-UI backtests)
 
-## Expected Round Types (Based on Prosperity 3 Pattern)
+## Round-to-round product carry-over
 
-Note: Prosperity 4 breaks the P3 pattern. R1 and R2 both trade only OSMIUM + PEPPER_ROOT — R2 adds the MAF auction instead of new products. Unclear yet how many rounds P4 has in total; the wiki top-level timeline lists 5 rounds but the R2 page calls itself the "final trading round on Intara", suggesting later rounds may be off-planet with new products.
+P4 breaks the P3 "all-prior-products-stay-tradeable" pattern: at each new round, only the products listed for that round appear on the portal. R1 and R2 traded only OSMIUM + PEPPER_ROOT. R3 dropped both and added the HYDROGEL / VELVETFRUIT / VEV book. R4 keeps the R3 book and adds counterparty IDs.
 
-**Update for R3 (confirmed 2026-04-24):** the "all prior-round products remain tradeable" expectation broke at R3 — only the new R3 products (HYDROGEL, VELVETFRUIT, VEV_*) appear on the portal. R3 trader `traders/round3/a.py` no longer carries OSMIUM/PEPPER handlers.
-
-**R3 sim calibration (2026-04-24, portal sub 366383):** the auto-generated `_trade_rates` in `tmp/generate_r3_asset_rs.py` had a 10× bug — it divided trade-event ticks by `3 * n_fv_ticks` (3000) instead of `3 * 10000`. Fix: use the actual CSV horizon (3 days × 10K ticks). Plus the raw trade CSVs under-represent ELASTIC (post-strategy taker) demand because the recordings come from a market with no aggressive MM — so once `traders/round3/a.py` shows up with improved quotes, real takers fire much more often. Resolved by adding per-asset `R3_ELASTIC_OVERRIDES` in the generator, back-fitted from portal sub 366383. Post-fix MC matches portal within 0.1σ on every R3 asset (sim total 1146 vs portal 1273 at 1K ticks).
+**R3 sim calibration (2026-04-24, portal sub 366383):** the auto-generated `_trade_rates` in `scripts/generate_r3_asset_rs.py` had a 10× bug — it divided trade-event ticks by `3 * n_fv_ticks` (3000) instead of `3 * 10000`. Fix: use the actual CSV horizon (3 days × 10K ticks). Plus the raw trade CSVs under-represent ELASTIC (post-strategy taker) demand because the recordings come from a market with no aggressive MM — so once a real penny-jumping trader shows up with improved quotes, real takers fire much more often. Resolved by adding per-asset `R3_ELASTIC_OVERRIDES` in the generator, back-fitted from portal sub 366383. Post-fix MC matches portal within 0.1σ on every R3 asset (sim total 1146 vs portal 1273 at 1K ticks).
 
 ## Strategy Framework
 
@@ -246,33 +269,28 @@ The sim parses CLI flags into two categories:
 The Python CLI accepts `--ipr-start-fv` as a legacy alias and translates it. Every other per-asset flag must use the full form.
 
 ```bash
-# R2-style dev iteration (PEPPER start FV = 13000)
-prosperity4mcbt traders/round3/a.py --quick --intarian-pepper-root-start-fv 13000
-prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000
+# R4 dev iteration (default flags — same products as R3 so no per-asset overrides needed)
+prosperity4mcbt traders/round4/submission.py --quick
+prosperity4mcbt traders/round4/submission.py --heavy
 
 # Match portal-UI backtest (1,000 ticks) for apples-to-apples with portal submissions
-prosperity4mcbt traders/round3/a.py --heavy --intarian-pepper-root-start-fv 13000 --ticks-per-day 1000
-
-# MAF analysis (at portal final scale)
-prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 0.8
-prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 1.25
-prosperity4mcbt traders/round3/a.py --sessions 200 --intarian-pepper-root-start-fv 13000 --quote-fraction 1.25 --maf-bid 500
+prosperity4mcbt traders/round4/submission.py --heavy --ticks-per-day 1000
 ```
 
-See [BACKTEST.md](BACKTEST.md) for the full flag reference, MAF-uplift table, and the workflow for adding a new asset (one Rust file per asset under `rust_simulator/src/assets/`).
+See [BACKTEST.md](BACKTEST.md) for the full flag reference and the workflow for adding a new asset (one Rust file per asset under `rust_simulator/src/assets/`).
 
 ### CSV Replay (sanity checks)
 
 ```bash
-prosperity3bt traders/round3/a.py 1                    # historical replay on R1 data
-py -3.13 scripts/bt_stats.py traders/round3/a.py 1     # fill analytics
+prosperity3bt traders/round4/submission.py 4                    # historical replay on R4 data
+py -3.13 scripts/bt_stats.py traders/round4/submission.py 4     # fill analytics
 ```
 
 **Warning**: `--match-trades all` (default) over-reports PnL for market making. Use for relative A/B comparison only.
 
 ### Portal Submission Results
 
-Both R1 and R2 cleared the advancement threshold. Post-round-close snapshots (portal `.png`, `.log`, `.json`) live in `results/round{1,2}/`.
+R1, R2, and R3 all cleared the advancement threshold. Post-round-close snapshots (portal `.png`, `.log`, `.json`, `.py`) live in `results/round{1,2,3}/`.
 
 **Round 1 (final, `traders/round1/submission.py`, portal sub 269599):**
 
@@ -284,13 +302,31 @@ Both R1 and R2 cleared the advancement threshold. Post-round-close snapshots (po
 
 - Shipped with `MAF_BID = 0`. Passed to R3. Specifics in `results/round2/round2_results.png`.
 
-**Sim calibration (final, validated on matched FV paths):**
+**Round 3 (final, `traders/round3/submission.py` = "stratton", portal sub 485183):**
+
+- Algorithmic Challenge: **11,140.94 XIRECs** (final eval). Source `results/round3/485183.py` (identical to `traders/round3/submission.py`).
+- Strategy: search-2 OOS winner — slow EMA fair value, mean-reversion sizing on VELVETFRUIT + 5000–5400 vouchers, OBI-skew passive MM on HYDROGEL + far-strike vouchers, takes disabled. Selected from 400+ Optuna trials (`tmp/optimizer/round3_param_search_v2_*`).
+- Trade-off vs more aggressive candidates (max.py, porush.py, wolf.py): ~19% lower mean PnL but ~33% lower std and a positive 5th percentile. Chose risk-adjusted return given the round's volatility.
+
+**R3 → R4 sim recalibration sanity check (2026-04-26):** R4 days 1–2 reproduce R3 days 1–2 exactly, so the Rust AssetSim modules generated under `rust_simulator/src/assets/` from `calibration/<asset>/params.json` remain valid against day-1/2 of R4. Day 3 is fresh — refit the FV start price and bot trade rates if you see divergence.
+
+End-to-end calibration check on the shipped R3 trader vs portal final:
+
+| | Portal sub 485183 (final eval) | MC `--quick` (100 sessions × 10K ticks) | z |
+|---|---|---|---|
+| Total PnL | **11,140.94** | mean **10,768.32**, std **6,815** | **+0.055σ** ✓ |
+
+Per-asset portal final breakdown (for future reference): HYDROGEL +4,734.84, VELVETFRUIT +1,326.39, VEV_4000 +2,589.00, VEV_4500 +1,888.01, VEV_5000 +464.93, VEV_5100 +229.69, VEV_5200 −26.28, VEV_5300 −65.64, VEV_5400/5500/6000/6500 = 0.
+
+Sim absolute numbers remain trustworthy on R3/R4 products — no recalibration needed for R4 unless day-3 behavior diverges. The 17,449 number that appears in `analysis/round3/SUBMISSION_PLAN.md` was a portal-UI backtest result (1K ticks/day), not the final eval.
+
+**Sim calibration (R1/R2 audit trail, validated on matched FV paths):**
 
 Three portal submissions drove the calibration:
 
 - **226828** (R1 MM backtest, 1K ticks): total trade-rate observations
 - **274082** (R2 hold-1, 1K ticks): pure base-rate takers (no elastic) — extracted server FV to `calibration/intarian_pepper_root/data/r2_day1_fv.json` for replay
-- **274250 + 274468** (R2 a.py identical-code repeats): confirmed portal backtest runs a single fixed FV path (only 80% quote subset is randomized)
+- **274250 + 274468** (R2 submission identical-code repeats): confirmed portal backtest runs a single fixed FV path (only 80% quote subset is randomized)
 
 **Bugs found and fixed:**
 
@@ -319,7 +355,7 @@ Total gap **+73 XIRECs (0.8%)** — sim is now calibrated against portal reality
 
 MC absolute numbers are now trustworthy (not just relative deltas) — the sim matches portal reality within 1% on matched FV paths.
 
-Post-round-close logs for R1/R2 are in `results/round{1,2}/` (portal sub id as filename). All backtest artifacts — MC dashboards, replay logs, ad-hoc outputs — go under `tmp/` (gitignored). Default MC output is `tmp/backtests/<timestamp>_monte_carlo/dashboard.json`; default CSV replay log is `tmp/backtests/<timestamp>.log`. Never write backtest output outside `tmp/`.
+Post-round-close logs for R1/R2/R3 are in `results/round{1,2,3}/` (portal sub id as filename). All backtest artifacts — MC dashboards, replay logs, ad-hoc outputs — go under `tmp/`. `tmp/backtests/` is gitignored; `tmp/optimizer/` and `tmp/portal_<id>/` are tracked so the team can browse each other's runs. Default MC output is `tmp/backtests/<timestamp>_monte_carlo/dashboard.json`; default CSV replay log is `tmp/backtests/<timestamp>.log`. Never write backtest output outside `tmp/`.
 
 ### Visualization
 
@@ -352,7 +388,7 @@ Trader contract (copy-paste snippet in `OPTIMIZER.md`): every tunable trader rea
 
 ## Coding Conventions
 
-- All trading logic in a single file (currently `traders/round3/a.py`) — submission constraint
+- All trading logic in a single file (currently `traders/round4/submission.py`) — submission constraint
 - Use `json.dumps()`/`json.loads()` for traderData serialization
 - Keep strategies modular within the single file using helper methods
 - Price is always `int`, quantity is `int` (positive = buy, negative = sell)
