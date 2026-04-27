@@ -1,0 +1,5 @@
+trial   0: total=  29934  train=  17621  hold=  12312  (40.7s) <-- best
+trial 1: FAIL (timeout) params={'VEV_BASE_SIZE': 17, 'MR_MM_LEVEL_SIZE': 34, 'HY_MM_BASE_SIZE': 68, 'BASE_MM_SIZE': 61, 'MR_K': 0.0432, 'MR_MAX_FRAC': 0.6064, 'VEV_SOFT_POS_FRAC': 0.7169, 'HY_SOFT_POS_FRAC': 0.5315, 'VEV_SIZES_MILD_BIG': 15, 'VEV_SIZES_MILD_SMALL': 3, 'VEV_SIZES_STRONG_BIG': 33, 'VEV_SIZES_STRONG_SMALL': 7, 'VEV_SIZES_EXTREME_BIG': 72, 'VEV_SIZES_EXTREME_SMALL': 7}
+trial   2: total=  20382  train=  12656  hold=   7727  (125.3s)
+trial   3: total=  20233  train=  12661  hold=   7572  (45.1s)
+trial   4: total=  20093  train=  12336  hold=   7757  (74.6s)
