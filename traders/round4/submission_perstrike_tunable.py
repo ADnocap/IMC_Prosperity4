@@ -1,54 +1,23 @@
-"""TUNABLE copy of round4/submission.py for IV-scalp parameter optimization.
+"""PER-STRIKE TUNABLE copy of round4/submission.py for IV-scalp parameter
+optimization with strike-conditional thresholds.
 
-Reads PROSPERITY_PARAMS env-var (JSON) at __init__ time and overrides the 9
-IV-scalp class attributes. The portal-shipped submission.py is untouched.
+Reads PROSPERITY_PARAMS env-var (JSON) at __init__ time and overrides:
+  - the 9 uniform IV-scalp class attributes (same contract as
+    submission_tunable.py)
+  - per-strike overrides keyed `<NAME>_<STRIKE>`, e.g.:
+        {"THR_OPEN_5000": 0.4, "THR_OPEN_5100": 0.45, ...,
+         "SCALP_MAX_PER_TICK_5000": 80, ...}
+    The full set of per-strike-overridable param names is _PER_STRIKE_KEYS
+    below. Per-strike values fall back to the uniform value when missing,
+    which in turn falls back to the V2 defaults baked here.
 
 If PROSPERITY_PARAMS is unset, behavior is byte-identical to submission.py.
 
-Original docstring follows.
-
-Active R4 submission — stratton baseline + Timo IV-deviation scalping.
-
-R4 historical replay (prosperity3bt --merge-pnl):
-    R3 stratton baseline:        +20,954 (D1 14,100 / D2 406  / D3 6,448)
-    THIS submission:             +27,444 (D1 14,961 / D2 582  / D3 11,901)
-    Net IV-scalping uplift:      +6,490 (+31%)
-MC --quick: mean +7,858, std 5,509, p5-p95 [-2,498, +18,030].
-Honest portal estimate (1.88x replay/portal ratio from stratton): ~14,600
-XIRECs vs stratton's actual 11,140.
-
-Layers:
-  HYDROGEL                  -> stratton _trade_vev_mm  (porush handler returned
-                                                        0 PnL in replay)
-  VELVETFRUIT               -> stratton _trade_mr      (slow EMA, tiny MR_K)
-  VEV_5000..VEV_5500        -> stratton MR/MM baseline
-                               + NEW Timo IV-deviation scalping (priority)
-  VEV_4000/VEV_4500/5500    -> stratton _trade_vev_mm  (no porush BASE_MM
-                                                        floor that bled VEV_4000)
-  VEV_6000/VEV_6500         -> skip (pinned at 0/1)
-  Cross-strike spread MR    -> DISABLED (cost -37k in replay; can't reconcile
-                                          audit's +11k vs replay -3k for 5200/5400)
-  Counterparty IDs          -> NOT YET USED (R4 baseline first)
-
-IV-scalping (analysis/round4/bachelier_vs_bs.md, audited 2026-04-26):
-  - BS smile, m = log(K/S)/sqrt(T_years), dynamic T from session timestamp,
-    online EMA refit of smile_a (curvature b,c stable across days, level a
-    drifts 0.41 -> 0.88 day-to-day).
-  - Per voucher: dev = mid - bs_fair, mean_dev EMA, switch_mean = EMA(|dev-mean|).
-    Activity gate switch_mean >= 0.7. Open when |dev - mean| > THR_OPEN=0.5
-    (sell at best_bid / buy at best_ask). Close on signal-flip through 0.
-  - Diagnostic on R4 day-1 confirmed signal direction: post-fire mid drift
-    -7 to -12 XIRECs at horizon 200 across all 6 strikes (+17k per-fire PnL
-    if executed in isolation).
-
-Diagnostic toggles below let us reactivate the rejected layers for future
-experiments without re-rolling the file.
-
-Lineage:
-  stratton (R3 search-2 #233): portal +11,140  passive MM (saved as round4/stratton.py)
-  porush   (R3 search-4 #119): MC +11,774      adds HYDROGEL handler (broken in replay)
-  wolf     (porush + CS):      MC +6,157       adds CS spread MR
-  THIS:                        replay +27,444  IV-scalp on stratton, CS off, HYDROGEL=stratton
+Defaults baked here are V2 (the shipped submission.py): THR_OPEN=0.536,
+THR_CLOSE=-0.4, IV_SCALPING_THR=1.0865, SCALP_MAX_PER_TICK=35,
+THEO_NORM_WINDOW=100, IV_SCALPING_WINDOW=200, LOW_VEGA_THR_ADJ=0.653,
+LOW_VEGA_CUTOFF=4.0984, SMILE_A_ALPHA=0.0052. So PROSPERITY_PARAMS={} replays
+V2 (+29,934 R4 historical merge-pnl).
 """
 
 try:
@@ -63,30 +32,47 @@ import math
 import os
 
 
-# 10 IV-scalp params that are tunable via PROSPERITY_PARAMS env-var.
+# 9 IV-scalp uniform params that are tunable via PROSPERITY_PARAMS env-var.
 _TUNABLE_KEYS = (
     "THR_OPEN", "THR_CLOSE", "IV_SCALPING_THR", "SCALP_MAX_PER_TICK",
     "THEO_NORM_WINDOW", "IV_SCALPING_WINDOW",
     "LOW_VEGA_THR_ADJ", "LOW_VEGA_CUTOFF", "SMILE_A_ALPHA",
-    "SMILE_A_INIT",
 )
 
+# Subset that supports per-strike overrides via "<KEY>_<STRIKE>" keys.
+_PER_STRIKE_KEYS = (
+    "THR_OPEN", "THR_CLOSE", "IV_SCALPING_THR", "SCALP_MAX_PER_TICK",
+    "LOW_VEGA_THR_ADJ", "LOW_VEGA_CUTOFF",
+)
+_PER_STRIKE_STRIKES = (5000, 5100, 5200, 5300, 5400, 5500)
 
-def _load_param_overrides() -> Dict[str, float]:
+
+def _load_param_overrides() -> Tuple[Dict[str, float], Dict[str, Dict[int, float]]]:
+    """Returns (uniform_overrides, per_strike_overrides).
+
+    per_strike_overrides[KEY][strike] -> value, only present for keys
+    where at least one strike was overridden.
+    """
     raw = os.environ.get("PROSPERITY_PARAMS")
     if not raw:
-        return {}
+        return {}, {}
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
-        return {}
+        return {}, {}
     if not isinstance(data, dict):
-        return {}
-    out: Dict[str, float] = {}
+        return {}, {}
+    uni: Dict[str, float] = {}
+    per: Dict[str, Dict[int, float]] = {}
     for k in _TUNABLE_KEYS:
         if k in data:
-            out[k] = data[k]
-    return out
+            uni[k] = data[k]
+    for k in _PER_STRIKE_KEYS:
+        for K in _PER_STRIKE_STRIKES:
+            key = f"{k}_{K}"
+            if key in data:
+                per.setdefault(k, {})[K] = data[key]
+    return uni, per
 
 
 HYDROGEL = "HYDROGEL_PACK"
@@ -133,66 +119,45 @@ STRIKES = {
     VEV_5400: 5400, VEV_5500: 5500, VEV_6000: 6000, VEV_6500: 6500,
 }
 
-# === Cross-strike spread MR pairs (per analysis/round3/final_audit.md sec 7).
-# 3-day historical replay PnL totals (size shown):
-#   (5200, 5400) size 30: +11,265 over 3 days, 436 trades, all days +
-#   (5300, 5400) size 40: +4,540  over 3 days, 101 trades, all days +
-#   (5300, 5500) size 20: +3,470  over 3 days, 176 trades, all days +
 CS_PAIRS: List[Tuple[str, str, int]] = [
     (VEV_5200, VEV_5400, 30),
     (VEV_5300, VEV_5400, 40),
     (VEV_5300, VEV_5500, 20),
 ]
 
-# Diagnostic toggle - when False, skip cross-strike layer entirely so we
-# can attribute PnL impact of IV-scalping in isolation.
 CS_LAYER_ENABLED = False
-
-# Diagnostic toggle - when False, route HYDROGEL through stratton's OBI MM
-# handler (which makes +8,861 in R4 replay) instead of porush's _trade_hydrogel
-# handler (which silently produces 0 PnL in prosperity3bt replay).
 HYDROGEL_PORUSH_HANDLER = False
-
-# Diagnostic toggle - when False, use stratton's lean BASE_MM_SIZE behavior
-# for VEV_4000/4500 (search-2 baseline, no porush 37-lot floor).
 VEV_MM_BASE_SIZE_FLOOR = False
 
 
 class Trader:
-    # === BS smile (analysis/round4/bachelier_vs_bs.md, audited 2026-04-26) =
-    # iv = a + b*m + c*m^2 with m = log(K/S) / sqrt(T_years).
-    # b, c stable across the 3 R3 days; a drifts 0.41 -> 0.50 -> 0.88.
-    # Trader refits `a` online via EMA over per-tick avg residual.
+    # Smile (unchanged from V2 / submission.py).
     SMILE_A_INIT = 0.580261
     SMILE_B = 0.033704
     SMILE_C = 0.089775
-    SMILE_A_ALPHA = 0.01            # EMA speed for online a refit
+    SMILE_A_ALPHA = 0.0052          # V2 default
 
-    # Time convention: assume "this is day 0" each session (we cannot tell
-    # which day the portal feeds us). T_years constant-bias is absorbed by
-    # the IV-scalp EMA, so this is robust.
-    SESSION_TICKS = 30_000          # 3 days * 10K
-    TICKS_PER_YEAR = 365 * 10_000   # = 3_650_000
+    SESSION_TICKS = 30_000
+    TICKS_PER_YEAR = 365 * 10_000
     T_YEARS_FLOOR = 1e-4
 
-    # === IV-deviation scalping (Timo style, p3_options_reference.md sec 3b) =
-    THEO_NORM_WINDOW = 100          # EMA window for mean_theo_diff
-    IV_SCALPING_WINDOW = 100        # EMA window for switch_mean
-    THR_OPEN = 0.5                  # XIRECs deviation needed to open
-    THR_CLOSE = 0.0                 # close when dev returns to mean
-    IV_SCALPING_THR = 0.7           # min vol-of-deviation to enable scalping
-    LOW_VEGA_THR_ADJ = 0.5          # extra threshold when vega <= 1
-    LOW_VEGA_CUTOFF = 1.0
-    SCALP_MAX_PER_TICK = 60         # ladder into the limit, not single-shot
+    # === IV-deviation scalping (V2 baked-in defaults) =====================
+    THEO_NORM_WINDOW = 100
+    IV_SCALPING_WINDOW = 200
+    THR_OPEN = 0.536
+    THR_CLOSE = -0.4
+    IV_SCALPING_THR = 1.0865
+    LOW_VEGA_THR_ADJ = 0.653
+    LOW_VEGA_CUTOFF = 4.0984
+    SCALP_MAX_PER_TICK = 35
 
-    # === Cross-strike spread MR ===========================================
-    CS_K_SIGMA = 1.5                # lowered from wolf 2.0 (correct std)
+    # CS / HYDROGEL / Stratton / OBI MM params (locked, copied from V2) ====
+    CS_K_SIGMA = 1.5
     CS_HOLD_TICKS = 30
     CS_DEV_STD_FALLBACK = 1.0
     CS_TAKE_MAX_PER_TICK = 6
     CS_PASSIVE_SIZE = 10
 
-    # === Porush (search-4 OOS winner) HYDROGEL params (locked) ============
     HY_OBI_THRESH = 0.11598037104847925
     HY_OBI_SKEW_TICKS = 1
     HY_OBI_SIZE_K_CONF = 1.0
@@ -207,7 +172,6 @@ class Trader:
     HY_SOFT_POS_FRAC = 0.43174743324315
     HY_TIGHT_SPREAD_MIN = 2
 
-    # === Stratton/porush MR + OBI MM params (locked) ======================
     EMA_ALPHA = 4.308428675778431e-05
     VAR_ALPHA = 0.03588256506509171
     MR_K = 0.04481152690538941
@@ -242,10 +206,10 @@ class Trader:
     _N = NormalDist()
 
     def __init__(self):
-        # Apply any PROSPERITY_PARAMS env overrides as INSTANCE attributes,
-        # which shadow the class-level defaults. Ints stay ints, floats float.
-        overrides = _load_param_overrides()
-        for k, v in overrides.items():
+        # Apply uniform overrides as INSTANCE attrs (shadow class attrs).
+        # Keep int/float type to match the original.
+        uni, per = _load_param_overrides()
+        for k, v in uni.items():
             cur = getattr(self, k, None)
             if cur is None:
                 setattr(self, k, v)
@@ -254,6 +218,22 @@ class Trader:
                 setattr(self, k, int(v))
             else:
                 setattr(self, k, float(v))
+        # Stash per-strike overrides; resolved via _ps(...) at use sites.
+        self._per_strike = per
+
+    def _ps(self, key: str, strike: int) -> float:
+        """Per-strike value with fallback to uniform."""
+        per = getattr(self, "_per_strike", None)
+        if per:
+            d = per.get(key)
+            if d is not None and strike in d:
+                v = d[strike]
+                # Match dtype of the uniform default.
+                cur = getattr(self, key)
+                if isinstance(cur, int) and not isinstance(cur, bool):
+                    return int(v)
+                return float(v)
+        return getattr(self, key)
 
     def bid(self) -> int:
         return int(self.MAF_BID)
@@ -314,11 +294,6 @@ class Trader:
     # === Market state ======================================================
     def _build_market_ctx(self, state: TradingState, td: dict
                            ) -> Dict[str, dict]:
-        """Compute per-voucher fair, dev, mean_dev, switch_mean. Refit
-        smile_a online from observed IVs across the 6 core strikes.
-        Returns ctx[symbol] -> {S, T, fair, dev, mean_dev, switch_mean,
-                                vega, iv, mid}.
-        """
         ctx: Dict[str, dict] = {}
         velvet_od = state.order_depths.get(VELVETFRUIT)
         S = self._mid(velvet_od) if velvet_od else None
@@ -382,11 +357,9 @@ class Trader:
         ctx["__S__"] = {"S": S, "T": T_years, "smile_a": smile_a}
         return ctx
 
-    # === IV-deviation scalping (Timo) =====================================
+    # === IV-deviation scalping (Timo) - PER-STRIKE-AWARE ==================
     def _iv_scalp_orders(self, sym: str, od: OrderDepth, pos: int,
                           ctx: Dict[str, dict]) -> Tuple[List[Order], bool]:
-        """Returns (orders, fired). When fired, caller skips other handlers
-        for this voucher (we own the inventory decision)."""
         info = ctx.get(sym)
         if not info:
             return [], False
@@ -406,10 +379,16 @@ class Trader:
         buy_room = limit - pos
         sell_room = limit + pos
 
-        # Activity gate: only scalp if recent vol-of-deviation is large enough
-        # to expect signal > noise. Pinned vouchers fail this gate.
-        if switch_mean < self.IV_SCALPING_THR:
-            # Force-flatten residual position if we previously took one
+        K = STRIKES[sym]
+        # Per-strike-resolved params (fall back to uniform).
+        ps_iv_thr = self._ps("IV_SCALPING_THR", K)
+        ps_thr_open = self._ps("THR_OPEN", K)
+        ps_thr_close = self._ps("THR_CLOSE", K)
+        ps_lv_adj = self._ps("LOW_VEGA_THR_ADJ", K)
+        ps_lv_cut = self._ps("LOW_VEGA_CUTOFF", K)
+        ps_max_per_tick = int(self._ps("SCALP_MAX_PER_TICK", K))
+
+        if switch_mean < ps_iv_thr:
             orders: List[Order] = []
             if pos > 0:
                 qty = min(pos, sell_room)
@@ -421,40 +400,32 @@ class Trader:
                     orders.append(Order(sym, best_ask, qty))
             return orders, bool(orders)
 
-        thr = self.THR_OPEN + (self.LOW_VEGA_THR_ADJ
-                                if vega <= self.LOW_VEGA_CUTOFF else 0.0)
-        # Timo's exact trigger:
-        #   sell @ best_bid when (best_bid - fair) - mean_dev >= thr
-        #   buy  @ best_ask when (best_ask - fair) - mean_dev <= -thr
+        thr = ps_thr_open + (ps_lv_adj if vega <= ps_lv_cut else 0.0)
         sell_dev = (best_bid - fair) - mean_dev
         buy_dev = (best_ask - fair) - mean_dev
 
         orders: List[Order] = []
         fired = False
         if sell_dev >= thr and sell_room > 0:
-            qty = min(self.SCALP_MAX_PER_TICK, sell_room,
-                       od.buy_orders[best_bid])
+            qty = min(ps_max_per_tick, sell_room, od.buy_orders[best_bid])
             if qty > 0:
                 orders.append(Order(sym, best_bid, -qty))
                 fired = True
         elif buy_dev <= -thr and buy_room > 0:
-            qty = min(self.SCALP_MAX_PER_TICK, buy_room,
-                       -od.sell_orders[best_ask])
+            qty = min(ps_max_per_tick, buy_room, -od.sell_orders[best_ask])
             if qty > 0:
                 orders.append(Order(sym, best_ask, qty))
                 fired = True
 
-        # Close-back logic: when dev has reverted past THR_CLOSE relative to
-        # mean_dev, unwind the existing position.
         sell_close_dev = (best_bid - fair) - mean_dev
         buy_close_dev = (best_ask - fair) - mean_dev
         if not fired:
-            if pos > 0 and sell_close_dev >= self.THR_CLOSE:
+            if pos > 0 and sell_close_dev >= ps_thr_close:
                 qty = min(pos, sell_room, od.buy_orders[best_bid])
                 if qty > 0:
                     orders.append(Order(sym, best_bid, -qty))
                     fired = True
-            elif pos < 0 and buy_close_dev <= -self.THR_CLOSE:
+            elif pos < 0 and buy_close_dev <= -ps_thr_close:
                 qty = min(-pos, buy_room, -od.sell_orders[best_ask])
                 if qty > 0:
                     orders.append(Order(sym, best_ask, qty))
@@ -585,18 +556,15 @@ class Trader:
                 else:
                     result[product] = self._trade_vev_mm(product, od, pos)
             elif product in SCALP_VOUCHERS:
-                # Priority 1: IV-scalping (Timo)
                 scalp_orders, fired = self._iv_scalp_orders(product, od, pos, ctx)
                 if fired:
                     result[product] = scalp_orders
                 else:
-                    # Priority 2: cross-strike target
                     target = cs_targets.get(product, 0)
                     if target != 0:
                         result[product] = self._trade_cross_strike_target(
                             product, od, pos, target)
                     else:
-                        # Priority 3: fallback MR or MM (matches wolf)
                         fallback = SCALP_FALLBACK_HANDLER[product]
                         if fallback == "mr":
                             result[product] = self._trade_mr(product, od, pos, td)
@@ -610,7 +578,7 @@ class Trader:
                 result[product] = []
         return result, 0, json.dumps(td)
 
-    # === Helpers (ported from wolf) ======================================
+    # === Helpers (ported from V2) =========================================
     def _obi_skewed_quotes(self, best_bid: int, best_ask: int, obi: float
                             ) -> Tuple[int, int]:
         our_bid = best_bid + 1

@@ -1,0 +1,5 @@
+trial   0: total=  29934  train=  17621  hold=  12312  (22.7s) <-- best total <-- best holdout
+trial   1: total=  30004  train=  17639  hold=  12365  (22.5s) <-- best total <-- best holdout
+trial   2: total=  29918  train=  17607  hold=  12312  (23.3s)
+trial   3: total=  29926  train=  17603  hold=  12323  (44.8s)
+trial   4: total=  30000  train=  17717  hold=  12283  (24.0s)
