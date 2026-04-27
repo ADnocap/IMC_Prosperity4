@@ -1,0 +1,173 @@
+======================================================================================
+  1. CALIBRATION
+======================================================================================
+  S0 = 50.0000    flat-σ LS fit = 0.13327 per √day
+  Implied σ per vanilla mid (Brent):
+    AC_50_P      K=  50  T=21  mid=12.025  σ_imp=0.13361
+    AC_50_C      K=  50  T=21  mid=12.025  σ_imp=0.13361
+    AC_35_P      K=  35  T=21  mid= 4.340  σ_imp=0.13369
+    AC_40_P      K=  40  T=21  mid= 6.525  σ_imp=0.13384
+    AC_45_P      K=  45  T=21  mid= 9.075  σ_imp=0.13346
+    AC_60_C      K=  60  T=21  mid= 8.825  σ_imp=0.13399
+    AC_50_P_2    K=  50  T=14  mid= 9.725  σ_imp=0.13162
+    AC_50_C_2    K=  50  T=14  mid= 9.725  σ_imp=0.13162
+  Term + smile structure:
+    T=14d  count=2  σ_mean=0.13162  σ_spread=0.00000
+    T=21d  count=6  σ_mean=0.13370  σ_spread=0.00053
+
+======================================================================================
+  2. FAIR VALUES (closed-form, three sigma assumptions + Monte Carlo)
+======================================================================================
+  Contract         Bid     Ask     Mid  CF(flat σ)   CF(smile)    MC(flat)   σ_used
+  AC_50_P       12.000  12.050  12.025     11.9952     12.0250     12.0033  0.13361
+  AC_50_C       12.000  12.050  12.025     11.9952     12.0250     12.0430  0.13361
+  AC_35_P        4.330   4.350   4.340      4.3137      4.3400      4.3164  0.13369
+  AC_40_P        6.500   6.550   6.525      6.4829      6.5250      6.4877  0.13384
+  AC_45_P        9.050   9.100   9.075      9.0592      9.0750      9.0668  0.13346
+  AC_60_C        8.800   8.850   8.825      8.7585      8.8250      8.8044  0.13399
+  AC_50_P_2      9.700   9.750   9.725      9.8443      9.7250      9.8484  0.13162
+  AC_50_C_2      9.700   9.750   9.725      9.8443      9.7250      9.8123  0.13162
+  AC_50_CO      22.200  22.300  22.250     21.8395     21.7500     21.8115  0.13361
+  AC_40_BP       5.000   5.100   5.050      4.7606      4.7722      4.7695  0.13384
+  AC_45_KO       0.150   0.175   0.162      0.2095      0.2092      0.1714  0.13346
+
+======================================================================================
+  3. TRADE DECISIONS (flat σ)
+======================================================================================
+  Contract        Bid    Ask    Fair  Side  Vol   Edge/u        Profit
+  AC_50_P      12.000 12.050 11.9952  SELL   50  +0.0048        +727.2
+  AC_50_C      12.000 12.050 11.9952  SELL   50  +0.0048        +727.2
+  AC_35_P       4.330  4.350  4.3137  SELL   50  +0.0163      +2,444.5
+  AC_40_P       6.500  6.550  6.4829  SELL   50  +0.0171      +2,560.3
+  AC_45_P       9.050  9.100  9.0592  SKIP    0  +0.0000          +0.0
+  AC_60_C       8.800  8.850  8.7585  SELL   50  +0.0415      +6,229.0
+  AC_50_P_2     9.700  9.750  9.8443   BUY   50  +0.0943     +14,150.9
+  AC_50_C_2     9.700  9.750  9.8443   BUY   50  +0.0943     +14,150.9
+  AC_50_CO     22.200 22.300 21.8395  SELL   50  +0.3605     +54,076.3
+  AC_40_BP      5.000  5.100  4.7606  SELL   50  +0.2394     +35,902.5
+  AC_45_KO      0.150  0.175  0.2095   BUY  500  +0.0345     +51,776.2
+  --------------------------------------------------------------------------------
+  TOTAL                                                     +182,744.9  XIRECs
+
+======================================================================================
+  3. TRADE DECISIONS (smile)
+======================================================================================
+  Contract        Bid    Ask    Fair  Side  Vol   Edge/u        Profit
+  AC_50_P      12.000 12.050 12.0250  SKIP    0  +0.0000          +0.0
+  AC_50_C      12.000 12.050 12.0250  SKIP    0  +0.0000          +0.0
+  AC_35_P       4.330  4.350  4.3400  SKIP    0  +0.0000          +0.0
+  AC_40_P       6.500  6.550  6.5250  SKIP    0  +0.0000          +0.0
+  AC_45_P       9.050  9.100  9.0750  SKIP    0  +0.0000          +0.0
+  AC_60_C       8.800  8.850  8.8250  SKIP    0  +0.0000          +0.0
+  AC_50_P_2     9.700  9.750  9.7250  SKIP    0  +0.0000          +0.0
+  AC_50_C_2     9.700  9.750  9.7250  SKIP    0  +0.0000          +0.0
+  AC_50_CO     22.200 22.300 21.7500  SELL   50  +0.4500     +67,500.0
+  AC_40_BP      5.000  5.100  4.7722  SELL   50  +0.2278     +34,173.9
+  AC_45_KO      0.150  0.175  0.2092   BUY  500  +0.0342     +51,351.1
+  --------------------------------------------------------------------------------
+  TOTAL                                                     +153,025.1  XIRECs
+
+======================================================================================
+  4. SIGMA SENSITIVITY — does each decision survive ±20% on σ?
+======================================================================================
+  Contract            0.1066        0.1199        0.1266        0.1333        0.1399        0.1466        0.1599
+  AC_50_P        SELL +2.351   SELL +1.173   SELL +0.588   SELL +0.005    BUY +0.525    BUY +1.102    BUY +2.248
+  AC_50_C        SELL +2.351   SELL +1.173   SELL +0.588   SELL +0.005    BUY +0.525    BUY +1.102    BUY +2.248
+  AC_35_P        SELL +1.602   SELL +0.825   SELL +0.424   SELL +0.016    BUY +0.376    BUY +0.793    BUY +1.635
+  AC_40_P        SELL +1.947   SELL +0.987   SELL +0.503   SELL +0.017    BUY +0.420    BUY +0.907    BUY +1.881
+  AC_45_P        SELL +2.175   SELL +1.081   SELL +0.535          SKIP    BUY +0.502    BUY +1.042    BUY +2.117
+  AC_60_C        SELL +2.472   SELL +1.259   SELL +0.651   SELL +0.042    BUY +0.517    BUY +1.126    BUY +2.339
+  AC_50_P_2      SELL +1.795   SELL +0.823   SELL +0.339    BUY +0.094    BUY +0.576    BUY +1.055    BUY +2.010
+  AC_50_C_2      SELL +1.795   SELL +0.823   SELL +0.339    BUY +0.094    BUY +0.576    BUY +1.055    BUY +2.010
+  AC_50_CO       SELL +4.646   SELL +2.496   SELL +1.426   SELL +0.361    BUY +0.601    BUY +1.658    BUY +3.758
+  AC_40_BP       SELL +0.841   SELL +0.522   SELL +0.377   SELL +0.239   SELL +0.109          SKIP    BUY +0.147
+  AC_45_KO        BUY +0.154    BUY +0.085    BUY +0.059    BUY +0.035    BUY +0.014          SKIP   SELL +0.011
+
+======================================================================================
+  4b. KNOCK-OUT PUT — sensitivity to barrier monitoring frequency
+======================================================================================
+  σ used = 0.13346 (smile σ at K=45.0)
+  closed form (continuous monitoring) : 0.12300  (LOWER bound)
+  Monte Carlo by monitoring frequency:
+    n_steps_per_day =   1  (daily   , paths=200000) :  fair ≈ 0.27034
+    n_steps_per_day =   4  (4/day   , paths=200000) :  fair ≈ 0.19246
+    n_steps_per_day =   8  (8/day   , paths=200000) :  fair ≈ 0.17161
+    n_steps_per_day =  50  (50/day  , paths=190476) :  fair ≈ 0.14086
+    n_steps_per_day = 200  (200/day , paths= 47619) :  fair ≈ 0.12639
+
+  >>> WIKI GRID (60 steps over T+21 = 4 steps/trading day × 15 trading days):
+  >>> fair = 0.20923  ± 0.00173  (400k paths)  <<< CANONICAL
+  market: bid 0.15  ask 0.175
+  → BUY profitable: edge = +0.0342/unit × 500 vol × 3000 = +51,351 XIRECs
+
+======================================================================================
+  4c. CHOOSER STATIC-HEDGE ARBITRAGE
+======================================================================================
+  Identity: chooser(K=50, T1=2w, T2=3w) = call(K=50, T2) + put(K=50, T1)
+  Mids:     22.250  ?=?  12.025 + 9.725 = 21.750   (Δ = +0.500 — chooser overpriced)
+
+  Hedged trade (at marketable prices):
+    SELL chooser  @ 22.200                  → +22.200/unit
+    BUY  call_T2  @ 12.050 (= AC_50_C)        → -12.050/unit
+    BUY  put_T1   @  9.750 (= AC_50_P_2)      → -9.750/unit
+    ----------------------------------------------------------------------
+    Net edge per unit:                             +0.400
+    × 50 contracts × 3000 contract-size       =     +60,000 XIRECs
+
+  Volume cap: 50 (chooser bid size = call ask size = put ask size).
+  Variance: NOT exactly zero per-path (chooser cash flow is at T2,
+            put_T1 cash flow is at T1; difference is the conditional
+            martingale residual S_T1 - S_T2 in the put-chosen scenario).
+            But IMC marks each contract to the *mean of 100 sims*, so
+            the path-by-path residual averages to ~0; expected PnL is
+            the static-hedge edge above with standard error ≈ σ·S·√(T2-T1)/√100 ≈ 1.77/unit.
+  → much lower variance than the naked SELL chooser at edge +0.45.
+
+======================================================================================
+  7. EDGE ROBUSTNESS — minimum |edge| per contract over σ ∈ [0.80, 1.20] · σ̂
+======================================================================================
+  Contract      Side(σ̂)   edge_min   edge_max  sign-flips
+  AC_50_P           SELL     0.0048     2.3506           1
+  AC_50_C           SELL     0.0048     2.3506           1
+  AC_35_P           SELL     0.0163     1.6349           1
+  AC_40_P           SELL     0.0171     1.9472           1
+  AC_45_P           SKIP    -0.0092     2.1752           2
+  AC_60_C           SELL     0.0415     2.4719           1
+  AC_50_P_2          BUY     0.0943     2.0100           1
+  AC_50_C_2          BUY     0.0943     2.0100           1
+  AC_50_CO          SELL     0.0707     4.6459           1
+  AC_40_BP          SELL    -0.0253     0.8412           2
+  AC_45_KO           BUY    -0.0116     0.1543           2
+
+======================================================================================
+  5. TOTAL PROFIT UNDER DIFFERENT MODELS
+======================================================================================
+  Model                                Total profit (XIRECs)
+  flat σ (LS fit)                                    182,745
+  smile (per-strike σ)                               153,025
+  flat σ × 0.95                                      953,188
+  flat σ × 1.05                                      730,408
+  flat σ × 0.90                                    1,801,103
+  flat σ × 1.10                                    1,476,110
+
+======================================================================================
+  8. SUBMISSION CANDIDATES
+======================================================================================
+  --- Candidate A: model-EV-max (naked, no static hedges) ---
+    AC_50_CO     SELL   50 contracts  (fair 21.7500, edge +0.4500/unit, +    67,500 XIRECs)
+    AC_40_BP     SELL   50 contracts  (fair  4.7722, edge +0.2278/unit, +    34,174 XIRECs)
+    AC_45_KO     BUY   500 contracts  (fair  0.2092, edge +0.0342/unit, +    51,351 XIRECs)
+    Expected total (A):  +   153,025 XIRECs (high variance, exposed to model risk)
+
+  --- Candidate B: chooser static-hedge arb + naked binary/KO ---
+    AC_50_CO     SELL  50  @ 22.200     → + 3,330,000
+    AC_50_C      BUY   50  @ 12.050     → - 1,807,500
+    AC_50_P_2    BUY   50  @ 9.750      → - 1,462,500
+      [chooser arb subtotal: +60,000 XIRECs, near-zero variance]
+    AC_40_BP     SELL  50  (fair 4.7722, edge +0.2278/u) → +    34,174
+    AC_45_KO     BUY   500 (fair 0.2092, edge +0.0342/u) → +    51,351
+    Expected total (B):  +   145,525 XIRECs (lower variance than A)
+
+  --- Candidate C: pure chooser arbitrage only (lowest risk) ---
+    AC_50_CO     SELL  50, AC_50_C BUY 50, AC_50_P_2 BUY 50
+    Expected total (C):  +    60,000 XIRECs (≈ riskless)
