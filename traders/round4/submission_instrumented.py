@@ -1,4 +1,18 @@
-"""Active R4 submission V2 - submission.py + IV-scalp param tuning.
+"""INSTRUMENTED clone of round4/submission.py.
+
+Identical trading logic to submission.py. The ONLY change is that
+`_iv_scalp_orders` prints one diagnostic line per (ts, sym) on stdout:
+    IVDIAG ts=<ts> sym=<sym> sw=<switch_mean> sell_dev=<...> buy_dev=<...>
+        gate_active=<0/1> fired=<0/1>
+This lets us capture the in-trader gating decisions during a prosperity3bt
+replay for sanity-checking the offline diagnostic
+(`analysis/round4/iv_scalp_idle_diagnostic.py`).
+
+Use ONLY for diagnostics — DO NOT SUBMIT. Output volume: ~60K lines per
+10K-tick day. Trading PnL should be byte-identical to submission.py.
+
+ORIGINAL DOCSTRING:
+Active R4 submission V2 - submission.py + IV-scalp param tuning.
 
 R4 historical replay (prosperity3bt --merge-pnl):
     R3 stratton baseline:        +20,954 (D1 14,100 / D2  406  / D3  6,448)
@@ -336,6 +350,7 @@ class Trader:
                 "S": S, "T": T_years, "fair": fair, "dev": dev,
                 "mean_dev": new_mean, "switch_mean": new_sw,
                 "vega": vega, "iv": iv_use, "mid": mid,
+                "__ts__": state.timestamp,
             }
         ctx["__S__"] = {"S": S, "T": T_years, "smile_a": smile_a}
         return ctx
@@ -364,9 +379,19 @@ class Trader:
         buy_room = limit - pos
         sell_room = limit + pos
 
+        # === INSTRUMENTATION: log gate decision every tick ====
+        _ts = info.get("__ts__", -1)
+        _sell_dev_dbg = (best_bid - fair) - mean_dev
+        _buy_dev_dbg = (best_ask - fair) - mean_dev
+        _gate = 1 if switch_mean >= self.IV_SCALPING_THR else 0
+        # ======================================================
+
         # Activity gate: only scalp if recent vol-of-deviation is large enough
         # to expect signal > noise. Pinned vouchers fail this gate.
         if switch_mean < self.IV_SCALPING_THR:
+            print(f"IVDIAG ts={_ts} sym={sym} sw={switch_mean:.4f} "
+                  f"sell_dev={_sell_dev_dbg:.4f} buy_dev={_buy_dev_dbg:.4f} "
+                  f"gate_active={_gate} fired=0")
             # Force-flatten residual position if we previously took one
             orders: List[Order] = []
             if pos > 0:
@@ -417,6 +442,9 @@ class Trader:
                 if qty > 0:
                     orders.append(Order(sym, best_ask, qty))
                     fired = True
+        print(f"IVDIAG ts={_ts} sym={sym} sw={switch_mean:.4f} "
+              f"sell_dev={_sell_dev_dbg:.4f} buy_dev={_buy_dev_dbg:.4f} "
+              f"gate_active={_gate} fired={1 if fired else 0}")
         return orders, fired
 
     # === Cross-strike spread MR ==========================================

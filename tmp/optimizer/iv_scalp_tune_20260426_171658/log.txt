@@ -1,0 +1,2 @@
+trial   0: total=  27444  train=  15543  hold=  11901  (10.2s) <-- best
+trial   1: total=  24920  train=  14999  hold=   9921  (30.8s)

@@ -1,3 +1,52 @@
+"""VARIANT D - Subordinate Mark fallback on top of submission V2.
+
+NOTE 2026-04-26: this variant DID NOT SHIP. Every size/cooldown combination
+in our sweep regressed vs baseline submission.py:
+
+  Best HYDROGEL-only:    size=1 cd=200 -> -491 vs baseline (HY 8,861 -> 8,370)
+  Best VEV_4000-only:    size=3 cd=50  -> -13   vs baseline (essentially noise)
+  Default (full):        size=8 cd=30  -> -11,303 (HY -2,314, VEV_4000 -128)
+
+Root cause is structural (see analysis/round4/marks_d_fallback.md):
+
+  1. For VEV_4000, the spread is 21 ticks but Mark14<->Mark38 trades happen
+     at top-of-book (1264). Our existing penny-jump SELL at ask-1=1263
+     INTERCEPTS the Mark trades before they appear in state.market_trades.
+     The Mark fallback log stays empty for VEV_4000 -> no-op.
+  2. For HYDROGEL the spread is ~16 ticks and Mark trades happen INSIDE the
+     spread, so they DO appear in state.market_trades. But acting on them
+     via aggressive takes costs more in adverse-selection + spread crossing
+     than the +8.94/-8.55 H=200 drift captures, because by the time we react
+     the move has largely happened (~1-tick latency in our log).
+
+This file is preserved for reproducibility / parameter sweeping only.
+DO NOT SUBMIT. submission.py (V2, +29,934 in R4 replay) remains the active
+shipped trader.
+
+Hypothesis was: IV-scalp gate is OFF for ~94% of ticks across all 6 SCALP
+vouchers in 10K-tick R4 days. During those idle stretches a subordinate
+Mark fallback could pick up PnL. Question 1 confirmed by
+analysis/round4/iv_scalp_idle_diagnostic.md (94% idle). Question 2
+falsified above.
+
+Selection of Mark signals (from `calibration/marks/signals.json`):
+    confidence == "high"  AND  |drift_H200_mean| >= 5.0
+  -> 8 entries: HYDROGEL (Mark14/38) + VEV_4000 (Mark14/38).
+
+Subordinate gate logic:
+  - HYDROGEL, VEV_4000, VEV_4500: Mark fallback fires whenever the cooldown
+    allows (no IV-scalp on these — handler runs around the Mark take).
+  - SCALP_VOUCHERS (5000..5500): excluded entirely. No high-conf Mark
+    signals exist for those strikes at our filter; IV-scalp owns the
+    inventory decision when active and no Mark adds value when idle.
+
+Lineage:
+  submission.py (V2 baseline, +29,934 in 3-day R4 replay)
+  -> THIS adds a subordinate Mark take layer for HYDROGEL/VEV_4000/VEV_4500
+     (NET-NEGATIVE — see header note above)
+"""
+
+# === ORIGINAL DOCSTRING ===
 """Active R4 submission V2 - submission.py + IV-scalp param tuning.
 
 R4 historical replay (prosperity3bt --merge-pnl):
@@ -48,9 +97,9 @@ Lineage:
 """
 
 try:
-    from datamodel import Order, OrderDepth, TradingState
+    from datamodel import Order, OrderDepth, TradingState, Trade
 except ImportError:
-    from backtester.datamodel import Order, OrderDepth, TradingState
+    from backtester.datamodel import Order, OrderDepth, TradingState, Trade
 
 from typing import Dict, List, Optional, Tuple
 from statistics import NormalDist
@@ -125,6 +174,37 @@ HYDROGEL_PORUSH_HANDLER = False
 # Diagnostic toggle - when False, use stratton's lean BASE_MM_SIZE behavior
 # for VEV_4000/4500 (search-2 baseline, no porush 37-lot floor).
 VEV_MM_BASE_SIZE_FLOOR = False
+
+
+# === Mark signals (filtered: confidence == "high" AND |drift_H200| >= 5.0) ==
+# Each entry: (mark, product, mark_side, action_for_us, drift_H200_mean).
+# Source: calibration/marks/signals.json. Only HYDROGEL + VEV_4000 hit the
+# 5.0 threshold. (VELVETFRUIT max drift is 2.73 — under threshold and the
+# existing MR handler already prices it well.)
+MARK_SIGNALS: List[Dict[str, str]] = [
+    {"mark": "Mark 14", "product": HYDROGEL,  "mark_side": "buyer",  "action": "BUY"},
+    {"mark": "Mark 38", "product": HYDROGEL,  "mark_side": "seller", "action": "BUY"},
+    {"mark": "Mark 14", "product": HYDROGEL,  "mark_side": "seller", "action": "SELL"},
+    {"mark": "Mark 38", "product": HYDROGEL,  "mark_side": "buyer",  "action": "SELL"},
+    {"mark": "Mark 14", "product": VEV_4000,  "mark_side": "seller", "action": "SELL"},
+    {"mark": "Mark 38", "product": VEV_4000,  "mark_side": "buyer",  "action": "SELL"},
+    {"mark": "Mark 38", "product": VEV_4000,  "mark_side": "seller", "action": "BUY"},
+    {"mark": "Mark 14", "product": VEV_4000,  "mark_side": "buyer",  "action": "BUY"},
+]
+MARK_LOOKUP: Dict[Tuple[str, str, str], str] = {
+    (s["product"], s["mark"], s["mark_side"]): s["action"] for s in MARK_SIGNALS
+}
+MARK_PRODUCTS = set(s["product"] for s in MARK_SIGNALS)
+
+# Tunable subordinate take-layer params
+MARK_LOOKBACK_TICKS = 50      # lookback window in *ticks* (=5,000 ts units)
+MARK_TAKE_COOLDOWN = 30       # ticks between successive takes per product
+MARK_TAKE_SIZE = 8            # smaller than IV-scalp 35 — Mark drift decays fast
+MARK_FALLBACK_FOR_SCALP = False  # SCALP vouchers have no high-conf Mark signal
+                                  # at our threshold; flag preserved for tuning
+
+# Per-product opt-out (set to {HYDROGEL} to disable HYDROGEL Mark take)
+MARK_DISABLE_FOR: set = set()
 
 
 class Trader:
@@ -268,6 +348,121 @@ class Trader:
     def _smile_fair(self, K: int, S: float, T_years: float, smile_a: float) -> float:
         iv = max(0.05, self._smile_iv(K, S, T_years, smile_a))
         return self._bs_call(S, K, iv, T_years)
+
+    # === Mark counterparty take layer =====================================
+    def _update_mark_trade_log(self, state: TradingState, td: dict) -> None:
+        """Append fresh market_trades to td["mark_trades"] (bounded buffer).
+        Only keeps trades involving Marks for products in MARK_PRODUCTS."""
+        log: List[Dict] = td.get("mark_trades", [])
+        cur_ts = state.timestamp
+        cutoff = cur_ts - MARK_LOOKBACK_TICKS * 100
+        log = [e for e in log if e["ts"] >= cutoff]
+        seen = {(e["sym"], e["ts"], e["price"], e["qty"], e["buyer"], e["seller"])
+                for e in log}
+        for sym, trades in (state.market_trades or {}).items():
+            if sym not in MARK_PRODUCTS:
+                continue
+            for t in trades:
+                buyer = t.buyer or ""
+                seller = t.seller or ""
+                if not buyer and not seller:
+                    continue
+                if (sym, buyer, "buyer") not in MARK_LOOKUP and \
+                   (sym, seller, "seller") not in MARK_LOOKUP:
+                    continue
+                key = (sym, t.timestamp, t.price, t.quantity, buyer, seller)
+                if key in seen:
+                    continue
+                log.append({"sym": sym, "ts": t.timestamp, "price": t.price,
+                            "qty": t.quantity, "buyer": buyer, "seller": seller})
+                seen.add(key)
+        td["mark_trades"] = log
+
+    def _mark_take_for(self, product: str, td: dict, cur_ts: int
+                        ) -> Optional[str]:
+        """Returns 'BUY'/'SELL' if a Mark signal fires for product, else None.
+        Picks the most recent matching Mark trade in the lookback window."""
+        last_ts_map: Dict[str, int] = td.get("last_mark_take_ts", {})
+        last = last_ts_map.get(product, -10**9)
+        if cur_ts - last < MARK_TAKE_COOLDOWN * 100:
+            return None
+        log: List[Dict] = td.get("mark_trades", [])
+        cutoff = cur_ts - MARK_LOOKBACK_TICKS * 100
+        best_action: Optional[str] = None
+        best_ts = -1
+        for e in log:
+            if e["sym"] != product or e["ts"] < cutoff:
+                continue
+            buyer, seller = e["buyer"], e["seller"]
+            act = MARK_LOOKUP.get((product, buyer, "buyer"))
+            if act is not None and e["ts"] > best_ts:
+                best_action = act
+                best_ts = e["ts"]
+            act2 = MARK_LOOKUP.get((product, seller, "seller"))
+            if act2 is not None and e["ts"] > best_ts:
+                best_action = act2
+                best_ts = e["ts"]
+        return best_action
+
+    def _emit_mark_take(self, product: str, action: str, od: OrderDepth,
+                         pos: int) -> Tuple[List[Order], int]:
+        """Returns (orders, signed_qty). signed_qty>0 means we bought."""
+        bids = sorted(od.buy_orders.keys(), reverse=True) if od.buy_orders else []
+        asks = sorted(od.sell_orders.keys()) if od.sell_orders else []
+        if not bids or not asks:
+            return [], 0
+        best_bid, best_ask = bids[0], asks[0]
+        limit = LIMITS[product]
+        buy_room = limit - pos
+        sell_room = limit + pos
+        if action == "BUY":
+            ask_vol = -od.sell_orders[best_ask]
+            qty = min(MARK_TAKE_SIZE, buy_room, ask_vol)
+            if qty <= 0:
+                return [], 0
+            return [Order(product, best_ask, qty)], +qty
+        bid_vol = od.buy_orders[best_bid]
+        qty = min(MARK_TAKE_SIZE, sell_room, bid_vol)
+        if qty <= 0:
+            return [], 0
+        return [Order(product, best_bid, -qty)], -qty
+
+    def _clip_for_mark_take(self, handler_orders: List[Order], pos: int,
+                              mark_qty_signed: int, limit: int) -> List[Order]:
+        """Reduce handler order sizes proportionally so worst-case combined
+        with the Mark take stays within position limits.
+
+        Worst case after both fire:
+          buys:  mark_buy + sum(handler buys)  must be <= limit - pos
+          sells: mark_sell + sum(handler sells) must be <= limit + pos
+        """
+        mark_buy = max(0, mark_qty_signed)
+        mark_sell = max(0, -mark_qty_signed)
+        max_buys = max(0, (limit - pos) - mark_buy)
+        max_sells = max(0, (limit + pos) - mark_sell)
+        # Greedy: keep orders in original ladder order, drop/clip from the back
+        # once the budget is exhausted.
+        out: List[Order] = []
+        used_buy = 0
+        used_sell = 0
+        for o in handler_orders:
+            if o.quantity > 0:
+                room = max_buys - used_buy
+                if room <= 0:
+                    continue
+                q = min(o.quantity, room)
+                if q > 0:
+                    out.append(Order(o.symbol, o.price, q))
+                    used_buy += q
+            elif o.quantity < 0:
+                room = max_sells - used_sell
+                if room <= 0:
+                    continue
+                q = min(-o.quantity, room)
+                if q > 0:
+                    out.append(Order(o.symbol, o.price, -q))
+                    used_sell += q
+        return out
 
     # === Market state ======================================================
     def _build_market_ctx(self, state: TradingState, td: dict
@@ -527,6 +722,9 @@ class Trader:
         td: dict = self._parse_td(state.traderData)
         result: Dict[str, List[Order]] = {}
 
+        # Update rolling Mark trade log (cheap)
+        self._update_mark_trade_log(state, td)
+
         ctx = self._build_market_ctx(state, td)
         S = ctx.get("__S__", {}).get("S", FALLBACK_FV[VELVETFRUIT])
         if CS_LAYER_ENABLED:
@@ -534,38 +732,73 @@ class Trader:
         else:
             cs_targets = {}
 
+        cur_ts = state.timestamp
+
         for product in state.order_depths:
             od: OrderDepth = state.order_depths[product]
             pos = state.position.get(product, 0)
+
+            # === Subordinate Mark take layer ============================
+            # Fires for HYDROGEL/VEV_4000/VEV_4500 (they have no IV-scalp).
+            # NOT for SCALP_VOUCHERS — IV-scalp owns inventory there when
+            # active; when idle, no high-conf Mark signals exist for those
+            # strikes anyway.
+            mark_orders: List[Order] = []
+            mark_qty_signed = 0
+            mark_eligible = (product in MARK_PRODUCTS and
+                              product not in SCALP_VOUCHERS and
+                              product not in MARK_DISABLE_FOR)
+            if mark_eligible:
+                action = self._mark_take_for(product, td, cur_ts)
+                if action is not None:
+                    mark_orders, mark_qty_signed = self._emit_mark_take(
+                        product, action, od, pos)
+                    if mark_orders:
+                        last_map = td.get("last_mark_take_ts", {})
+                        last_map[product] = cur_ts
+                        td["last_mark_take_ts"] = last_map
+
+            # Run the handler against the TRUE position (not eff_pos), then
+            # clip handler orders to leave room for the Mark take. This avoids
+            # the position-limit cancellation bug warned about in CLAUDE.md
+            # (handlers compute sell_room/buy_room from `pos`, so passing
+            # `eff_pos` would over-allocate on the side we did NOT consume).
             if product == HYDROGEL:
                 if HYDROGEL_PORUSH_HANDLER:
-                    result[product] = self._trade_hydrogel(od, pos, td)
+                    handler_orders = self._trade_hydrogel(od, pos, td)
                 else:
-                    result[product] = self._trade_vev_mm(product, od, pos)
+                    handler_orders = self._trade_vev_mm(product, od, pos)
             elif product in SCALP_VOUCHERS:
-                # Priority 1: IV-scalping (Timo)
                 scalp_orders, fired = self._iv_scalp_orders(product, od, pos, ctx)
                 if fired:
-                    result[product] = scalp_orders
+                    handler_orders = scalp_orders
                 else:
-                    # Priority 2: cross-strike target
                     target = cs_targets.get(product, 0)
                     if target != 0:
-                        result[product] = self._trade_cross_strike_target(
+                        handler_orders = self._trade_cross_strike_target(
                             product, od, pos, target)
                     else:
-                        # Priority 3: fallback MR or MM (matches wolf)
                         fallback = SCALP_FALLBACK_HANDLER[product]
                         if fallback == "mr":
-                            result[product] = self._trade_mr(product, od, pos, td)
+                            handler_orders = self._trade_mr(
+                                product, od, pos, td)
                         else:
-                            result[product] = self._trade_vev_mm(product, od, pos)
+                            handler_orders = self._trade_vev_mm(
+                                product, od, pos)
             elif product in MR_ONLY_ASSETS:
-                result[product] = self._trade_mr(product, od, pos, td)
+                handler_orders = self._trade_mr(product, od, pos, td)
             elif product in VEV_MM_ASSETS:
-                result[product] = self._trade_vev_mm(product, od, pos)
+                handler_orders = self._trade_vev_mm(product, od, pos)
             else:
-                result[product] = []
+                handler_orders = []
+
+            if mark_orders:
+                handler_orders = self._clip_for_mark_take(
+                    handler_orders, pos, mark_qty_signed, LIMITS[product])
+                result[product] = mark_orders + handler_orders
+            else:
+                result[product] = handler_orders
+
         return result, 0, json.dumps(td)
 
     # === Helpers (ported from wolf) ======================================

@@ -1,0 +1,24 @@
+trial   0: total=  27444  train=  15543  hold=  11901  (8.7s) <-- best
+trial   1: total=  29440  train=  16976  hold=  12464  (9.0s) <-- best
+trial   2: total=  29416  train=  17031  hold=  12384  (9.2s)
+trial   3: total=  29376  train=  16973  hold=  12402  (9.3s)
+trial   4: total=  29334  train=  16932  hold=  12402  (9.5s)
+trial   5: total=  29388  train=  16924  hold=  12464  (9.5s)
+trial   6: total=  29442  train=  16976  hold=  12466  (9.6s) <-- best
+trial   7: total=  29442  train=  16976  hold=  12466  (9.6s)
+trial   8: total=  29496  train=  17084  hold=  12412  (9.7s) <-- best
+trial   9: total=  29424  train=  16964  hold=  12461  (9.8s)
+trial  10: total=  29370  train=  16955  hold=  12415  (9.7s)
+trial  11: total=  28538  train=  16573  hold=  11965  (9.6s)
+trial  12: total=  28846  train=  17001  hold=  11846  (9.5s)
+trial  13: total=  29748  train=  17407  hold=  12341  (9.5s) <-- best
+trial  14: total=  27994  train=  16201  hold=  11793  (9.5s)
+trial  15: total=  28330  train=  17266  hold=  11065  (9.6s)
+trial  16: total=  29136  train=  16648  hold=  12488  (9.7s)
+trial  17: total=  29440  train=  16976  hold=  12464  (9.7s)
+trial  18: total=  29440  train=  16976  hold=  12464  (9.5s)
+trial  19: total=  29440  train=  16976  hold=  12464  (9.8s)
+trial  20: total=  29440  train=  16976  hold=  12464  (9.6s)
+trial  21: total=  28144  train=  16001  hold=  12144  (9.5s)
+trial  22: total=  28690  train=  17157  hold=  11533  (9.6s)
+trial  23: total=  28778  train=  16545  hold=  12233  (9.6s)

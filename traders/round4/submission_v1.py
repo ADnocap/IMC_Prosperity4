@@ -1,17 +1,12 @@
-"""Active R4 submission V2 - submission.py + IV-scalp param tuning.
+"""Active R4 submission — stratton baseline + Timo IV-deviation scalping.
 
 R4 historical replay (prosperity3bt --merge-pnl):
-    R3 stratton baseline:        +20,954 (D1 14,100 / D2  406  / D3  6,448)
-    submission.py (V1):          +27,444 (D1 14,961 / D2  582  / D3 11,901)
-    THIS V2 (tuned IV-scalp):    +29,934 (D1 14,675 / D2 2,946 / D3 12,312)
-    V2 vs V1 uplift:             +2,490  (+9%)
-
-V2 changes (vs submission.py): only the 9 IV-scalp params (see CLASS section
-below). All other handlers (stratton MR, OBI MM, HYDROGEL OBI MM) unchanged.
-Tuning method: 80 random + 60 neighborhood probes vs prosperity3bt --merge-pnl
-on R4 days 1-3. Train = D1+D2 (= R3 D1+D2 path); Holdout = D3 (fresh data).
-Both ship gates met: total_uplift +2,490 (>= 1,500); holdout 12,312 (>= 11,901
-V1 baseline). See analysis/round4/iv_scalp_tune.md.
+    R3 stratton baseline:        +20,954 (D1 14,100 / D2 406  / D3 6,448)
+    THIS submission:             +27,444 (D1 14,961 / D2 582  / D3 11,901)
+    Net IV-scalping uplift:      +6,490 (+31%)
+MC --quick: mean +7,858, std 5,509, p5-p95 [-2,498, +18,030].
+Honest portal estimate (1.88x replay/portal ratio from stratton): ~14,600
+XIRECs vs stratton's actual 11,140.
 
 Layers:
   HYDROGEL                  -> stratton _trade_vev_mm  (porush handler returned
@@ -135,7 +130,7 @@ class Trader:
     SMILE_A_INIT = 0.580261
     SMILE_B = 0.033704
     SMILE_C = 0.089775
-    SMILE_A_ALPHA = 0.0052          # V2-tuned (was 0.01) - slower a refit
+    SMILE_A_ALPHA = 0.01            # EMA speed for online a refit
 
     # Time convention: assume "this is day 0" each session (we cannot tell
     # which day the portal feeds us). T_years constant-bias is absorbed by
@@ -145,17 +140,14 @@ class Trader:
     T_YEARS_FLOOR = 1e-4
 
     # === IV-deviation scalping (Timo style, p3_options_reference.md sec 3b) =
-    # V2-tuned (2026-04-26): 80 random + 60 neighborhood probes; gated by
-    # holdout D3 PnL >= V1 baseline. Total +29,934 (V1 +27,444).
-    THEO_NORM_WINDOW = 100          # unchanged
-    IV_SCALPING_WINDOW = 200        # V2 (was 100) - slower switch_mean EMA
-    THR_OPEN = 0.536                # V2 (was 0.5)
-    THR_CLOSE = -0.4                # V2 (was 0.0) - much more aggressive close;
-                                    # let runners run instead of flipping at 0
-    IV_SCALPING_THR = 1.0865        # V2 (was 0.7) - higher activity gate
-    LOW_VEGA_THR_ADJ = 0.653        # V2 (was 0.5)
-    LOW_VEGA_CUTOFF = 4.0984        # V2 (was 1.0) - more strikes get extra thr
-    SCALP_MAX_PER_TICK = 35         # V2 (was 60) - smaller ladder cuts pinning
+    THEO_NORM_WINDOW = 100          # EMA window for mean_theo_diff
+    IV_SCALPING_WINDOW = 100        # EMA window for switch_mean
+    THR_OPEN = 0.5                  # XIRECs deviation needed to open
+    THR_CLOSE = 0.0                 # close when dev returns to mean
+    IV_SCALPING_THR = 0.7           # min vol-of-deviation to enable scalping
+    LOW_VEGA_THR_ADJ = 0.5          # extra threshold when vega <= 1
+    LOW_VEGA_CUTOFF = 1.0
+    SCALP_MAX_PER_TICK = 60         # ladder into the limit, not single-shot
 
     # === Cross-strike spread MR ===========================================
     CS_K_SIGMA = 1.5                # lowered from wolf 2.0 (correct std)
