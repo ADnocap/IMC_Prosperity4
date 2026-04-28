@@ -1,0 +1,1145 @@
+{
+  "n_ticks": 30000,
+  "products": [
+    "GALAXY_SOUNDS_DARK_MATTER",
+    "GALAXY_SOUNDS_BLACK_HOLES",
+    "GALAXY_SOUNDS_PLANETARY_RINGS",
+    "GALAXY_SOUNDS_SOLAR_WINDS",
+    "GALAXY_SOUNDS_SOLAR_FLAMES",
+    "SLEEP_POD_SUEDE",
+    "SLEEP_POD_LAMB_WOOL",
+    "SLEEP_POD_POLYESTER",
+    "SLEEP_POD_NYLON",
+    "SLEEP_POD_COTTON",
+    "MICROCHIP_CIRCLE",
+    "MICROCHIP_OVAL",
+    "MICROCHIP_SQUARE",
+    "MICROCHIP_RECTANGLE",
+    "MICROCHIP_TRIANGLE",
+    "PEBBLES_XS",
+    "PEBBLES_S",
+    "PEBBLES_M",
+    "PEBBLES_L",
+    "PEBBLES_XL",
+    "ROBOT_VACUUMING",
+    "ROBOT_MOPPING",
+    "ROBOT_DISHES",
+    "ROBOT_LAUNDRY",
+    "ROBOT_IRONING",
+    "UV_VISOR_YELLOW",
+    "UV_VISOR_AMBER",
+    "UV_VISOR_ORANGE",
+    "UV_VISOR_RED",
+    "UV_VISOR_MAGENTA",
+    "TRANSLATOR_SPACE_GRAY",
+    "TRANSLATOR_ASTRO_BLACK",
+    "TRANSLATOR_ECLIPSE_CHARCOAL",
+    "TRANSLATOR_GRAPHITE_MIST",
+    "TRANSLATOR_VOID_BLUE",
+    "PANEL_1X2",
+    "PANEL_2X2",
+    "PANEL_1X4",
+    "PANEL_2X4",
+    "PANEL_4X4",
+    "OXYGEN_SHAKE_MORNING_BREATH",
+    "OXYGEN_SHAKE_EVENING_BREATH",
+    "OXYGEN_SHAKE_MINT",
+    "OXYGEN_SHAKE_CHOCOLATE",
+    "OXYGEN_SHAKE_GARLIC",
+    "SNACKPACK_CHOCOLATE",
+    "SNACKPACK_VANILLA",
+    "SNACKPACK_PISTACHIO",
+    "SNACKPACK_STRAWBERRY",
+    "SNACKPACK_RASPBERRY"
+  ],
+  "categories": {
+    "galaxy_sounds": [
+      "GALAXY_SOUNDS_DARK_MATTER",
+      "GALAXY_SOUNDS_BLACK_HOLES",
+      "GALAXY_SOUNDS_PLANETARY_RINGS",
+      "GALAXY_SOUNDS_SOLAR_WINDS",
+      "GALAXY_SOUNDS_SOLAR_FLAMES"
+    ],
+    "sleep_pods": [
+      "SLEEP_POD_SUEDE",
+      "SLEEP_POD_LAMB_WOOL",
+      "SLEEP_POD_POLYESTER",
+      "SLEEP_POD_NYLON",
+      "SLEEP_POD_COTTON"
+    ],
+    "microchips": [
+      "MICROCHIP_CIRCLE",
+      "MICROCHIP_OVAL",
+      "MICROCHIP_SQUARE",
+      "MICROCHIP_RECTANGLE",
+      "MICROCHIP_TRIANGLE"
+    ],
+    "pebbles": [
+      "PEBBLES_XS",
+      "PEBBLES_S",
+      "PEBBLES_M",
+      "PEBBLES_L",
+      "PEBBLES_XL"
+    ],
+    "robots": [
+      "ROBOT_VACUUMING",
+      "ROBOT_MOPPING",
+      "ROBOT_DISHES",
+      "ROBOT_LAUNDRY",
+      "ROBOT_IRONING"
+    ],
+    "uv_visors": [
+      "UV_VISOR_YELLOW",
+      "UV_VISOR_AMBER",
+      "UV_VISOR_ORANGE",
+      "UV_VISOR_RED",
+      "UV_VISOR_MAGENTA"
+    ],
+    "translators": [
+      "TRANSLATOR_SPACE_GRAY",
+      "TRANSLATOR_ASTRO_BLACK",
+      "TRANSLATOR_ECLIPSE_CHARCOAL",
+      "TRANSLATOR_GRAPHITE_MIST",
+      "TRANSLATOR_VOID_BLUE"
+    ],
+    "panels": [
+      "PANEL_1X2",
+      "PANEL_2X2",
+      "PANEL_1X4",
+      "PANEL_2X4",
+      "PANEL_4X4"
+    ],
+    "oxygen_shakes": [
+      "OXYGEN_SHAKE_MORNING_BREATH",
+      "OXYGEN_SHAKE_EVENING_BREATH",
+      "OXYGEN_SHAKE_MINT",
+      "OXYGEN_SHAKE_CHOCOLATE",
+      "OXYGEN_SHAKE_GARLIC"
+    ],
+    "snackpacks": [
+      "SNACKPACK_CHOCOLATE",
+      "SNACKPACK_VANILLA",
+      "SNACKPACK_PISTACHIO",
+      "SNACKPACK_STRAWBERRY",
+      "SNACKPACK_RASPBERRY"
+    ]
+  },
+  "category_correlations": {
+    "galaxy_sounds": {
+      "members": [
+        "GALAXY_SOUNDS_DARK_MATTER",
+        "GALAXY_SOUNDS_BLACK_HOLES",
+        "GALAXY_SOUNDS_PLANETARY_RINGS",
+        "GALAXY_SOUNDS_SOLAR_WINDS",
+        "GALAXY_SOUNDS_SOLAR_FLAMES"
+      ],
+      "level_corr": [
+        [
+          1.0,
+          -0.008,
+          0.434,
+          -0.016,
+          -0.023
+        ],
+        [
+          -0.008,
+          1.0,
+          0.074,
+          0.465,
+          -0.117
+        ],
+        [
+          0.434,
+          0.074,
+          1.0,
+          0.088,
+          -0.009
+        ],
+        [
+          -0.016,
+          0.465,
+          0.088,
+          1.0,
+          -0.335
+        ],
+        [
+          -0.023,
+          -0.117,
+          -0.009,
+          -0.335,
+          1.0
+        ]
+      ],
+      "return_corr": [
+        [
+          1.0,
+          0.0,
+          0.007,
+          -0.001,
+          0.004
+        ],
+        [
+          0.0,
+          1.0,
+          0.001,
+          0.009,
+          0.002
+        ],
+        [
+          0.007,
+          0.001,
+          1.0,
+          0.0,
+          0.013
+        ],
+        [
+          -0.001,
+          0.009,
+          0.0,
+          1.0,
+          0.004
+        ],
+        [
+          0.004,
+          0.002,
+          0.013,
+          0.004,
+          1.0
+        ]
+      ],
+      "level_corr_mean_offdiag": 0.05537439167059013,
+      "return_corr_mean_offdiag": 0.003997815329930785
+    },
+    "sleep_pods": {
+      "members": [
+        "SLEEP_POD_SUEDE",
+        "SLEEP_POD_LAMB_WOOL",
+        "SLEEP_POD_POLYESTER",
+        "SLEEP_POD_NYLON",
+        "SLEEP_POD_COTTON"
+      ],
+      "level_corr": [
+        [
+          1.0,
+          -0.06,
+          0.86,
+          0.19,
+          0.701
+        ],
+        [
+          -0.06,
+          1.0,
+          -0.038,
+          0.493,
+          0.064
+        ],
+        [
+          0.86,
+          -0.038,
+          1.0,
+          0.308,
+          0.875
+        ],
+        [
+          0.19,
+          0.493,
+          0.308,
+          1.0,
+          0.397
+        ],
+        [
+          0.701,
+          0.064,
+          0.875,
+          0.397,
+          1.0
+        ]
+      ],
+      "return_corr": [
+        [
+          1.0,
+          0.006,
+          0.005,
+          0.007,
+          -0.0
+        ],
+        [
+          0.006,
+          1.0,
+          0.009,
+          0.004,
+          -0.003
+        ],
+        [
+          0.005,
+          0.009,
+          1.0,
+          0.001,
+          -0.008
+        ],
+        [
+          0.007,
+          0.004,
+          0.001,
+          1.0,
+          0.006
+        ],
+        [
+          -0.0,
+          -0.003,
+          -0.008,
+          0.006,
+          1.0
+        ]
+      ],
+      "level_corr_mean_offdiag": 0.37894597528318924,
+      "return_corr_mean_offdiag": 0.0028018126147275426
+    },
+    "microchips": {
+      "members": [
+        "MICROCHIP_CIRCLE",
+        "MICROCHIP_OVAL",
+        "MICROCHIP_SQUARE",
+        "MICROCHIP_RECTANGLE",
+        "MICROCHIP_TRIANGLE"
+      ],
+      "level_corr": [
+        [
+          1.0,
+          -0.416,
+          -0.094,
+          0.139,
+          -0.593
+        ],
+        [
+          -0.416,
+          1.0,
+          -0.732,
+          0.652,
+          0.87
+        ],
+        [
+          -0.094,
+          -0.732,
+          1.0,
+          -0.882,
+          -0.45
+        ],
+        [
+          0.139,
+          0.652,
+          -0.882,
+          1.0,
+          0.338
+        ],
+        [
+          -0.593,
+          0.87,
+          -0.45,
+          0.338,
+          1.0
+        ]
+      ],
+      "return_corr": [
+        [
+          1.0,
+          0.013,
+          0.008,
+          0.01,
+          0.003
+        ],
+        [
+          0.013,
+          1.0,
+          0.005,
+          0.003,
+          0.002
+        ],
+        [
+          0.008,
+          0.005,
+          1.0,
+          0.006,
+          0.008
+        ],
+        [
+          0.01,
+          0.003,
+          0.006,
+          1.0,
+          0.005
+        ],
+        [
+          0.003,
+          0.002,
+          0.008,
+          0.005,
+          1.0
+        ]
+      ],
+      "level_corr_mean_offdiag": -0.11672344811183,
+      "return_corr_mean_offdiag": 0.006163207706725028
+    },
+    "pebbles": {
+      "members": [
+        "PEBBLES_XS",
+        "PEBBLES_S",
+        "PEBBLES_M",
+        "PEBBLES_L",
+        "PEBBLES_XL"
+      ],
+      "level_corr": [
+        [
+          1.0,
+          0.798,
+          -0.694,
+          -0.269,
+          -0.828
+        ],
+        [
+          0.798,
+          1.0,
+          -0.616,
+          -0.136,
+          -0.834
+        ],
+        [
+          -0.694,
+          -0.616,
+          1.0,
+          0.335,
+          0.35
+        ],
+        [
+          -0.269,
+          -0.136,
+          0.335,
+          1.0,
+          -0.197
+        ],
+        [
+          -0.828,
+          -0.834,
+          0.35,
+          -0.197,
+          1.0
+        ]
+      ],
+      "return_corr": [
+        [
+          1.0,
+          -0.005,
+          0.016,
+          0.005,
+          -0.475
+        ],
+        [
+          -0.005,
+          1.0,
+          0.012,
+          0.006,
+          -0.483
+        ],
+        [
+          0.016,
+          0.012,
+          1.0,
+          0.011,
+          -0.506
+        ],
+        [
+          0.005,
+          0.006,
+          0.011,
+          1.0,
+          -0.493
+        ],
+        [
+          -0.475,
+          -0.483,
+          -0.506,
+          -0.493,
+          1.0
+        ]
+      ],
+      "level_corr_mean_offdiag": -0.20893914578821562,
+      "return_corr_mean_offdiag": -0.19127600519293603
+    },
+    "robots": {
+      "members": [
+        "ROBOT_VACUUMING",
+        "ROBOT_MOPPING",
+        "ROBOT_DISHES",
+        "ROBOT_LAUNDRY",
+        "ROBOT_IRONING"
+      ],
+      "level_corr": [
+        [
+          1.0,
+          -0.786,
+          -0.686,
+          0.787,
+          0.784
+        ],
+        [
+          -0.786,
+          1.0,
+          0.439,
+          -0.713,
+          -0.815
+        ],
+        [
+          -0.686,
+          0.439,
+          1.0,
+          -0.723,
+          -0.648
+        ],
+        [
+          0.787,
+          -0.713,
+          -0.723,
+          1.0,
+          0.737
+        ],
+        [
+          0.784,
+          -0.815,
+          -0.648,
+          0.737,
+          1.0
+        ]
+      ],
+      "return_corr": [
+        [
+          1.0,
+          -0.004,
+          0.006,
+          -0.001,
+          0.014
+        ],
+        [
+          -0.004,
+          1.0,
+          -0.006,
+          -0.01,
+          -0.0
+        ],
+        [
+          0.006,
+          -0.006,
+          1.0,
+          0.001,
+          0.001
+        ],
+        [
+          -0.001,
+          -0.01,
+          0.001,
+          1.0,
+          -0.009
+        ],
+        [
+          0.014,
+          -0.0,
+          0.001,
+          -0.009,
+          1.0
+        ]
+      ],
+      "level_corr_mean_offdiag": -0.16249149245712044,
+      "return_corr_mean_offdiag": -0.0008255765656607102
+    },
+    "uv_visors": {
+      "members": [
+        "UV_VISOR_YELLOW",
+        "UV_VISOR_AMBER",
+        "UV_VISOR_ORANGE",
+        "UV_VISOR_RED",
+        "UV_VISOR_MAGENTA"
+      ],
+      "level_corr": [
+        [
+          1.0,
+          -0.119,
+          -0.018,
+          -0.443,
+          0.285
+        ],
+        [
+          -0.119,
+          1.0,
+          -0.711,
+          -0.589,
+          -0.867
+        ],
+        [
+          -0.018,
+          -0.711,
+          1.0,
+          0.416,
+          0.584
+        ],
+        [
+          -0.443,
+          -0.589,
+          0.416,
+          1.0,
+          0.313
+        ],
+        [
+          0.285,
+          -0.867,
+          0.584,
+          0.313,
+          1.0
+        ]
+      ],
+      "return_corr": [
+        [
+          1.0,
+          -0.002,
+          0.004,
+          0.008,
+          0.009
+        ],
+        [
+          -0.002,
+          1.0,
+          0.004,
+          -0.001,
+          0.006
+        ],
+        [
+          0.004,
+          0.004,
+          1.0,
+          0.02,
+          0.007
+        ],
+        [
+          0.008,
+          -0.001,
+          0.02,
+          1.0,
+          0.005
+        ],
+        [
+          0.009,
+          0.006,
+          0.007,
+          0.005,
+          1.0
+        ]
+      ],
+      "level_corr_mean_offdiag": -0.11478061606338037,
+      "return_corr_mean_offdiag": 0.006032651821299478
+    },
+    "translators": {
+      "members": [
+        "TRANSLATOR_SPACE_GRAY",
+        "TRANSLATOR_ASTRO_BLACK",
+        "TRANSLATOR_ECLIPSE_CHARCOAL",
+        "TRANSLATOR_GRAPHITE_MIST",
+        "TRANSLATOR_VOID_BLUE"
+      ],
+      "level_corr": [
+        [
+          1.0,
+          0.208,
+          -0.151,
+          0.03,
+          -0.508
+        ],
+        [
+          0.208,
+          1.0,
+          -0.197,
+          -0.192,
+          -0.665
+        ],
+        [
+          -0.151,
+          -0.197,
+          1.0,
+          -0.038,
+          0.467
+        ],
+        [
+          0.03,
+          -0.192,
+          -0.038,
+          1.0,
+          0.098
+        ],
+        [
+          -0.508,
+          -0.665,
+          0.467,
+          0.098,
+          1.0
+        ]
+      ],
+      "return_corr": [
+        [
+          1.0,
+          0.008,
+          0.01,
+          -0.002,
+          0.003
+        ],
+        [
+          0.008,
+          1.0,
+          0.004,
+          -0.004,
+          0.005
+        ],
+        [
+          0.01,
+          0.004,
+          1.0,
+          0.007,
+          -0.005
+        ],
+        [
+          -0.002,
+          -0.004,
+          0.007,
+          1.0,
+          0.018
+        ],
+        [
+          0.003,
+          0.005,
+          -0.005,
+          0.018,
+          1.0
+        ]
+      ],
+      "level_corr_mean_offdiag": -0.09486477633512706,
+      "return_corr_mean_offdiag": 0.0044571068589527585
+    },
+    "panels": {
+      "members": [
+        "PANEL_1X2",
+        "PANEL_2X2",
+        "PANEL_1X4",
+        "PANEL_2X4",
+        "PANEL_4X4"
+      ],
+      "level_corr": [
+        [
+          1.0,
+          -0.537,
+          -0.308,
+          0.129,
+          0.28
+        ],
+        [
+          -0.537,
+          1.0,
+          0.644,
+          -0.482,
+          -0.494
+        ],
+        [
+          -0.308,
+          0.644,
+          1.0,
+          -0.604,
+          -0.228
+        ],
+        [
+          0.129,
+          -0.482,
+          -0.604,
+          1.0,
+          -0.174
+        ],
+        [
+          0.28,
+          -0.494,
+          -0.228,
+          -0.174,
+          1.0
+        ]
+      ],
+      "return_corr": [
+        [
+          1.0,
+          0.011,
+          0.006,
+          0.005,
+          0.008
+        ],
+        [
+          0.011,
+          1.0,
+          0.005,
+          -0.008,
+          0.001
+        ],
+        [
+          0.006,
+          0.005,
+          1.0,
+          0.01,
+          0.0
+        ],
+        [
+          0.005,
+          -0.008,
+          0.01,
+          1.0,
+          0.006
+        ],
+        [
+          0.008,
+          0.001,
+          0.0,
+          0.006,
+          1.0
+        ]
+      ],
+      "level_corr_mean_offdiag": -0.17750299962354327,
+      "return_corr_mean_offdiag": 0.004480159431260537
+    },
+    "oxygen_shakes": {
+      "members": [
+        "OXYGEN_SHAKE_MORNING_BREATH",
+        "OXYGEN_SHAKE_EVENING_BREATH",
+        "OXYGEN_SHAKE_MINT",
+        "OXYGEN_SHAKE_CHOCOLATE",
+        "OXYGEN_SHAKE_GARLIC"
+      ],
+      "level_corr": [
+        [
+          1.0,
+          -0.322,
+          0.241,
+          -0.347,
+          -0.558
+        ],
+        [
+          -0.322,
+          1.0,
+          -0.305,
+          0.114,
+          -0.136
+        ],
+        [
+          0.241,
+          -0.305,
+          1.0,
+          -0.247,
+          -0.321
+        ],
+        [
+          -0.347,
+          0.114,
+          -0.247,
+          1.0,
+          0.646
+        ],
+        [
+          -0.558,
+          -0.136,
+          -0.321,
+          0.646,
+          1.0
+        ]
+      ],
+      "return_corr": [
+        [
+          1.0,
+          0.009,
+          0.007,
+          0.003,
+          0.013
+        ],
+        [
+          0.009,
+          1.0,
+          0.006,
+          0.009,
+          0.007
+        ],
+        [
+          0.007,
+          0.006,
+          1.0,
+          0.007,
+          0.003
+        ],
+        [
+          0.003,
+          0.009,
+          0.007,
+          1.0,
+          0.007
+        ],
+        [
+          0.013,
+          0.007,
+          0.003,
+          0.007,
+          1.0
+        ]
+      ],
+      "level_corr_mean_offdiag": -0.12347858658799579,
+      "return_corr_mean_offdiag": 0.007026745173959794
+    },
+    "snackpacks": {
+      "members": [
+        "SNACKPACK_CHOCOLATE",
+        "SNACKPACK_VANILLA",
+        "SNACKPACK_PISTACHIO",
+        "SNACKPACK_STRAWBERRY",
+        "SNACKPACK_RASPBERRY"
+      ],
+      "level_corr": [
+        [
+          1.0,
+          -0.926,
+          0.47,
+          -0.541,
+          0.046
+        ],
+        [
+          -0.926,
+          1.0,
+          -0.313,
+          0.284,
+          0.022
+        ],
+        [
+          0.47,
+          -0.313,
+          1.0,
+          -0.441,
+          -0.497
+        ],
+        [
+          -0.541,
+          0.284,
+          -0.441,
+          1.0,
+          -0.414
+        ],
+        [
+          0.046,
+          0.022,
+          -0.497,
+          -0.414,
+          1.0
+        ]
+      ],
+      "return_corr": [
+        [
+          1.0,
+          -0.915,
+          0.025,
+          0.017,
+          0.031
+        ],
+        [
+          -0.915,
+          1.0,
+          0.04,
+          0.031,
+          0.014
+        ],
+        [
+          0.025,
+          0.04,
+          1.0,
+          0.913,
+          -0.831
+        ],
+        [
+          0.017,
+          0.031,
+          0.913,
+          1.0,
+          -0.923
+        ],
+        [
+          0.031,
+          0.014,
+          -0.831,
+          -0.923,
+          1.0
+        ]
+      ],
+      "level_corr_mean_offdiag": -0.23094667821553122,
+      "return_corr_mean_offdiag": -0.15988675974406635
+    }
+  },
+  "high_corr_pairs": [
+    {
+      "a": "SNACKPACK_STRAWBERRY",
+      "b": "SNACKPACK_RASPBERRY",
+      "corr": -0.9232,
+      "same_category": true
+    },
+    {
+      "a": "SNACKPACK_CHOCOLATE",
+      "b": "SNACKPACK_VANILLA",
+      "corr": -0.9152,
+      "same_category": true
+    },
+    {
+      "a": "SNACKPACK_PISTACHIO",
+      "b": "SNACKPACK_STRAWBERRY",
+      "corr": 0.9126,
+      "same_category": true
+    },
+    {
+      "a": "SNACKPACK_PISTACHIO",
+      "b": "SNACKPACK_RASPBERRY",
+      "corr": -0.8307,
+      "same_category": true
+    },
+    {
+      "a": "PEBBLES_M",
+      "b": "PEBBLES_XL",
+      "corr": -0.5059,
+      "same_category": true
+    }
+  ],
+  "ladders": {
+    "pebbles": {
+      "members": [
+        "PEBBLES_XS",
+        "PEBBLES_S",
+        "PEBBLES_M",
+        "PEBBLES_L",
+        "PEBBLES_XL"
+      ],
+      "size_weights": {
+        "PEBBLES_XS": 1,
+        "PEBBLES_S": 2,
+        "PEBBLES_M": 3,
+        "PEBBLES_L": 4,
+        "PEBBLES_XL": 5
+      },
+      "basket_eq_std": 0.5596882999095258,
+      "basket_sw_std": 462.8142484250623,
+      "member_fits": {
+        "PEBBLES_XS": {
+          "size_weight": 1,
+          "alpha": 40089.44280553501,
+          "beta": -3.009955770626082,
+          "resid_std": 400.6576255177686,
+          "resid_phi": 0.9995390321973803,
+          "resid_half_life_ticks": 1503.3314801564447
+        },
+        "PEBBLES_S": {
+          "size_weight": 2,
+          "alpha": 26383.553674850467,
+          "beta": -1.607087271597963,
+          "resid_std": 375.66340834523345,
+          "resid_phi": 0.9994208331701874,
+          "resid_half_life_ticks": 1196.453943116003
+        },
+        "PEBBLES_M": {
+          "size_weight": 3,
+          "alpha": 1013.2573948783502,
+          "beta": 0.8518346605625841,
+          "resid_std": 563.6050343109238,
+          "resid_phi": 0.9995205304166741,
+          "resid_half_life_ticks": 1445.3075229003327
+        },
+        "PEBBLES_L": {
+          "size_weight": 4,
+          "alpha": 8463.115677782427,
+          "beta": 0.15756616257868966,
+          "resid_std": 618.0338833836333,
+          "resid_phi": 0.9996972791446089,
+          "resid_half_life_ticks": 2289.377318641634
+        },
+        "PEBBLES_XL": {
+          "size_weight": 5,
+          "alpha": -25949.757010200155,
+          "beta": 3.6076723363639007,
+          "resid_std": 606.7715284266715,
+          "resid_phi": 0.9997068396130188,
+          "resid_half_life_ticks": 2364.0491851017428
+        }
+      },
+      "adjacent_ratios": {
+        "PEBBLES_S/PEBBLES_XS": 1.2337530990773347,
+        "PEBBLES_M/PEBBLES_S": 1.164463470715792,
+        "PEBBLES_L/PEBBLES_M": 0.9945447744454456,
+        "PEBBLES_XL/PEBBLES_L": 1.3071709160863167
+      }
+    },
+    "panels": {
+      "members": [
+        "PANEL_1X2",
+        "PANEL_2X2",
+        "PANEL_1X4",
+        "PANEL_2X4",
+        "PANEL_4X4"
+      ],
+      "size_weights": {
+        "PANEL_1X2": 2,
+        "PANEL_2X2": 4,
+        "PANEL_1X4": 4,
+        "PANEL_2X4": 8,
+        "PANEL_4X4": 16
+      },
+      "basket_eq_std": 170.07019792131715,
+      "basket_sw_std": 171.14464972860964,
+      "member_fits": {
+        "PANEL_1X2": {
+          "size_weight": 2,
+          "alpha": 614.3156093169455,
+          "beta": 0.8261646018452599,
+          "resid_std": 572.7109569726515,
+          "resid_phi": 0.999855323569972,
+          "resid_half_life_ticks": 4790.670036486147
+        },
+        "PANEL_2X2": {
+          "size_weight": 4,
+          "alpha": 21954.171997955065,
+          "beta": -1.230790120142573,
+          "resid_std": 641.0633608020513,
+          "resid_phi": 0.9997964591413632,
+          "resid_half_life_ticks": 3405.0983223823264
+        },
+        "PANEL_1X4": {
+          "size_weight": 4,
+          "alpha": 9280.489771058781,
+          "beta": 0.01164317506827347,
+          "resid_std": 834.0172020130681,
+          "resid_phi": 0.99993552723726,
+          "resid_half_life_ticks": 10750.661307286226
+        },
+        "PANEL_2X4": {
+          "size_weight": 8,
+          "alpha": 7610.615040283057,
+          "beta": 0.36341856053887583,
+          "resid_std": 624.0889054890959,
+          "resid_phi": 0.9998592749753421,
+          "resid_half_life_ticks": 4925.196563467401
+        },
+        "PANEL_4X4": {
+          "size_weight": 16,
+          "alpha": -11690.762413559612,
+          "beta": 2.1448068807684795,
+          "resid_std": 272.2762415056341,
+          "resid_phi": 0.9996921539786371,
+          "resid_half_life_ticks": 2251.2569131667783
+        }
+      },
+      "adjacent_ratios": {
+        "PANEL_2X2/PANEL_1X2": 1.0808235771617865,
+        "PANEL_1X4/PANEL_2X2": 0.982078936971483,
+        "PANEL_2X4/PANEL_1X4": 1.2118758691356157,
+        "PANEL_4X4/PANEL_2X4": 0.8800287852026317
+      }
+    }
+  }
+}
