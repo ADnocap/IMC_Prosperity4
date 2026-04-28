@@ -98,7 +98,15 @@ Per-tick advance:
 2. **Derived FVs** (constrained):
    - `mid_PEBBLES_XL = round(50_000 - sum(other 4 pebbles), 0.5)`
    - `mid_VANILLA_SNACK = round(K_day - mid_CHOCOLATE, 0.5)`
-   - Snackpack triplet residual handled via 2 free + 1 derived (or 3 correlated walks — TBD by fit pass)
+   - **Snackpack triplet (PIS / STRAW / RASP) — 1-factor model.** Historical
+     pairwise corr is huge (+0.91 / −0.92 / −0.83) and a PCA shows ~94% of
+     variance loads on a single factor with stable loadings across days
+     (~[−0.40, −0.66, +0.64]). Model: each member runs its own OU around
+     `μ_i(d)` but with reduced `σ_idio² = σ² − ℓ_i² σ_K²`, and a shared
+     zero-mean OU `K_triplet(t)` is added on top via `ℓ_i · K_triplet(t)`.
+     Total per-asset variance is preserved; the cross-covariance comes
+     entirely from the factor. Calibrated by `snackpack_triplet_factor.py`,
+     which is auto-invoked at the end of `rigorous_calibration.py`.
 
 3. **Daily resampling** at day boundaries:
    - `μ_i` for OU is resampled per day (each day has its own mean)

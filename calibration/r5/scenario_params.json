@@ -907,9 +907,9 @@
     },
     "SNACKPACK_PISTACHIO": {
       "category": "snackpacks",
-      "kind": "free",
+      "kind": "triplet_factor",
       "model": "OU",
-      "sigma": 5.236635323608404,
+      "sigma": 2.022740905308001,
       "theta": 0.0007172923557292161,
       "half_life_ticks": 966.3384462744982,
       "daily_mu": {
@@ -920,13 +920,14 @@
       "h": 8.0,
       "depth_l1": 30,
       "depth_l2": 50,
-      "l2_lift": 2
+      "l2_lift": 2,
+      "sigma_total_pre_factor": 5.236635323608404
     },
     "SNACKPACK_STRAWBERRY": {
       "category": "snackpacks",
-      "kind": "free",
+      "kind": "triplet_factor",
       "model": "OU",
-      "sigma": 8.13070218854453,
+      "sigma": 1.3974785352423664,
       "theta": 0.0009433732216299783,
       "half_life_ticks": 734.7539284211526,
       "daily_mu": {
@@ -937,13 +938,14 @@
       "h": 9.0,
       "depth_l1": 30,
       "depth_l2": 50,
-      "l2_lift": 2
+      "l2_lift": 2,
+      "sigma_total_pre_factor": 8.13070218854453
     },
     "SNACKPACK_RASPBERRY": {
       "category": "snackpacks",
-      "kind": "free",
+      "kind": "triplet_factor",
       "model": "OU",
-      "sigma": 8.08946450107308,
+      "sigma": 1.9566356021152254,
       "theta": 0.001081875323770525,
       "half_life_ticks": 640.6904430948715,
       "daily_mu": {
@@ -954,7 +956,8 @@
       "h": 8.5,
       "depth_l1": 30,
       "depth_l2": 50,
-      "l2_lift": 2
+      "l2_lift": 2,
+      "sigma_total_pre_factor": 8.08946450107308
     }
   },
   "day_starts": {
@@ -1113,6 +1116,28 @@
       "PEBBLES_L": 11014.5,
       "SNACKPACK_RASPBERRY": 10120.5,
       "PEBBLES_M": 11066.0
+    }
+  },
+  "snackpack_triplet": {
+    "members": [
+      "SNACKPACK_PISTACHIO",
+      "SNACKPACK_STRAWBERRY",
+      "SNACKPACK_RASPBERRY"
+    ],
+    "loadings": [
+      -0.39556131996287075,
+      -0.6559670557472661,
+      0.6428362652522759
+    ],
+    "k_factor": {
+      "theta": 0.001081875323770525,
+      "sigma": 12.210436230302014,
+      "sigma_raw_diffs": 12.21413239106236,
+      "daily_mu": {
+        "2": 5.666989788261223,
+        "3": -23.70386320245096,
+        "4": 15.06224523572709
+      }
     }
   }
 }

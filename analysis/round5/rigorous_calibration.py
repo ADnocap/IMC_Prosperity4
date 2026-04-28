@@ -437,6 +437,48 @@ def main():
     out.write_text(json.dumps(bundle, indent=2, default=str))
     print(f"\nwritten: {out}")
 
+    # ---- Snackpack triplet factor model (PIS / STRAW / RASP) -----------------
+    # The default per-asset OU treats these 3 as independent, but their
+    # tick-diffs share a 1-factor structure (94% of variance). Run the
+    # dedicated calibration step here so a single `rigorous_calibration.py`
+    # invocation refreshes both calibration_r5.json and the triplet patch in
+    # calibration/r5/scenario_params.json. Otherwise the simulator's snackpack
+    # cross-correlations are wrong (~0 vs +0.91 / -0.92 / -0.83 historical).
+    print("\n=== Snackpack triplet factor calibration ===")
+    try:
+        from snackpack_triplet_factor import (
+            fit_factor as _fit_triplet_factor,
+            patch_scenario_params as _patch_triplet,
+        )
+    except ImportError:
+        # Fall back to importing as a script-relative module when this file is
+        # run from a different cwd.
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "snackpack_triplet_factor",
+            Path(__file__).with_name("snackpack_triplet_factor.py"),
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _fit_triplet_factor = mod.fit_factor
+        _patch_triplet = mod.patch_scenario_params
+
+    triplet_block = _fit_triplet_factor()
+    print(f"  loadings = {[f'{x:+.4f}' for x in triplet_block['loadings']]}")
+    print(f"  factor sigma = {triplet_block['k_factor']['sigma']:.4f}, "
+          f"theta = {triplet_block['k_factor']['theta']:.6f}")
+    print(f"  sigma_idio = {triplet_block['sigma_idio']}")
+    print(f"  factor explains "
+          f"{triplet_block['diagnostics']['factor_var_explained_ratio']*100:.1f}% of triplet variance")
+    _patch_triplet(triplet_block)
+
+    # Also persist the triplet block inside calibration_r5.json so the bundle
+    # is self-describing (debuggers / tests that read calibration_r5.json
+    # directly still see the factor model).
+    bundle["snackpack_triplet"] = triplet_block
+    out.write_text(json.dumps(bundle, indent=2, default=str))
+    print(f"  re-written: {out}")
+
 
 if __name__ == "__main__":
     main()

@@ -38,6 +38,19 @@ pub struct ScenarioParams {
     pub assets: HashMap<String, AssetCfg>,
     /// {day_string: {symbol: starting_mid}}
     pub day_starts: HashMap<String, HashMap<String, f64>>,
+    /// 1-factor model for {PIS, STRAW, RASP}. When present, each member's
+    /// independent OU step uses its (already-reduced) `sigma`, and a shared
+    /// zero-mean OU path is overlaid via `loadings[i] * K_triplet(t)`.
+    /// Absent in older bundles → triplet falls back to independent OUs.
+    #[serde(default)]
+    pub snackpack_triplet: Option<SnackpackTripletParams>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SnackpackTripletParams {
+    pub members: Vec<String>,
+    pub loadings: Vec<f64>,
+    pub k_factor: KDayParams,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -274,8 +287,19 @@ impl Scenario for R5Scenario {
 
         let mut fvs: HashMap<String, Vec<f64>> = HashMap::with_capacity(sorted_symbols.len());
 
+        // Pre-compute set of triplet members so the snap-to-half step can be
+        // deferred for them until after the factor overlay (otherwise the
+        // small ℓ * K addition is rounded away tick-by-tick).
+        let triplet_set: std::collections::HashSet<&str> = p
+            .snackpack_triplet
+            .as_ref()
+            .map(|t| t.members.iter().map(|s| s.as_str()).collect())
+            .unwrap_or_default();
+
         // Pass 1: simulate non-derived assets (everything except PEBBLES_XL and
-        // SNACKPACK_VANILLA — both are reconstructed from constraints).
+        // SNACKPACK_VANILLA — both are reconstructed from constraints). For
+        // triplet members the per-asset `sigma` field has already been replaced
+        // with sigma_idio by the calibration patch, so no special-case here.
         for sym in &sorted_symbols {
             if sym.as_str() == pebble_derived || sym.as_str() == snack_vanilla {
                 continue;
@@ -292,8 +316,56 @@ impl Scenario for R5Scenario {
                 "RW" => Self::simulate_rw_path(ticks_per_day, x0, cfg.sigma, rng),
                 other => bail!("unsupported asset model '{}' for {}", other, sym),
             };
-            let snapped: Vec<f64> = raw.into_iter().map(Self::snap_half).collect();
-            fvs.insert((*sym).clone(), snapped);
+            // Snap now unless this asset is a triplet member — those get the
+            // factor overlay first, then a single snap at the end of pass 3.
+            let path: Vec<f64> = if triplet_set.contains(sym.as_str()) {
+                raw
+            } else {
+                raw.into_iter().map(Self::snap_half).collect()
+            };
+            fvs.insert((*sym).clone(), path);
+        }
+
+        // Pass 1b: snackpack triplet factor overlay. Sample a zero-mean OU path
+        // K_triplet(t) and add loading_i * K_triplet to each triplet member.
+        // K_triplet's daily_mu is fitted to ~0 in calibration; we simulate
+        // around that value and explicitly recenter to be safe.
+        if let Some(t) = &p.snackpack_triplet {
+            let mu_k = t
+                .k_factor
+                .daily_mu
+                .get(&day.to_string())
+                .copied()
+                .unwrap_or(0.0);
+            let mut k_path = Self::simulate_ou_path(
+                ticks_per_day,
+                mu_k,
+                mu_k,
+                t.k_factor.theta,
+                t.k_factor.sigma,
+                rng,
+            );
+            // Recenter so the mean is exactly 0 (the calibration assumes this).
+            let k_mean = if k_path.is_empty() {
+                0.0
+            } else {
+                k_path.iter().sum::<f64>() / (k_path.len() as f64)
+            };
+            for v in &mut k_path {
+                *v -= k_mean;
+            }
+            for (sym, &ell) in t.members.iter().zip(t.loadings.iter()) {
+                let path = fvs
+                    .get_mut(sym)
+                    .ok_or_else(|| anyhow!("triplet member {sym} missing from fvs"))?;
+                for (i, v) in path.iter_mut().enumerate() {
+                    *v += ell * k_path[i];
+                }
+                // Snap after overlay.
+                for v in path.iter_mut() {
+                    *v = Self::snap_half(*v);
+                }
+            }
         }
 
         // Pass 2: derive PEBBLES_XL = round((50_000 - sum(other 4 pebbles)) * 2) / 2.

@@ -447,8 +447,11 @@ def main():
     cal, k_cal, qty_dist = load_calibration_bundle()
     scenario = R5Scenario(cal, k_cal, qty_dist)
 
-    # Validate against hold-1 portal sub 545243 (-2160 PnL on day 4 1K ticks)
+    # Validate against hold-1 portal sub 545243 (-2160 PnL on day 4 1K ticks).
+    # Local equivalent kept at traders/round5/hold1.py if portal extract was cleaned.
     hold1_path = REPO_ROOT / "tmp" / "portal_545243" / "545243.py"
+    if not hold1_path.exists():
+        hold1_path = REPO_ROOT / "traders" / "round5" / "hold1.py"
     print(f"\nLoading hold-1 trader: {hold1_path}")
     trader = load_trader(hold1_path)
 

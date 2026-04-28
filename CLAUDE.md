@@ -376,7 +376,7 @@ R1, R2, R3, and R4 all cleared the advancement threshold. Post-round-close snaps
 
 R3/R4 generated **1 FV path + 1 Poisson trade process per asset, independent**. R5's market structure breaks that:
 
-- 50 FVs are **not** independent — `PEBBLES_XS+S+M+L+XL = 50,000` exactly every tick; `SNACKPACK_CHOCOLATE + SNACKPACK_VANILLA ≈ K_day` (a slow OU-process pair sum that drifts ~50–100/day); a looser snackpack triplet (PIS/STRAW/RASP) with day-varying loadings.
+- 50 FVs are **not** independent — `PEBBLES_XS+S+M+L+XL = 50,000` exactly every tick; `SNACKPACK_CHOCOLATE + SNACKPACK_VANILLA ≈ K_day` (a slow OU-process pair sum that drifts ~50–100/day); **SNACKPACK_PISTACHIO/STRAWBERRY/RASPBERRY** share a 1-factor model `F_i = OU_i(σ_idio) + ℓ_i · K_triplet` with stable loadings ~[−0.40, −0.66, +0.64] (~94% of triplet variance) producing the historical pairwise corr +0.91 / −0.92 / −0.83 — calibrated 2026-04-28 by `analysis/round5/snackpack_triplet_factor.py` and auto-invoked from `rigorous_calibration.py`.
 - Trades fire in **3 shared Poisson pulse processes**, not 50 independent Poissons:
   - **V (Vanilla)**: 40 products, λ ≈ 0.0244/tick (~244 pulses/10K-tick day), qty ∈ {1,2,3,4}
   - **P (Pebbles)**: 5 pebbles, λ ≈ 0.0215/tick, qty ∈ {2,3,4,5}
@@ -395,8 +395,9 @@ R3/R4 generated **1 FV path + 1 Poisson trade process per asset, independent**. 
 **Generic R5 asset.** `rust_simulator/src/assets/r5_asset.rs` is a single shared impl, parametrised by `(symbol, h, depth_l1, depth_l2, l2_lift)`. The 50 instances are built from `calibration/r5/scenario_params.json` at startup — no boilerplate per-asset Rust files. `simulate_fv` / `base_trade_prob` are stubs (the scenario owns those decisions).
 
 **Calibration files.**
-- `analysis/round5/calibration_r5.json` — raw per-asset OU/RW fits + book params + pulse rates + variance-ratio diagnostics, produced by `analysis/round5/rigorous_calibration.py`.
-- `calibration/r5/scenario_params.json` — Rust-ready bundle loaded at runtime by `R5Scenario::load()`. Resolves via `R5_SCENARIO_PARAMS` env var, then via repo-root walk. Structure: `days`, `ticks_per_day`, `pebble_constant`, `pebble_free`/`pebble_derived`, `snackpack_choc`/`snackpack_vanilla`, `k_day` (OU θ/σ + per-day μ), `pulses` (V/P/M specs), `assets` (50 entries with model="OU"|"RW", θ, σ, daily_μ, h, depth_l1, depth_l2, l2_lift), `day_starts`.
+- `analysis/round5/calibration_r5.json` — raw per-asset OU/RW fits + book params + pulse rates + variance-ratio diagnostics + `snackpack_triplet` factor block, produced by `analysis/round5/rigorous_calibration.py`. The triplet calibration runs automatically at the end of `rigorous_calibration.py`.
+- `analysis/round5/snackpack_triplet_factor.py` — fits the 1-factor model for {PIS, STRAW, RASP} (loadings via PCA on tick-diffs, K_triplet OU fit, σ_idio per asset) and patches `calibration/r5/scenario_params.json` in place. Idempotent. Pre-fix file is backed up to `scenario_params.json.bak` on first run only.
+- `calibration/r5/scenario_params.json` — Rust-ready bundle loaded at runtime by `R5Scenario::load()`. Resolves via `R5_SCENARIO_PARAMS` env var, then via repo-root walk. Structure: `days`, `ticks_per_day`, `pebble_constant`, `pebble_free`/`pebble_derived`, `snackpack_choc`/`snackpack_vanilla`, `k_day` (OU θ/σ + per-day μ), **`snackpack_triplet`** (members + loadings + k_factor OU), `pulses` (V/P/M specs), `assets` (50 entries with model="OU"|"RW", θ, σ, daily_μ, h, depth_l1, depth_l2, l2_lift; the 3 triplet members carry `kind: "triplet_factor"` and have their σ replaced by `σ_idio`, with the original σ preserved as `sigma_total_pre_factor`), `day_starts`.
 
 **How to run R5 calibration / backtest / validation.**
 

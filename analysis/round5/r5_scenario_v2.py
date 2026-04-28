@@ -145,31 +145,85 @@ def simulate_rw(
 # ---------------------------------------------------------------------------
 
 class R5Scenario:
+    SCENARIO_PARAMS_PATH = REPO_ROOT / "calibration" / "r5" / "scenario_params.json"
+    TRIPLET_MEMBERS = ("SNACKPACK_PISTACHIO", "SNACKPACK_STRAWBERRY", "SNACKPACK_RASPBERRY")
+
     def __init__(self, calibration: Dict, k_day_cal: Dict,
-                 pulse_qty_dist: Optional[Dict[str, np.ndarray]] = None):
+                 pulse_qty_dist: Optional[Dict[str, np.ndarray]] = None,
+                 triplet_block: Optional[Dict] = None):
         self.cal = calibration
         self.k_day_cal = k_day_cal
         # pulse_qty_dist: optional empirical qty histograms per group
         self.pulse_qty_dist = pulse_qty_dist or {}
+        # snackpack_triplet factor model (loaded from scenario_params.json by default).
+        # When None the triplet falls back to the legacy independent-OU behaviour
+        # so older calibration bundles still work.
+        if triplet_block is None and self.SCENARIO_PARAMS_PATH.is_file():
+            try:
+                triplet_block = json.loads(
+                    self.SCENARIO_PARAMS_PATH.read_text()
+                ).get("snackpack_triplet")
+            except Exception:
+                triplet_block = None
+        self.triplet_block = triplet_block
+        # Per-asset sigma_idio (after factor variance is pulled out). Only used
+        # for the 3 triplet members; other assets use cal["asset_fits"][sym]["sigma"].
+        if triplet_block is not None:
+            members = triplet_block["members"]
+            loadings = triplet_block["loadings"]
+            sigma_K = float(triplet_block["k_factor"]["sigma"])
+            sigma_total = {sym: float(self.cal["asset_fits"][sym]["sigma"])
+                           for sym in members}
+            self._triplet_sigma_idio: Dict[str, float] = {}
+            for sym, ell in zip(members, loadings):
+                idio2 = sigma_total[sym] ** 2 - (ell ** 2) * (sigma_K ** 2)
+                self._triplet_sigma_idio[sym] = float(np.sqrt(max(idio2, 1e-6)))
+        else:
+            self._triplet_sigma_idio = {}
 
     def generate_day(self, day: int, n_ticks: int, rng: np.random.Generator) -> Dict:
         fvs: Dict[str, np.ndarray] = {}
         starts = self._daily_starts(day)
+        triplet_set = set(self.TRIPLET_MEMBERS) if self.triplet_block else set()
         # Generate independent OU/RW for non-derived assets except SNACKPACK_VANILLA
         for sym in ALL_PRODUCTS:
             if sym == PEBBLE_DERIVED or sym == "SNACKPACK_VANILLA":
                 continue
             fit = self.cal["asset_fits"][sym]
             x0 = starts[sym]
-            sigma = fit["sigma"]
+            # For triplet members the factor carries part of their variance, so
+            # the independent OU step uses the reduced idiosyncratic sigma.
+            sigma = self._triplet_sigma_idio.get(sym, fit["sigma"])
             if fit["model"] == "OU":
                 theta = fit.get("theta", 0.0)
                 mu = float(fit["daily_mu"].get(str(day), x0))
                 v = simulate_ou(n_ticks, x0, mu, theta, sigma, rng)
             else:
                 v = simulate_rw(n_ticks, x0, sigma, rng)
-            # Snap to half-integer
-            fvs[sym] = np.round(v * 2) / 2
+            # Defer half-integer snap until after the factor overlay (below) so
+            # the loading * K addition isn't quantised away tick-by-tick.
+            fvs[sym] = v
+
+        # --- Snackpack triplet factor overlay ----------------------------------
+        # K_triplet is a zero-mean OU process driven by the same shared shocks
+        # for all 3 triplet assets. Adding loading_i * K_triplet(t) to each
+        # asset's independent path produces the historical pairwise correlations
+        # (PIS-STRAW +0.91, STRAW-RASP -0.92, PIS-RASP -0.83) without affecting
+        # daily means (factor is centred).
+        if self.triplet_block is not None:
+            kf = self.triplet_block["k_factor"]
+            mu_K = float(kf["daily_mu"].get(str(day), 0.0))  # ~0 by construction
+            k_path = simulate_ou(n_ticks, mu_K, mu_K,
+                                 float(kf["theta"]), float(kf["sigma"]), rng)
+            # Center to zero mean for safety (calibration already enforces this).
+            k_path = k_path - mu_K
+            for sym, ell in zip(self.triplet_block["members"],
+                                self.triplet_block["loadings"]):
+                fvs[sym] = fvs[sym] + float(ell) * k_path
+
+        # Snap all generated paths to half-integer now that overlays are applied.
+        for sym in list(fvs.keys()):
+            fvs[sym] = np.round(fvs[sym] * 2) / 2
 
         # Pebbles derived
         sum_free = sum(fvs[p] for p in PEBBLE_FREE)

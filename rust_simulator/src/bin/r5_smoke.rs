@@ -57,6 +57,13 @@ fn main() -> Result<()> {
     let mut pulse_qty_means_per_group: HashMap<String, Vec<f64>> = HashMap::new();
     // Per-asset within-day std (seed-pooled).
     let mut per_asset_stds: HashMap<String, Vec<f64>> = HashMap::new();
+    // Snackpack triplet tick-diffs (pooled across all seeds × days) so we can
+    // compute pairwise correlations as a final cross-check that the factor
+    // overlay produces the observed structure.
+    let mut triplet_diffs: HashMap<&'static str, Vec<f64>> = HashMap::new();
+    triplet_diffs.insert("PIS", Vec::new());
+    triplet_diffs.insert("STRAW", Vec::new());
+    triplet_diffs.insert("RASP", Vec::new());
 
     for seed in 0..n_seeds {
         for &day in &DAYS {
@@ -99,6 +106,20 @@ fn main() -> Result<()> {
             for (sym, path) in &day_data.fv_paths {
                 let (_, s) = mean_std(path);
                 per_asset_stds.entry(sym.clone()).or_default().push(s);
+            }
+
+            // Triplet tick-tick diffs, accumulated for the correlation check.
+            for (key, sym) in [
+                ("PIS", "SNACKPACK_PISTACHIO"),
+                ("STRAW", "SNACKPACK_STRAWBERRY"),
+                ("RASP", "SNACKPACK_RASPBERRY"),
+            ] {
+                if let Some(path) = day_data.fv_paths.get(sym) {
+                    let buf = triplet_diffs.get_mut(key).unwrap();
+                    for w in path.windows(2) {
+                        buf.push(w[1] - w[0]);
+                    }
+                }
             }
 
             // Pulse stats.
@@ -207,6 +228,58 @@ fn main() -> Result<()> {
     for (sym, s) in asset_summary.iter().rev().take(5) {
         println!("    {:<35} std_mean = {:.2}", sym, s);
     }
+
+    println!();
+    println!("=== Snackpack triplet pairwise correlations ===");
+    println!("  (historical targets: PIS-STRAW +0.913, STRAW-RASP -0.924, PIS-RASP -0.831)");
+    let pis = triplet_diffs.get("PIS").cloned().unwrap_or_default();
+    let straw = triplet_diffs.get("STRAW").cloned().unwrap_or_default();
+    let rasp = triplet_diffs.get("RASP").cloned().unwrap_or_default();
+    fn pearson(a: &[f64], b: &[f64]) -> f64 {
+        let n = a.len().min(b.len());
+        if n == 0 {
+            return f64::NAN;
+        }
+        let mean_a = a[..n].iter().sum::<f64>() / n as f64;
+        let mean_b = b[..n].iter().sum::<f64>() / n as f64;
+        let mut num = 0.0;
+        let mut da = 0.0;
+        let mut db = 0.0;
+        for i in 0..n {
+            let xa = a[i] - mean_a;
+            let xb = b[i] - mean_b;
+            num += xa * xb;
+            da += xa * xa;
+            db += xb * xb;
+        }
+        if da <= 0.0 || db <= 0.0 {
+            return f64::NAN;
+        }
+        num / (da.sqrt() * db.sqrt())
+    }
+    let r_ps = pearson(&pis, &straw);
+    let r_sr = pearson(&straw, &rasp);
+    let r_pr = pearson(&pis, &rasp);
+    let tol = 0.10;
+    let ok = |x: f64, target: f64| (x - target).abs() < tol;
+    println!(
+        "  PIS-STRAW : {:+.4} (target +0.913, |Δ|<{:.2} -> {})",
+        r_ps,
+        tol,
+        if ok(r_ps, 0.913) { "OK" } else { "FAIL" }
+    );
+    println!(
+        "  STRAW-RASP: {:+.4} (target -0.924, |Δ|<{:.2} -> {})",
+        r_sr,
+        tol,
+        if ok(r_sr, -0.924) { "OK" } else { "FAIL" }
+    );
+    println!(
+        "  PIS-RASP  : {:+.4} (target -0.831, |Δ|<{:.2} -> {})",
+        r_pr,
+        tol,
+        if ok(r_pr, -0.831) { "OK" } else { "FAIL" }
+    );
 
     Ok(())
 }
