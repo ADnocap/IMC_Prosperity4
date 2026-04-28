@@ -1076,47 +1076,8 @@ fn run_backtest_session(
                 }
             }
 
-            // Step 2b: R5 pulse takers. One pulse fires `quantity` units for
-            // every member of its group simultaneously, on the same side.
-            if let Some(pidx) = r5_pulses_idx.as_ref() {
-                for pulse in &pidx[tick] {
-                    let market_buy = matches!(pulse.direction, scenario::PulseDir::Buy);
-                    for member in &pulse.members {
-                        if !live_books.contains_key(member) {
-                            continue;
-                        }
-                        let book = live_books.get_mut(member).unwrap();
-                        let ledger = ledgers.get_mut(member).context("missing ledger for pulse")?;
-                        let fills = execute_taker_trade_fixed_qty(
-                            member,
-                            timestamp,
-                            book,
-                            ledger,
-                            market_buy,
-                            pulse.quantity,
-                        );
-                        for fill in fills {
-                            let row = fill_to_trade_row(&fill);
-                            if fill_involves_strategy(&fill) {
-                                own_trades_this_tick
-                                    .entry(member.to_string())
-                                    .or_default()
-                                    .push(fill);
-                            } else {
-                                market_trades_this_tick
-                                    .entry(member.to_string())
-                                    .or_default()
-                                    .push(fill);
-                            }
-                            if capture_outputs {
-                                trade_rows.push(row);
-                            }
-                        }
-                    }
-                }
-            }
-
             // Step 3: strategy sees post-take book.
+            // (R5 pulses moved to step 4b — see below — so strategy quotes can absorb takers.)
             let order_depths: HashMap<String, WorkerOrderDepth> = config
                 .assets
                 .iter()
@@ -1158,6 +1119,46 @@ fn run_backtest_session(
                     trade_rows.extend(fills.iter().map(fill_to_trade_row));
                 }
                 own_trades_this_tick.insert(symbol, fills);
+            }
+
+            // Step 4b: R5 pulse takers. Fire after strategy orders so pulses can
+            // hit our passive quotes when penny-jumped (best price wins).
+            if let Some(pidx) = r5_pulses_idx.as_ref() {
+                for pulse in &pidx[tick] {
+                    let market_buy = matches!(pulse.direction, scenario::PulseDir::Buy);
+                    for member in &pulse.members {
+                        if !live_books.contains_key(member) {
+                            continue;
+                        }
+                        let book = live_books.get_mut(member).unwrap();
+                        let ledger = ledgers.get_mut(member).context("missing ledger for pulse")?;
+                        let fills = execute_taker_trade_fixed_qty(
+                            member,
+                            timestamp,
+                            book,
+                            ledger,
+                            market_buy,
+                            pulse.quantity,
+                        );
+                        for fill in fills {
+                            let row = fill_to_trade_row(&fill);
+                            if fill_involves_strategy(&fill) {
+                                own_trades_this_tick
+                                    .entry(member.to_string())
+                                    .or_default()
+                                    .push(fill);
+                            } else {
+                                market_trades_this_tick
+                                    .entry(member.to_string())
+                                    .or_default()
+                                    .push(fill);
+                            }
+                            if capture_outputs {
+                                trade_rows.push(row);
+                            }
+                        }
+                    }
+                }
             }
 
             // Step 5: elastic takers (conditional on strategy quoting).

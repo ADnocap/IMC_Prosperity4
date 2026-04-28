@@ -10,10 +10,12 @@ pip install -e .
 # Download from https://rustup.rs
 
 # Run Monte Carlo backtest with dashboard (points at the active round's trader)
-prosperity4mcbt traders/round4/submission.py --quick --vis
+prosperity4mcbt traders/round5/submission.py --quick --vis
 ```
 
-Both CLIs auto-resolve bare filenames — e.g. `submission.py` → `traders/round4/submission.py` (active round). Pass a full path like `traders/round1/submission.py` to backtest a historical submission.
+Both CLIs auto-resolve bare filenames — e.g. `submission.py` → `traders/round5/submission.py` (active round). Pass a full path like `traders/round1/submission.py` to backtest a historical submission.
+
+**Active round is R5.** R5 ships 50 brand-new products and the simulator now uses a **2-layer scenario architecture** (joint FV state + shared pulse trades, see "Running a backtest for the active round (R5)" below). R3/R4 traders still work — the sim auto-detects R5 vs legacy from the symbols declared in the trader file.
 
 ---
 
@@ -88,6 +90,7 @@ data/
 ├── prosperity4/round2/            # P4 round 2 (same products + MAF auction)
 ├── prosperity4/round3/            # P4 round 3 (HYDROGEL_PACK, VELVETFRUIT_EXTRACT, VEV_*)
 ├── prosperity4/round4/            # P4 round 4 (same as R3 + buyer/seller fields populated)
+├── prosperity4/round5/            # P4 round 5 (50 new products, days 2/3/4, position limit 10 each)
 └── prosperity3/round1-8/          # P3 historical data (reference only)
 ```
 
@@ -95,11 +98,14 @@ Active-round traders live in `traders/round<N>/`. Both CLIs auto-resolve bare fi
 
 | File                           | Purpose                                                                  |
 | ------------------------------ | ------------------------------------------------------------------------ |
-| `traders/round4/submission.py` | ACTIVE submission (seeded from R3 stratton)                              |
+| `traders/round5/submission.py` | ACTIVE submission (R5 scaffold — 50 products, position limit 10 each)    |
+| `traders/round5/hold1.py`      | R5 hold-1 trader (buys 1 of every product, holds — for server-FV recovery + sim validation) |
+| `traders/round5/mm_v1.py`      | R5 vanilla MM baseline                                                   |
+| `traders/round4/submission.py` | R4 shipped (portal sub 542976, "marco_rubio_v2")                         |
 | `traders/round3/submission.py` | R3 shipped (portal sub 485183, "stratton" — search-2 OOS winner #233)    |
 | `traders/round2/submission.py` | R2 shipped (portal sub 360419)                                           |
 | `traders/round1/submission.py` | R1 shipped (portal sub 269599, OSMIUM MM + PEPPER long)                  |
-| `traders/trader_hold1.py`      | Buy 1 unit, hold forever — used to extract server FV                     |
+| `traders/trader_hold1.py`      | Generic buy-1-and-hold (used to extract server FV in R1–R4)              |
 
 ---
 
@@ -109,13 +115,13 @@ Rust-backed Monte Carlo simulator. Generates hundreds/thousands of synthetic mar
 
 ```bash
 # Quick (100 sessions, ~6s) -- good for iteration
-prosperity4mcbt traders/round4/submission.py --quick
+prosperity4mcbt traders/round5/submission.py --quick
 
 # Heavy (1000 sessions, ~55s) -- final eval before submission
-prosperity4mcbt traders/round4/submission.py --heavy
+prosperity4mcbt traders/round5/submission.py --heavy
 
 # With dashboard auto-open
-prosperity4mcbt traders/round4/submission.py --quick --vis
+prosperity4mcbt traders/round5/submission.py --quick --vis
 ```
 
 Output defaults to `tmp/backtests/<timestamp>_monte_carlo/dashboard.json`. Pass `--out path.json` only when you need a specific path — and keep it under `tmp/`.
@@ -123,17 +129,108 @@ Output defaults to `tmp/backtests/<timestamp>_monte_carlo/dashboard.json`. Pass 
 ### Advanced options
 
 ```bash
-prosperity4mcbt traders/round4/submission.py --quick --seed 42
-prosperity4mcbt traders/round4/submission.py --quick --fv-mode simulate
-prosperity4mcbt traders/round4/submission.py --quick --trade-mode simulate
-prosperity4mcbt traders/round4/submission.py --sessions 3000 --sample-sessions 150
+prosperity4mcbt traders/round5/submission.py --quick --seed 42
+prosperity4mcbt traders/round5/submission.py --quick --fv-mode simulate
+prosperity4mcbt traders/round5/submission.py --quick --trade-mode simulate
+prosperity4mcbt traders/round5/submission.py --sessions 3000 --sample-sessions 150
 ```
 
 ---
 
-## Running a backtest for the active round (R4)
+## Running a backtest for the active round (R5)
 
-R4 kicked off 2026-04-26 ("The More The Merrier"). Same products as R3 — OSMIUM and PEPPER stopped being tradeable at R3, so no PEPPER `--start-fv` flags are needed. The new R4 wrinkle is that `Trade.buyer` and `Trade.seller` are now populated with `Mark <NN>` IDs instead of `None` (7 distinct Marks: 01, 14, 22, 38, 49, 55, 67).
+R5 kicked off 2026-04-28 ("The Final Stretch"). The product set is fully reset — 50 brand-new products across 10 categories, every product capped at position limit **10**. The simulator was rebuilt for R5 with a **2-layer scenario architecture**:
+
+- **Layer 1 — joint state generator** (`rust_simulator/src/scenario.rs` trait, `rust_simulator/src/scenarios/r5.rs` impl). Per session/day produces `fv_paths: HashMap<(symbol, day) → Vec<f64>>` and `pulses_per_day: HashMap<day → Vec<Pulse>>`. Enforces R5 invariants exactly:
+  - `PEBBLES_XS+S+M+L+XL = 50,000` per tick (XL is derived).
+  - `SNACKPACK_CHOCOLATE + SNACKPACK_VANILLA ≈ K_day` where K_day is its own slow OU process.
+  - 47 free OU walks (40 vanilla + 4 free pebbles + 2 snackpack DoF + 5 microchips + K_day) with daily-resampled means.
+  - **3 shared Poisson pulse processes** instead of 50 independent Poissons:
+    - V (40 vanilla products): λ ≈ 0.0244/tick, qty ∈ {1..4}
+    - P (5 pebbles): λ ≈ 0.0215/tick, qty ∈ {2..5}
+    - M (5 microchips): λ ≈ 0.0190/tick, qty ∈ {1..3}
+  - Each pulse fires its **whole** group on the same side at the same quantity, in the same tick.
+- **Layer 2 — per-asset book + execution** (existing `AssetSim`). FV is read from the scenario; the asset still owns the L1+L2 symmetric book around its FV (asset-specific half-spread `h`, depth_l1/l2). Pulses route through `apply_pulse_against_book` (sell pulse → take qty at `bid_price_1`, sweep into L2 if shallow; buy → ask side).
+
+**Auto-detection.** No flag is needed — `main.rs::r5_active(config)` checks if any active asset is in the R5 universe (`assets::is_r5_symbol`); if so, days `[2,3,4]` are used and the run dispatches through `R5Scenario`. R3/R4 traders are unaffected.
+
+**Generic R5 asset.** `rust_simulator/src/assets/r5_asset.rs` is one shared impl — 50 instances built from `calibration/r5/scenario_params.json` at load time. No per-asset boilerplate Rust files.
+
+### Standard dev iteration (R5)
+
+```bash
+# Dev iteration — 100 sessions × 10K ticks (final-eval scale)
+prosperity4mcbt traders/round5/submission.py --quick
+
+# Pre-submission eval — 1000 sessions × 10K ticks
+prosperity4mcbt traders/round5/submission.py --heavy
+
+# Match portal-UI backtest (1,000 ticks/day) for apples-to-apples with portal subs
+prosperity4mcbt traders/round5/submission.py --heavy --ticks-per-day 1000
+
+# CSV replay against R5 historical (days 2/3/4)
+prosperity3bt traders/round5/submission.py 5
+```
+
+### R5 calibration pipeline
+
+The full pipeline produces two artifacts. `analysis/round5/calibration_r5.json` is the human-readable raw fit; `calibration/r5/scenario_params.json` is the Rust-ready bundle that `R5Scenario::load()` reads at runtime.
+
+```bash
+# 1) Re-run the rigorous calibration from historical CSVs
+#    Inputs : data/prosperity4/round5/{prices,trades}_round_5_day_{2,3,4}.csv
+#    Outputs: analysis/round5/calibration_r5.json
+py -3.13 analysis/round5/rigorous_calibration.py
+
+# 2) Validate the scenario v2 in Python (per-asset within-day std vs historical)
+#    Outputs: analysis/round5/scenario_v2_validation.csv
+py -3.13 analysis/round5/r5_scenario_v2.py
+
+# 3) End-to-end Python sim (hold-1 trader, day 4, 1K ticks, 50 seeds)
+#    Targets portal sub 545243 = -2160 PnL (within ±2σ of synthetic mean)
+py -3.13 analysis/round5/r5_python_sim.py
+
+# 4) Rust scenario smoke test (basket sum / K_day moments / pulse moments)
+cd rust_simulator && \
+  R5_SCENARIO_PARAMS=$(pwd)/../calibration/r5/scenario_params.json \
+  cargo run --release --bin r5_smoke -- 50
+
+# 5) Full R5 MC backtest against the active trader (auto-detects R5)
+prosperity4mcbt traders/round5/submission.py --quick
+```
+
+**`scenario_params.json` resolution order** (in `R5Scenario::load()`):
+
+1. `R5_SCENARIO_PARAMS` env var (absolute path) — most reliable, especially when running outside the repo root.
+2. Repo-root walk → `<repo>/calibration/r5/scenario_params.json`.
+
+If `R5Scenario::load()` errors with "could not find calibration/r5/scenario_params.json", set `R5_SCENARIO_PARAMS` explicitly.
+
+**Bundle structure** (top-level keys in `calibration/r5/scenario_params.json`):
+
+| Key | Purpose |
+| --- | --- |
+| `days`, `ticks_per_day` | Session schedule (`[2,3,4]`, 10000) |
+| `pebble_constant`, `pebble_free`, `pebble_derived` | `50_000.0`, the 4 free DoF, the derived asset (`PEBBLES_XL`) |
+| `snackpack_choc`, `snackpack_vanilla` | Pair members for the K_day constraint |
+| `k_day` | OU process for CHOC+VANILLA pair sum: `theta`, `sigma`, `daily_mu`(per day) |
+| `pulses` | List of `{name, rate_per_tick, p_buy, qty_observed_counts, members}` for V/P/M |
+| `assets` | 50 entries with `model` (`OU`/`RW`/absent if derived), `theta`, `sigma`, `daily_mu`, `h`, `depth_l1`, `depth_l2`, `l2_lift` |
+| `day_starts` | Per-day starting FV per asset |
+
+### R5 sim status
+
+Calibrated 2026-04-28. Hold-1 against synthetic day-4 1K ticks (`r5_python_sim.py`, 50 seeds) brackets the portal hold-1 result at portal sub 545243 (-2160 PnL) within the synthetic distribution. Per-asset within-day std synthetic-vs-historical agreement is checked in `analysis/round5/scenario_v2_validation.csv` — re-run `r5_scenario_v2.py` after any calibration regen.
+
+### Position-limit math is unforgiving in R5
+
+Limit = 10 per product means **a single 5-lot bid + 6-lot ask already breaches the worst-case rule** and ALL orders for that product are cancelled. R3/R4 strategies that stacked 30+ unit passive layers (Hagrid voucher stack, stratton OBI MM) **do not transfer**. Quote sizes need to be small; turnover and tick-by-tick rebalancing matter more than per-trade size.
+
+---
+
+## Running a backtest for a historical round (R3/R4)
+
+R4 kicked off 2026-04-26 ("The More The Merrier"). Same products as R3 — OSMIUM and PEPPER stopped being tradeable at R3, so no PEPPER `--start-fv` flags are needed. The R4 wrinkle is that `Trade.buyer` and `Trade.seller` are populated with `Mark <NN>` IDs instead of `None` (7 distinct Marks: 01, 14, 22, 38, 49, 55, 67). R3/R4 traders run through `IndependentScenario` (per-asset RW + per-asset Poisson) — **the R5 scenario layer is auto-skipped when no R5 symbols are declared.**
 
 Note: P4 does **not** carry prior-round products forward. At each new round only that round's listed products appear on the portal. R4 trades exactly the R3 book — `HYDROGEL_PACK`, `VELVETFRUIT_EXTRACT`, and the 10 `VEV_<strike>` vouchers. See per-asset Rust modules under `rust_simulator/src/assets/` and per-asset calibration in `calibration/<asset>/`.
 
@@ -266,14 +363,17 @@ py -3.13 scripts/bt_stats.py traders/round4/submission.py 4
 
 ## When to use which
 
-| Scenario            | Tool                      | Command                                              |
-| ------------------- | ------------------------- | ---------------------------------------------------- |
-| Dev iteration       | `prosperity4mcbt --quick` | `prosperity4mcbt traders/round4/submission.py --quick --vis`  |
-| Pre-submission eval | `prosperity4mcbt --heavy` | `prosperity4mcbt traders/round4/submission.py --heavy`        |
-| Tune params         | `prosperity4opt`          | `prosperity4opt studies/<name>.yaml --fresh`         |
-| Quick sanity check  | `prosperity3bt`           | `prosperity3bt traders/round4/submission.py 4`                |
-| Fill breakdown      | `bt_stats.py`             | `py -3.13 scripts/bt_stats.py traders/round4/submission.py 4` |
-| Ground truth        | Portal                    | Submit on prosperity.imc.com                         |
+| Scenario                  | Tool                       | Command                                                       |
+| ------------------------- | -------------------------- | ------------------------------------------------------------- |
+| Dev iteration (R5)        | `prosperity4mcbt --quick`  | `prosperity4mcbt traders/round5/submission.py --quick --vis`  |
+| Pre-submission eval (R5)  | `prosperity4mcbt --heavy`  | `prosperity4mcbt traders/round5/submission.py --heavy`        |
+| R5 scenario validation    | Rust `r5_smoke` binary     | `cd rust_simulator && cargo run --release --bin r5_smoke -- 50` |
+| R5 calibration regen      | Python                     | `py -3.13 analysis/round5/rigorous_calibration.py`            |
+| R5 Python end-to-end sim  | Python                     | `py -3.13 analysis/round5/r5_python_sim.py`                   |
+| Tune params               | `prosperity4opt`           | `prosperity4opt studies/<name>.yaml --fresh`                  |
+| Quick sanity check        | `prosperity3bt`            | `prosperity3bt traders/round5/submission.py 5`                |
+| Fill breakdown            | `bt_stats.py`              | `py -3.13 scripts/bt_stats.py traders/round5/submission.py 5` |
+| Ground truth              | Portal                     | Submit on prosperity.imc.com                                  |
 
 For parameter tuning, see [OPTIMIZER.md](OPTIMIZER.md) — Bayesian optimization on top of the MC sim with train/val/test seed splits, Deflated Sharpe Ratio, PBO, and fANOVA importance.
 
@@ -344,9 +444,11 @@ Simpler: fixed fair value at 10,000, outer wall at +/-10, inner wall at +/-8. Sa
 
 ### Recalibrating + adding a new asset to the sim
 
-When a new product drops, the work splits cleanly between calibration (statistical) and simulator integration (Rust).
+When a new product drops, the work splits cleanly between calibration (statistical) and simulator integration (Rust). **R5 changed the calibration shape** — see the two paths below.
 
-**Calibration pipeline:**
+#### Path A — R3/R4-style per-asset (independent dynamics)
+
+Use this when the new asset is independent of every other tradable (no basket, no pair-sum, no shared pulses).
 
 1. Submit `traders/trader_hold1.py` — it's asset-agnostic and will hold 1 unit of every product in the book, letting you recover server FV from PnL.
 2. `py -3.13 calibration/extract_fv_and_book.py <submission_id> <PRODUCT>` → writes `calibration/<asset_lower>/data/fv_and_book.json`.
@@ -369,6 +471,33 @@ When a new product drops, the work splits cleanly between calibration (statistic
 7. `cargo build --release` (from `rust_simulator/`).
 8. Extend `traders/round<N>/submission.py` with handlers for the new product, and declare the symbol near the top: `NEW = "YOUR_SYMBOL"`. The simulator scans the first 40 lines of the trader for `NAME = "SYMBOL"` patterns and activates the matching assets from the registry automatically — no other wiring needed.
 
-Note: P4 does **not** carry prior-round products forward (R3 dropped OSMIUM/PEPPER, R4 keeps the R3 book). Trim handlers for products no longer listed when porting between rounds, otherwise the simulator will reject unknown per-asset flags.
+Note: P4 does **not** carry prior-round products forward (R3 dropped OSMIUM/PEPPER, R4 keeps the R3 book, R5 wipes everything). Trim handlers for products no longer listed when porting between rounds, otherwise the simulator will reject unknown per-asset flags.
 
 See `calibration/ash_coated_osmium/calibration.md` and `calibration/intarian_pepper_root/calibration.md` for the output format to aim for, and `rust_simulator/src/asset.rs` for the `AssetSim` trait contract.
+
+#### Path B — R5 scenario-based (joint dynamics, shared pulses)
+
+Use this when products share constraints (basket sum, pair sum), share a trade-pulse process, or both. **All 50 R5 products live on this path**, in a single shared bundle.
+
+1. Drop the new product entries into `analysis/round5/rigorous_calibration.py`'s asset list and run it:
+   ```bash
+   py -3.13 analysis/round5/rigorous_calibration.py
+   ```
+   Inputs: `data/prosperity4/round5/{prices,trades}_round_5_day_{2,3,4}.csv`. Output: `analysis/round5/calibration_r5.json` (per-asset OU/RW fit + book params + per-pulse-group rates + variance-ratio diagnostics).
+2. Translate `calibration_r5.json` → `calibration/r5/scenario_params.json` (the Rust-ready bundle). The header at the top of `scenario_params.json` says "Edit the source not this file" — keep `calibration_r5.json` as the source-of-truth and re-emit `scenario_params.json` whenever it changes.
+3. Validate the synthetic moments:
+   ```bash
+   py -3.13 analysis/round5/r5_scenario_v2.py    # writes scenario_v2_validation.csv
+   py -3.13 analysis/round5/r5_python_sim.py     # hold-1 PnL distribution vs portal sub 545243
+   cd rust_simulator && \
+     R5_SCENARIO_PARAMS=$(pwd)/../calibration/r5/scenario_params.json \
+     cargo run --release --bin r5_smoke -- 50    # basket sum / K_day / pulses
+   ```
+4. **No new Rust file per product.** `rust_simulator/src/assets/r5_asset.rs` is generic — the 50 instances are built from `scenario_params.json` keys at startup. To add a 51st R5 product to the bundle:
+   - Append it to the `assets` map in `scenario_params.json` with `model`, `theta`, `sigma`, `daily_mu`, `h`, `depth_l1`, `depth_l2`, `l2_lift`.
+   - If it joins an existing pulse group, append its symbol to that group's `members` in the `pulses` array.
+   - If it joins an existing constraint (e.g. a new pebble), update `pebble_free`/`pebble_derived` (and the pebble constant if needed) — the constraint logic in `rust_simulator/src/scenarios/r5.rs` reads these keys.
+   - If it starts a new constraint or pulse group, add a corresponding case to `R5Scenario` and re-run the smoke test.
+5. Declare the symbol in the trader (`NEW = "YOUR_SYMBOL"`) — `assets::is_r5_symbol` reads from `scenario_params.json` so auto-detection picks up new entries without code changes.
+
+See `analysis/round5/SIM_DESIGN.md` for the full design of the 2-layer architecture and the rationale for moving R5 off the per-asset Rust file pattern.
