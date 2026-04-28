@@ -1,0 +1,1118 @@
+{
+  "_comment": "R5 scenario calibration. Generated from analysis/round5/calibration_r5.json. Edit the source not this file.",
+  "days": [
+    2,
+    3,
+    4
+  ],
+  "ticks_per_day": 10000,
+  "pebble_constant": 50000.0,
+  "pebble_free": [
+    "PEBBLES_XS",
+    "PEBBLES_S",
+    "PEBBLES_M",
+    "PEBBLES_L"
+  ],
+  "pebble_derived": "PEBBLES_XL",
+  "snackpack_choc": "SNACKPACK_CHOCOLATE",
+  "snackpack_vanilla": "SNACKPACK_VANILLA",
+  "k_day": {
+    "theta": 0.0018713365441394322,
+    "sigma": 2.68304829409362,
+    "daily_mu": {
+      "2": 20023.339076154054,
+      "3": 19921.38695123835,
+      "4": 19876.601764736926
+    }
+  },
+  "pulses": [
+    {
+      "name": "V",
+      "members": [
+        "GALAXY_SOUNDS_DARK_MATTER",
+        "GALAXY_SOUNDS_BLACK_HOLES",
+        "GALAXY_SOUNDS_PLANETARY_RINGS",
+        "GALAXY_SOUNDS_SOLAR_WINDS",
+        "GALAXY_SOUNDS_SOLAR_FLAMES",
+        "SLEEP_POD_SUEDE",
+        "SLEEP_POD_LAMB_WOOL",
+        "SLEEP_POD_POLYESTER",
+        "SLEEP_POD_NYLON",
+        "SLEEP_POD_COTTON",
+        "ROBOT_VACUUMING",
+        "ROBOT_MOPPING",
+        "ROBOT_DISHES",
+        "ROBOT_LAUNDRY",
+        "ROBOT_IRONING",
+        "UV_VISOR_YELLOW",
+        "UV_VISOR_AMBER",
+        "UV_VISOR_ORANGE",
+        "UV_VISOR_RED",
+        "UV_VISOR_MAGENTA",
+        "TRANSLATOR_SPACE_GRAY",
+        "TRANSLATOR_ASTRO_BLACK",
+        "TRANSLATOR_ECLIPSE_CHARCOAL",
+        "TRANSLATOR_GRAPHITE_MIST",
+        "TRANSLATOR_VOID_BLUE",
+        "PANEL_1X2",
+        "PANEL_2X2",
+        "PANEL_1X4",
+        "PANEL_2X4",
+        "PANEL_4X4",
+        "OXYGEN_SHAKE_MORNING_BREATH",
+        "OXYGEN_SHAKE_EVENING_BREATH",
+        "OXYGEN_SHAKE_MINT",
+        "OXYGEN_SHAKE_CHOCOLATE",
+        "OXYGEN_SHAKE_GARLIC",
+        "SNACKPACK_CHOCOLATE",
+        "SNACKPACK_VANILLA",
+        "SNACKPACK_PISTACHIO",
+        "SNACKPACK_STRAWBERRY",
+        "SNACKPACK_RASPBERRY"
+      ],
+      "rate_per_tick": 0.024433333333333335,
+      "p_buy": 0.48840381991814463,
+      "qty_min": 1,
+      "qty_max": 4,
+      "qty_observed_counts": {
+        "1": 190,
+        "2": 193,
+        "3": 171,
+        "4": 179
+      }
+    },
+    {
+      "name": "P",
+      "members": [
+        "PEBBLES_XS",
+        "PEBBLES_S",
+        "PEBBLES_M",
+        "PEBBLES_L",
+        "PEBBLES_XL"
+      ],
+      "rate_per_tick": 0.021466666666666665,
+      "p_buy": 0.4984472049689441,
+      "qty_min": 2,
+      "qty_max": 5,
+      "qty_observed_counts": {
+        "2": 157,
+        "3": 156,
+        "4": 154,
+        "5": 177
+      }
+    },
+    {
+      "name": "M",
+      "members": [
+        "MICROCHIP_CIRCLE",
+        "MICROCHIP_OVAL",
+        "MICROCHIP_SQUARE",
+        "MICROCHIP_RECTANGLE",
+        "MICROCHIP_TRIANGLE"
+      ],
+      "rate_per_tick": 0.018966666666666666,
+      "p_buy": 0.5272407732864675,
+      "qty_min": 1,
+      "qty_max": 3,
+      "qty_observed_counts": {
+        "1": 192,
+        "2": 204,
+        "3": 173
+      }
+    }
+  ],
+  "assets": {
+    "GALAXY_SOUNDS_DARK_MATTER": {
+      "category": "galaxy_sounds",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 10.243695565763858,
+      "theta": 0.0006254643077693076,
+      "half_life_ticks": 1108.212206435929,
+      "daily_mu": {
+        "2": 10178.560427054428,
+        "3": 10495.858352604855,
+        "4": 10048.33176381507
+      },
+      "h": 6.5,
+      "depth_l1": 18,
+      "depth_l2": 31,
+      "l2_lift": 2
+    },
+    "GALAXY_SOUNDS_BLACK_HOLES": {
+      "category": "galaxy_sounds",
+      "kind": "free",
+      "model": "RW",
+      "sigma": 11.479147585970223,
+      "theta": 0.00018228859335124738,
+      "half_life_ticks": 3802.4714976232062,
+      "daily_mu": {
+        "2": 11474.016751352357,
+        "3": 11485.51084738807,
+        "4": 13336.635097850449
+      },
+      "h": 7.0,
+      "depth_l1": 18,
+      "depth_l2": 31,
+      "l2_lift": 2
+    },
+    "GALAXY_SOUNDS_PLANETARY_RINGS": {
+      "category": "galaxy_sounds",
+      "kind": "free",
+      "model": "RW",
+      "sigma": 10.87800993602714,
+      "theta": 0.00018228859335124738,
+      "half_life_ticks": 3802.4714976232062,
+      "daily_mu": {
+        "2": 10698.374603375894,
+        "3": 11701.978394848818,
+        "4": 9702.157258982275
+      },
+      "h": 7.0,
+      "depth_l1": 18,
+      "depth_l2": 31,
+      "l2_lift": 2
+    },
+    "GALAXY_SOUNDS_SOLAR_WINDS": {
+      "category": "galaxy_sounds",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 10.537965739098912,
+      "theta": 0.0003153074100341683,
+      "half_life_ticks": 2198.321886836825,
+      "daily_mu": {
+        "2": 9934.523990683094,
+        "3": 10682.655190842323,
+        "4": 10774.978411748563
+      },
+      "h": 7.0,
+      "depth_l1": 18,
+      "depth_l2": 31,
+      "l2_lift": 2
+    },
+    "GALAXY_SOUNDS_SOLAR_FLAMES": {
+      "category": "galaxy_sounds",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 11.09265809673124,
+      "theta": 0.0004146880485089524,
+      "half_life_ticks": 1671.4906133712252,
+      "daily_mu": {
+        "2": 11420.111772667227,
+        "3": 11092.809238899894,
+        "4": 10965.493321270584
+      },
+      "h": 7.0,
+      "depth_l1": 18,
+      "depth_l2": 31,
+      "l2_lift": 2
+    },
+    "SLEEP_POD_SUEDE": {
+      "category": "sleep_pods",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 11.420160312302693,
+      "theta": 0.0004146880485089524,
+      "half_life_ticks": 1671.4906133712252,
+      "daily_mu": {
+        "2": 10519.866625609026,
+        "3": 12151.91227895846,
+        "4": 11956.67351615607
+      },
+      "h": 5.0,
+      "depth_l1": 11,
+      "depth_l2": 18,
+      "l2_lift": 1
+    },
+    "SLEEP_POD_LAMB_WOOL": {
+      "category": "sleep_pods",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 10.710967351335777,
+      "theta": 0.0004146880485089524,
+      "half_life_ticks": 1671.4906133712252,
+      "daily_mu": {
+        "2": 10866.335285329118,
+        "3": 10571.794225126177,
+        "4": 10862.999671917276
+      },
+      "h": 5.0,
+      "depth_l1": 11,
+      "depth_l2": 18,
+      "l2_lift": 1
+    },
+    "SLEEP_POD_POLYESTER": {
+      "category": "sleep_pods",
+      "kind": "free",
+      "model": "RW",
+      "sigma": 11.889796880711032,
+      "theta": 0.00018228859335124738,
+      "half_life_ticks": 3802.4714976232062,
+      "daily_mu": {
+        "2": 11665.29266499421,
+        "3": 12628.915679099175,
+        "4": 12306.52942188169
+      },
+      "h": 5.5,
+      "depth_l1": 11,
+      "depth_l2": 18,
+      "l2_lift": 1
+    },
+    "SLEEP_POD_NYLON": {
+      "category": "sleep_pods",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 9.619505159617667,
+      "theta": 0.0004146880485089524,
+      "half_life_ticks": 1671.4906133712252,
+      "daily_mu": {
+        "2": 9240.41866999541,
+        "3": 9424.159849462785,
+        "4": 10419.887685647423
+      },
+      "h": 4.5,
+      "depth_l1": 11,
+      "depth_l2": 18,
+      "l2_lift": 1
+    },
+    "SLEEP_POD_COTTON": {
+      "category": "sleep_pods",
+      "kind": "free",
+      "model": "RW",
+      "sigma": 11.67567031658898,
+      "theta": 0.00018228859335124738,
+      "half_life_ticks": 3802.4714976232062,
+      "daily_mu": {
+        "2": 11353.66211679068,
+        "3": 11937.554573865853,
+        "4": 12067.655464563435
+      },
+      "h": 5.0,
+      "depth_l1": 11,
+      "depth_l2": 18,
+      "l2_lift": 1
+    },
+    "MICROCHIP_CIRCLE": {
+      "category": "microchips",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 9.232433925918523,
+      "theta": 0.00027494163206446344,
+      "half_life_ticks": 2521.0702917389694,
+      "daily_mu": {
+        "2": 8781.215715713837,
+        "3": 8771.680569252743,
+        "4": 10230.696054478614
+      },
+      "h": 4.0,
+      "depth_l1": 6,
+      "depth_l2": 10,
+      "l2_lift": 1
+    },
+    "MICROCHIP_OVAL": {
+      "category": "microchips",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 12.476761411543096,
+      "theta": 0.0003153074100341683,
+      "half_life_ticks": 2198.321886836825,
+      "daily_mu": {
+        "2": 9530.44949346871,
+        "3": 7965.344209823294,
+        "4": 5626.857426724518
+      },
+      "h": 4.0,
+      "depth_l1": 7,
+      "depth_l2": 10,
+      "l2_lift": 1
+    },
+    "MICROCHIP_SQUARE": {
+      "category": "microchips",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 20.70321194642643,
+      "theta": 0.0004146880485089524,
+      "half_life_ticks": 1671.4906133712252,
+      "daily_mu": {
+        "2": 11860.533000077112,
+        "3": 15413.370238609312,
+        "4": 14382.289591315783
+      },
+      "h": 6.0,
+      "depth_l1": 6,
+      "depth_l2": 10,
+      "l2_lift": 1
+    },
+    "MICROCHIP_RECTANGLE": {
+      "category": "microchips",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 13.12747732015839,
+      "theta": 0.0005453921224291182,
+      "half_life_ticks": 1270.9152773838057,
+      "daily_mu": {
+        "2": 9490.625735983847,
+        "3": 8005.0459914198755,
+        "4": 8479.690308304776
+      },
+      "h": 4.0,
+      "depth_l1": 6,
+      "depth_l2": 10,
+      "l2_lift": 1
+    },
+    "MICROCHIP_TRIANGLE": {
+      "category": "microchips",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 14.501745022851665,
+      "theta": 0.0006254643077693076,
+      "half_life_ticks": 1108.212206435929,
+      "daily_mu": {
+        "2": 10329.010933808613,
+        "3": 9956.502170215845,
+        "4": 8441.214419796557
+      },
+      "h": 4.5,
+      "depth_l1": 6,
+      "depth_l2": 10,
+      "l2_lift": 1
+    },
+    "PEBBLES_XS": {
+      "category": "pebbles",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 15.050531445598063,
+      "theta": 0.00036159952232750736,
+      "half_life_ticks": 1916.8918589780358,
+      "daily_mu": {
+        "2": 8649.780380601962,
+        "3": 6635.560989002132,
+        "4": 5828.34435173539
+      },
+      "h": 4.5,
+      "depth_l1": 13,
+      "depth_l2": 25,
+      "l2_lift": 1
+    },
+    "PEBBLES_S": {
+      "category": "pebbles",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 15.016937525477767,
+      "theta": 0.0007172923557292161,
+      "half_life_ticks": 966.3384462744982,
+      "daily_mu": {
+        "2": 9533.40947947006,
+        "3": 9172.86025521411,
+        "4": 7818.418953080093
+      },
+      "h": 6.0,
+      "depth_l1": 12,
+      "depth_l2": 25,
+      "l2_lift": 1
+    },
+    "PEBBLES_M": {
+      "category": "pebbles",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 15.131054977555072,
+      "theta": 0.00047557080957759217,
+      "half_life_ticks": 1457.5057312193048,
+      "daily_mu": {
+        "2": 9540.274215993086,
+        "3": 10599.194649097317,
+        "4": 10795.260275053404
+      },
+      "h": 6.5,
+      "depth_l1": 12,
+      "depth_l2": 25,
+      "l2_lift": 2
+    },
+    "PEBBLES_L": {
+      "category": "pebbles",
+      "kind": "free",
+      "model": "RW",
+      "sigma": 15.02424104539204,
+      "theta": 0.00023974349678010785,
+      "half_life_ticks": 2891.2032646111697,
+      "daily_mu": {
+        "2": 9905.75300880506,
+        "3": 10574.515648113264,
+        "4": 9670.405557568885
+      },
+      "h": 6.5,
+      "depth_l1": 12,
+      "depth_l2": 25,
+      "l2_lift": 2
+    },
+    "PEBBLES_XL": {
+      "category": "pebbles",
+      "kind": "derived",
+      "derived_from": "pebbles_constraint",
+      "h": 8.5,
+      "depth_l1": 12,
+      "depth_l2": 25,
+      "l2_lift": 2
+    },
+    "ROBOT_VACUUMING": {
+      "category": "robots",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 9.233492891287998,
+      "theta": 0.0006254643077693076,
+      "half_life_ticks": 1108.212206435929,
+      "daily_mu": {
+        "2": 9757.337382166874,
+        "3": 8890.609893870227,
+        "4": 8578.772028539492
+      },
+      "h": 3.5,
+      "depth_l1": 7,
+      "depth_l2": 10,
+      "l2_lift": 1
+    },
+    "ROBOT_MOPPING": {
+      "category": "robots",
+      "kind": "free",
+      "model": "RW",
+      "sigma": 11.144380307605847,
+      "theta": 0.00018228859335124738,
+      "half_life_ticks": 3802.4714976232062,
+      "daily_mu": {
+        "2": 10440.905008930162,
+        "3": 12301.818175105214,
+        "4": 11430.493904878229
+      },
+      "h": 4.0,
+      "depth_l1": 6,
+      "depth_l2": 10,
+      "l2_lift": 1
+    },
+    "ROBOT_DISHES": {
+      "category": "robots",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 17.770516691466078,
+      "theta": 0.0018713365441394322,
+      "half_life_ticks": 370.4022040988365,
+      "daily_mu": {
+        "2": 9468.417210079406,
+        "3": 9955.787075399821,
+        "4": 10695.633061761957
+      },
+      "h": 3.5,
+      "depth_l1": 6,
+      "depth_l2": 10,
+      "l2_lift": 1
+    },
+    "ROBOT_LAUNDRY": {
+      "category": "robots",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 9.820427830808326,
+      "theta": 0.0007172923557292161,
+      "half_life_ticks": 966.3384462744982,
+      "daily_mu": {
+        "2": 10308.712339677333,
+        "3": 10059.941148042624,
+        "4": 8999.500866201313
+      },
+      "h": 3.5,
+      "depth_l1": 7,
+      "depth_l2": 10,
+      "l2_lift": 1
+    },
+    "ROBOT_IRONING": {
+      "category": "robots",
+      "kind": "free",
+      "model": "RW",
+      "sigma": 10.442780838787803,
+      "theta": 0.00018228859335124738,
+      "half_life_ticks": 3802.4714976232062,
+      "daily_mu": {
+        "2": 9085.444012536866,
+        "3": 7795.437089160389,
+        "4": 8038.903413841892
+      },
+      "h": 3.0,
+      "depth_l1": 7,
+      "depth_l2": 10,
+      "l2_lift": 1
+    },
+    "UV_VISOR_YELLOW": {
+      "category": "uv_visors",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 11.004160183240302,
+      "theta": 0.00020905144054312376,
+      "half_life_ticks": 3315.677609104831,
+      "daily_mu": {
+        "2": 11540.208621034355,
+        "3": 11631.709013504393,
+        "4": 9723.346697784928
+      },
+      "h": 7.0,
+      "depth_l1": 18,
+      "depth_l2": 31,
+      "l2_lift": 2
+    },
+    "UV_VISOR_AMBER": {
+      "category": "uv_visors",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 8.003075861498457,
+      "theta": 0.0005453921224291182,
+      "half_life_ticks": 1270.9152773838057,
+      "daily_mu": {
+        "2": 8902.306282575915,
+        "3": 7469.569569617817,
+        "4": 6838.196968911066
+      },
+      "h": 5.0,
+      "depth_l1": 18,
+      "depth_l2": 31,
+      "l2_lift": 1
+    },
+    "UV_VISOR_ORANGE": {
+      "category": "uv_visors",
+      "kind": "free",
+      "model": "RW",
+      "sigma": 10.460091700269931,
+      "theta": 0.00015895193632555648,
+      "half_life_ticks": 4360.734424400342,
+      "daily_mu": {
+        "2": 9974.082301628827,
+        "3": 10645.985791766543,
+        "4": 10232.070405798288
+      },
+      "h": 6.5,
+      "depth_l1": 18,
+      "depth_l2": 31,
+      "l2_lift": 2
+    },
+    "UV_VISOR_RED": {
+      "category": "uv_visors",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 11.026690118344751,
+      "theta": 0.0009433732216299783,
+      "half_life_ticks": 734.7539284211526,
+      "daily_mu": {
+        "2": 10866.81230770031,
+        "3": 10643.44196464475,
+        "4": 11862.140618308553
+      },
+      "h": 7.0,
+      "depth_l1": 18,
+      "depth_l2": 31,
+      "l2_lift": 2
+    },
+    "UV_VISOR_MAGENTA": {
+      "category": "uv_visors",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 11.201110405620277,
+      "theta": 0.00047557080957759217,
+      "half_life_ticks": 1457.5057312193048,
+      "daily_mu": {
+        "2": 10672.093640314159,
+        "3": 11411.798181596792,
+        "4": 11567.767368913454
+      },
+      "h": 7.0,
+      "depth_l1": 18,
+      "depth_l2": 31,
+      "l2_lift": 2
+    },
+    "TRANSLATOR_SPACE_GRAY": {
+      "category": "translators",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 9.421976414094377,
+      "theta": 0.0004146880485089524,
+      "half_life_ticks": 1671.4906133712252,
+      "daily_mu": {
+        "2": 9584.97677088377,
+        "3": 9765.741539352633,
+        "4": 8569.029169500163
+      },
+      "h": 4.5,
+      "depth_l1": 11,
+      "depth_l2": 18,
+      "l2_lift": 1
+    },
+    "TRANSLATOR_ASTRO_BLACK": {
+      "category": "translators",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 9.445952599818959,
+      "theta": 0.0008226022127825987,
+      "half_life_ticks": 842.6274203849408,
+      "daily_mu": {
+        "2": 9956.540997310682,
+        "3": 8902.658796047797,
+        "4": 9167.817622788398
+      },
+      "h": 4.0,
+      "depth_l1": 11,
+      "depth_l2": 18,
+      "l2_lift": 1
+    },
+    "TRANSLATOR_ECLIPSE_CHARCOAL": {
+      "category": "translators",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 9.856139985185344,
+      "theta": 0.0004146880485089524,
+      "half_life_ticks": 1671.4906133712252,
+      "daily_mu": {
+        "2": 9698.490122774576,
+        "3": 9859.028685840225,
+        "4": 9819.901948723587
+      },
+      "h": 4.5,
+      "depth_l1": 11,
+      "depth_l2": 18,
+      "l2_lift": 1
+    },
+    "TRANSLATOR_GRAPHITE_MIST": {
+      "category": "translators",
+      "kind": "free",
+      "model": "RW",
+      "sigma": 10.128685788933685,
+      "theta": 0.00020905144054312376,
+      "half_life_ticks": 3315.677609104831,
+      "daily_mu": {
+        "2": 9471.254379033362,
+        "3": 10796.689813571513,
+        "4": 9885.518359129614
+      },
+      "h": 4.5,
+      "depth_l1": 11,
+      "depth_l2": 18,
+      "l2_lift": 1
+    },
+    "TRANSLATOR_VOID_BLUE": {
+      "category": "translators",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 10.831912982256643,
+      "theta": 0.0004146880485089524,
+      "half_life_ticks": 1671.4906133712252,
+      "daily_mu": {
+        "2": 10449.245046379134,
+        "3": 11046.455796219549,
+        "4": 11448.349086066359
+      },
+      "h": 5.0,
+      "depth_l1": 11,
+      "depth_l2": 18,
+      "l2_lift": 1
+    },
+    "PANEL_1X2": {
+      "category": "panels",
+      "kind": "free",
+      "model": "RW",
+      "sigma": 9.053086132600615,
+      "theta": 0.00023974349678010785,
+      "half_life_ticks": 2891.2032646111697,
+      "daily_mu": {
+        "2": 8577.37444204314,
+        "3": 8458.160812093613,
+        "4": 9608.735721982783
+      },
+      "h": 6.0,
+      "depth_l1": 18,
+      "depth_l2": 31,
+      "l2_lift": 1
+    },
+    "PANEL_2X2": {
+      "category": "panels",
+      "kind": "free",
+      "model": "RW",
+      "sigma": 9.595511024084782,
+      "theta": 0.00027494163206446344,
+      "half_life_ticks": 2521.0702917389694,
+      "daily_mu": {
+        "2": 9847.41970399541,
+        "3": 9845.784797546146,
+        "4": 8827.072765185954
+      },
+      "h": 4.5,
+      "depth_l1": 11,
+      "depth_l2": 18,
+      "l2_lift": 1
+    },
+    "PANEL_1X4": {
+      "category": "panels",
+      "kind": "free",
+      "model": "RW",
+      "sigma": 9.481435580307792,
+      "theta": 0.00013860284726077113,
+      "half_life_ticks": 5000.959174062561,
+      "daily_mu": {
+        "2": 10790.713804892015,
+        "3": 7921.151010275355,
+        "4": 8896.69410466585
+      },
+      "h": 4.0,
+      "depth_l1": 11,
+      "depth_l2": 18,
+      "l2_lift": 1
+    },
+    "PANEL_2X4": {
+      "category": "panels",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 11.287504344808807,
+      "theta": 0.00047557080957759217,
+      "half_life_ticks": 1457.5057312193048,
+      "daily_mu": {
+        "2": 10868.735661804883,
+        "3": 11362.096797918493,
+        "4": 12063.714532638249
+      },
+      "h": 5.0,
+      "depth_l1": 11,
+      "depth_l2": 18,
+      "l2_lift": 1
+    },
+    "PANEL_4X4": {
+      "category": "panels",
+      "kind": "free",
+      "model": "RW",
+      "sigma": 9.956465000444792,
+      "theta": 0.00015895193632555648,
+      "half_life_ticks": 4360.734424400342,
+      "daily_mu": {
+        "2": 9837.874888280605,
+        "3": 9908.80371978385,
+        "4": 9339.001041137803
+      },
+      "h": 4.5,
+      "depth_l1": 11,
+      "depth_l2": 18,
+      "l2_lift": 1
+    },
+    "OXYGEN_SHAKE_MORNING_BREATH": {
+      "category": "oxygen_shakes",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 10.099001009197535,
+      "theta": 0.0003153074100341683,
+      "half_life_ticks": 2198.321886836825,
+      "daily_mu": {
+        "2": 10901.22605564306,
+        "3": 9445.869200936095,
+        "4": 9511.841374093581
+      },
+      "h": 6.5,
+      "depth_l1": 18,
+      "depth_l2": 31,
+      "l2_lift": 2
+    },
+    "OXYGEN_SHAKE_EVENING_BREATH": {
+      "category": "oxygen_shakes",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 10.981066645809998,
+      "theta": 0.00047557080957759217,
+      "half_life_ticks": 1457.5057312193048,
+      "daily_mu": {
+        "2": 8854.4742498169,
+        "3": 9414.565885638298,
+        "4": 9424.727536463148
+      },
+      "h": 6.0,
+      "depth_l1": 18,
+      "depth_l2": 31,
+      "l2_lift": 1
+    },
+    "OXYGEN_SHAKE_MINT": {
+      "category": "oxygen_shakes",
+      "kind": "free",
+      "model": "RW",
+      "sigma": 9.882823044626758,
+      "theta": 0.0003153074100341683,
+      "half_life_ticks": 2198.321886836825,
+      "daily_mu": {
+        "2": 9927.276938792922,
+        "3": 10141.645873890899,
+        "4": 9495.852466365212
+      },
+      "h": 6.5,
+      "depth_l1": 18,
+      "depth_l2": 31,
+      "l2_lift": 1
+    },
+    "OXYGEN_SHAKE_CHOCOLATE": {
+      "category": "oxygen_shakes",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 10.88857073029613,
+      "theta": 0.00036159952232750736,
+      "half_life_ticks": 1916.8918589780358,
+      "daily_mu": {
+        "2": 9214.740214699199,
+        "3": 9199.878739887872,
+        "4": 10455.621774840141
+      },
+      "h": 6.0,
+      "depth_l1": 18,
+      "depth_l2": 31,
+      "l2_lift": 1
+    },
+    "OXYGEN_SHAKE_GARLIC": {
+      "category": "oxygen_shakes",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 12.013240843139467,
+      "theta": 0.00023974349678010785,
+      "half_life_ticks": 2891.2032646111697,
+      "daily_mu": {
+        "2": 11820.93737905244,
+        "3": 11854.133346528479,
+        "4": 13727.72832810408
+      },
+      "h": 7.5,
+      "depth_l1": 18,
+      "depth_l2": 31,
+      "l2_lift": 2
+    },
+    "SNACKPACK_CHOCOLATE": {
+      "category": "snackpacks",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 6.574001882383643,
+      "theta": 0.0009433732216299783,
+      "half_life_ticks": 734.7539284211526,
+      "daily_mu": {
+        "2": 9952.255907168297,
+        "3": 9892.401296263573,
+        "4": 9649.317962640418
+      },
+      "h": 8.5,
+      "depth_l1": 30,
+      "depth_l2": 50,
+      "l2_lift": 2
+    },
+    "SNACKPACK_VANILLA": {
+      "category": "snackpacks",
+      "kind": "derived",
+      "derived_from": "snackpack_pair",
+      "h": 8.5,
+      "depth_l1": 30,
+      "depth_l2": 50,
+      "l2_lift": 2
+    },
+    "SNACKPACK_PISTACHIO": {
+      "category": "snackpacks",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 5.236635323608404,
+      "theta": 0.0007172923557292161,
+      "half_life_ticks": 966.3384462744982,
+      "daily_mu": {
+        "2": 9587.443354975157,
+        "3": 9470.183592058589,
+        "4": 9305.235010004852
+      },
+      "h": 8.0,
+      "depth_l1": 30,
+      "depth_l2": 50,
+      "l2_lift": 2
+    },
+    "SNACKPACK_STRAWBERRY": {
+      "category": "snackpacks",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 8.13070218854453,
+      "theta": 0.0009433732216299783,
+      "half_life_ticks": 734.7539284211526,
+      "daily_mu": {
+        "2": 10341.535480556036,
+        "3": 10832.539428037651,
+        "4": 11040.20707273314
+      },
+      "h": 9.0,
+      "depth_l1": 30,
+      "depth_l2": 50,
+      "l2_lift": 2
+    },
+    "SNACKPACK_RASPBERRY": {
+      "category": "snackpacks",
+      "kind": "free",
+      "model": "OU",
+      "sigma": 8.08946450107308,
+      "theta": 0.001081875323770525,
+      "half_life_ticks": 640.6904430948715,
+      "daily_mu": {
+        "2": 10086.994685622261,
+        "3": 10107.276497474772,
+        "4": 10067.731899839948
+      },
+      "h": 8.5,
+      "depth_l1": 30,
+      "depth_l2": 50,
+      "l2_lift": 2
+    }
+  },
+  "day_starts": {
+    "2": {
+      "PEBBLES_L": 10000.0,
+      "SNACKPACK_RASPBERRY": 10000.0,
+      "UV_VISOR_RED": 10000.0,
+      "PEBBLES_M": 10000.0,
+      "GALAXY_SOUNDS_DARK_MATTER": 10000.0,
+      "UV_VISOR_ORANGE": 10000.0,
+      "PEBBLES_S": 10000.0,
+      "UV_VISOR_YELLOW": 10000.0,
+      "MICROCHIP_TRIANGLE": 10000.0,
+      "MICROCHIP_SQUARE": 10000.0,
+      "SNACKPACK_VANILLA": 10000.0,
+      "SNACKPACK_CHOCOLATE": 10000.0,
+      "GALAXY_SOUNDS_BLACK_HOLES": 10000.0,
+      "UV_VISOR_AMBER": 10000.0,
+      "UV_VISOR_MAGENTA": 10000.0,
+      "TRANSLATOR_GRAPHITE_MIST": 10000.0,
+      "TRANSLATOR_VOID_BLUE": 10000.0,
+      "SLEEP_POD_COTTON": 10000.0,
+      "OXYGEN_SHAKE_CHOCOLATE": 10000.0,
+      "PANEL_1X2": 10000.0,
+      "PANEL_1X4": 10000.0,
+      "GALAXY_SOUNDS_SOLAR_FLAMES": 10000.0,
+      "ROBOT_DISHES": 10000.0,
+      "MICROCHIP_RECTANGLE": 10000.0,
+      "GALAXY_SOUNDS_SOLAR_WINDS": 10000.0,
+      "SLEEP_POD_POLYESTER": 10000.0,
+      "ROBOT_VACUUMING": 10000.0,
+      "SNACKPACK_PISTACHIO": 10000.0,
+      "GALAXY_SOUNDS_PLANETARY_RINGS": 10000.0,
+      "SLEEP_POD_LAMB_WOOL": 10000.0,
+      "SLEEP_POD_NYLON": 10000.0,
+      "OXYGEN_SHAKE_EVENING_BREATH": 10000.0,
+      "TRANSLATOR_SPACE_GRAY": 10000.0,
+      "MICROCHIP_CIRCLE": 10000.0,
+      "OXYGEN_SHAKE_GARLIC": 10000.0,
+      "ROBOT_MOPPING": 10000.0,
+      "TRANSLATOR_ECLIPSE_CHARCOAL": 10000.0,
+      "TRANSLATOR_ASTRO_BLACK": 10000.0,
+      "SLEEP_POD_SUEDE": 10000.0,
+      "MICROCHIP_OVAL": 10000.0,
+      "SNACKPACK_STRAWBERRY": 10000.0,
+      "ROBOT_LAUNDRY": 10000.0,
+      "OXYGEN_SHAKE_MINT": 10000.0,
+      "PEBBLES_XL": 10000.0,
+      "PANEL_2X2": 10000.0,
+      "ROBOT_IRONING": 10000.0,
+      "OXYGEN_SHAKE_MORNING_BREATH": 10000.0,
+      "PANEL_2X4": 10000.0,
+      "PANEL_4X4": 10000.0,
+      "PEBBLES_XS": 10000.0
+    },
+    "3": {
+      "MICROCHIP_SQUARE": 12457.5,
+      "MICROCHIP_OVAL": 9252.5,
+      "TRANSLATOR_ECLIPSE_CHARCOAL": 10248.5,
+      "SNACKPACK_CHOCOLATE": 9920.5,
+      "UV_VISOR_YELLOW": 11578.5,
+      "ROBOT_IRONING": 9500.0,
+      "PANEL_2X4": 10721.0,
+      "PANEL_4X4": 9678.0,
+      "MICROCHIP_CIRCLE": 8887.5,
+      "SLEEP_POD_SUEDE": 11085.0,
+      "OXYGEN_SHAKE_CHOCOLATE": 9475.0,
+      "GALAXY_SOUNDS_SOLAR_FLAMES": 11338.5,
+      "SNACKPACK_STRAWBERRY": 10437.5,
+      "ROBOT_LAUNDRY": 10237.0,
+      "UV_VISOR_ORANGE": 10167.5,
+      "SLEEP_POD_COTTON": 11117.5,
+      "ROBOT_VACUUMING": 10067.5,
+      "SNACKPACK_PISTACHIO": 9509.5,
+      "PANEL_1X2": 8428.5,
+      "SNACKPACK_VANILLA": 10047.5,
+      "MICROCHIP_RECTANGLE": 9411.5,
+      "GALAXY_SOUNDS_SOLAR_WINDS": 9591.5,
+      "UV_VISOR_MAGENTA": 11328.5,
+      "TRANSLATOR_GRAPHITE_MIST": 9338.0,
+      "OXYGEN_SHAKE_GARLIC": 11823.5,
+      "TRANSLATOR_ASTRO_BLACK": 10163.5,
+      "GALAXY_SOUNDS_BLACK_HOLES": 11444.5,
+      "UV_VISOR_AMBER": 8497.0,
+      "OXYGEN_SHAKE_EVENING_BREATH": 8430.0,
+      "OXYGEN_SHAKE_MORNING_BREATH": 11003.0,
+      "PANEL_1X4": 11089.0,
+      "OXYGEN_SHAKE_MINT": 10104.5,
+      "PEBBLES_XS": 8063.0,
+      "TRANSLATOR_VOID_BLUE": 11096.0,
+      "PEBBLES_M": 9020.0,
+      "PEBBLES_L": 10130.5,
+      "SNACKPACK_RASPBERRY": 10240.5,
+      "TRANSLATOR_SPACE_GRAY": 9489.5,
+      "PEBBLES_S": 9157.0,
+      "PEBBLES_XL": 13629.0,
+      "SLEEP_POD_POLYESTER": 11780.0,
+      "UV_VISOR_RED": 10849.0,
+      "SLEEP_POD_NYLON": 8873.0,
+      "PANEL_2X2": 10089.5,
+      "MICROCHIP_TRIANGLE": 10714.5,
+      "GALAXY_SOUNDS_DARK_MATTER": 10409.5,
+      "ROBOT_MOPPING": 9814.5,
+      "ROBOT_DISHES": 9924.0,
+      "GALAXY_SOUNDS_PLANETARY_RINGS": 11249.5,
+      "SLEEP_POD_LAMB_WOOL": 10397.0
+    },
+    "4": {
+      "GALAXY_SOUNDS_PLANETARY_RINGS": 11415.5,
+      "SLEEP_POD_LAMB_WOOL": 10792.0,
+      "TRANSLATOR_SPACE_GRAY": 10118.5,
+      "SLEEP_POD_NYLON": 9714.0,
+      "SNACKPACK_PISTACHIO": 9395.0,
+      "PANEL_2X2": 9197.0,
+      "PANEL_2X4": 11459.0,
+      "PANEL_4X4": 10255.5,
+      "MICROCHIP_RECTANGLE": 7830.5,
+      "SLEEP_POD_POLYESTER": 12886.5,
+      "UV_VISOR_MAGENTA": 11580.5,
+      "ROBOT_DISHES": 10123.0,
+      "GALAXY_SOUNDS_SOLAR_WINDS": 10756.0,
+      "ROBOT_MOPPING": 12170.0,
+      "TRANSLATOR_ECLIPSE_CHARCOAL": 9613.5,
+      "TRANSLATOR_ASTRO_BLACK": 9160.0,
+      "SNACKPACK_STRAWBERRY": 10804.0,
+      "ROBOT_LAUNDRY": 9473.5,
+      "MICROCHIP_SQUARE": 15911.0,
+      "SLEEP_POD_SUEDE": 12138.5,
+      "ROBOT_IRONING": 7500.0,
+      "MICROCHIP_OVAL": 7416.5,
+      "ROBOT_VACUUMING": 8584.0,
+      "MICROCHIP_CIRCLE": 8535.0,
+      "OXYGEN_SHAKE_MINT": 9714.5,
+      "OXYGEN_SHAKE_GARLIC": 11927.5,
+      "PEBBLES_XL": 12054.0,
+      "PEBBLES_S": 9003.5,
+      "SLEEP_POD_COTTON": 12198.0,
+      "PANEL_1X2": 8849.5,
+      "PANEL_1X4": 8730.0,
+      "PEBBLES_XS": 6861.5,
+      "OXYGEN_SHAKE_MORNING_BREATH": 9532.0,
+      "SNACKPACK_VANILLA": 10021.5,
+      "TRANSLATOR_GRAPHITE_MIST": 11053.0,
+      "GALAXY_SOUNDS_DARK_MATTER": 10876.0,
+      "UV_VISOR_ORANGE": 10288.5,
+      "OXYGEN_SHAKE_CHOCOLATE": 9324.0,
+      "UV_VISOR_YELLOW": 12056.5,
+      "OXYGEN_SHAKE_EVENING_BREATH": 9430.0,
+      "MICROCHIP_TRIANGLE": 9020.0,
+      "UV_VISOR_AMBER": 7385.0,
+      "SNACKPACK_CHOCOLATE": 9843.5,
+      "GALAXY_SOUNDS_BLACK_HOLES": 12137.0,
+      "GALAXY_SOUNDS_SOLAR_FLAMES": 10643.0,
+      "UV_VISOR_RED": 11024.5,
+      "TRANSLATOR_VOID_BLUE": 10693.0,
+      "PEBBLES_L": 11014.5,
+      "SNACKPACK_RASPBERRY": 10120.5,
+      "PEBBLES_M": 11066.0
+    }
+  }
+}

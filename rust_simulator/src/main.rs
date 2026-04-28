@@ -16,12 +16,15 @@
 mod asset;
 mod assets;
 mod detect;
+mod scenario;
+mod scenarios;
 
 use anyhow::{Context, Result, bail};
 use asset::{
     AssetSim, Book, Fill, InputPriceRow, Level, LevelOwner, ProductLedger, SimBook,
     symbol_to_kebab,
 };
+use scenario::Scenario;
 use csv::{ReaderBuilder, WriterBuilder};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
@@ -35,6 +38,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 
 const DAYS: [i32; 2] = [-2, -1];
+const R5_DAYS: [i32; 3] = [2, 3, 4];
 const DEFAULT_TICKS_PER_DAY: usize = 10_000;
 const TIMESTAMP_STEP: i32 = 100;
 const STRATEGY_RUN_TIMEOUT_MS: u64 = 900;
@@ -474,8 +478,9 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    // Data-generation mode (no strategy): run one day per DAYS entry.
-    let outputs = DAYS
+    // Data-generation mode (no strategy): run one day per active-day entry.
+    let days = effective_days(&config);
+    let outputs = days
         .par_iter()
         .map(|day| generate_day(*day, &config, &replay_data))
         .collect::<Result<Vec<_>>>()?;
@@ -490,11 +495,12 @@ impl ReplayData {
     fn load(config: &Config) -> Result<Self> {
         let mut fair_by_asset_day = HashMap::new();
         let mut trade_counts_by_key = HashMap::new();
+        let days = effective_days(config);
 
         if config.fv_mode == FvMode::Replay {
             // For each active asset, read deepest-midpoint FV per timestep per day.
-            for day in DAYS {
-                let prices = load_price_rows(&config.actual_dir, day)?;
+            for day in days {
+                let prices = load_price_rows(&config.actual_dir, *day)?;
                 for asset in &config.assets {
                     let symbol = asset.symbol().to_string();
                     let mut rows: Vec<_> = prices
@@ -506,14 +512,14 @@ impl ReplayData {
                         .iter()
                         .map(|row| asset.infer_observed_fair(row))
                         .collect::<Vec<_>>();
-                    fair_by_asset_day.insert((symbol, day), fair_values);
+                    fair_by_asset_day.insert((symbol, *day), fair_values);
                 }
             }
         }
 
         if config.trade_mode == TradeMode::ReplayTimes {
-            for day in DAYS {
-                let trades = load_trade_rows(&config.actual_dir, day)?;
+            for day in days {
+                let trades = load_trade_rows(&config.actual_dir, *day)?;
                 for asset in &config.assets {
                     let symbol = asset.symbol().to_string();
                     let mut counts = vec![0usize; DEFAULT_TICKS_PER_DAY];
@@ -524,7 +530,7 @@ impl ReplayData {
                             counts[index] += 1;
                         }
                     }
-                    trade_counts_by_key.insert((day, symbol), counts);
+                    trade_counts_by_key.insert((*day, symbol), counts);
                 }
             }
         }
@@ -538,9 +544,57 @@ impl ReplayData {
 
 // ---------------- Data generation (no strategy) ----------------
 
+/// True if any active asset belongs to the R5 universe. R5 routes through
+/// `R5Scenario` for joint FV generation + shared pulse trade events.
+fn r5_active(config: &Config) -> bool {
+    config
+        .assets
+        .iter()
+        .any(|a| assets::is_r5_symbol(a.symbol()))
+}
+
+/// Days to iterate for the active config. R5 uses days {2,3,4} (matching the
+/// CSVs under `data/prosperity4/round5/`); legacy assets use the historical
+/// {-2, -1} pair.
+fn effective_days(config: &Config) -> &'static [i32] {
+    if r5_active(config) {
+        &R5_DAYS
+    } else {
+        &DAYS
+    }
+}
+
+/// Build a tick-indexed lookup of pulses for one day. Used by both the
+/// data-gen path and the strategy-run path.
+fn pulses_by_tick(
+    pulses: &[scenario::Pulse],
+    ticks_per_day: usize,
+) -> Vec<Vec<scenario::Pulse>> {
+    let mut out: Vec<Vec<scenario::Pulse>> = (0..ticks_per_day).map(|_| Vec::new()).collect();
+    for p in pulses {
+        if p.tick < ticks_per_day {
+            out[p.tick].push(p.clone());
+        }
+    }
+    out
+}
+
 fn generate_day(day: i32, config: &Config, replay: &ReplayData) -> Result<DayOutput> {
     let mut rng = ChaCha8Rng::seed_from_u64(seed_for_day(config.seed, day));
-    let day_index = DAYS.iter().position(|&d| d == day).unwrap_or(0);
+    let day_index = effective_days(config)
+        .iter()
+        .position(|&d| d == day)
+        .unwrap_or(0);
+    let r5 = r5_active(config);
+
+    // R5: generate joint FVs + pulses up-front. The asset-by-asset FV loop
+    // below is skipped for R5 symbols.
+    let r5_data = if r5 {
+        let scenario = scenarios::r5::R5Scenario::load()?;
+        Some(scenario.generate_day_data(day, config.ticks_per_day, &mut rng)?)
+    } else {
+        None
+    };
 
     // FV paths per asset.
     let mut fv_per_asset: HashMap<String, Vec<f64>> = HashMap::new();
@@ -552,39 +606,99 @@ fn generate_day(day: i32, config: &Config, replay: &ReplayData) -> Result<DayOut
                 .get(&(symbol.clone(), day))
                 .cloned()
                 .with_context(|| format!("missing replay FV values for {}", symbol))?
+        } else if r5 && assets::is_r5_symbol(&symbol) {
+            r5_data
+                .as_ref()
+                .unwrap()
+                .fv_paths
+                .get(&symbol)
+                .cloned()
+                .with_context(|| format!("R5 scenario missing FV for {}", symbol))?
         } else {
             asset.simulate_fv(day_index, config.ticks_per_day, &mut rng)?
         };
         fv_per_asset.insert(symbol, fv);
     }
 
-    // Trade counts per asset.
+    // Trade counts per asset. R5 assets emit zero base-rate counts (pulses
+    // replace per-asset Bernoulli sampling).
     let mut trade_counts_per_asset: HashMap<String, Vec<usize>> = HashMap::new();
     for asset in &config.assets {
         let symbol = asset.symbol().to_string();
-        let counts = trade_counts_for(asset.as_ref(), day, config, replay, &mut rng)?;
+        let counts = if r5 && assets::is_r5_symbol(&symbol) {
+            vec![0usize; config.ticks_per_day]
+        } else {
+            trade_counts_for(asset.as_ref(), day, config, replay, &mut rng)?
+        };
         trade_counts_per_asset.insert(symbol, counts);
     }
+
+    // Pulse lookup (R5 only).
+    let pulses_idx: Option<Vec<Vec<scenario::Pulse>>> = r5_data
+        .as_ref()
+        .map(|d| pulses_by_tick(&d.pulses, config.ticks_per_day));
 
     let mut price_rows = Vec::with_capacity(config.ticks_per_day * config.assets.len());
     let mut trade_rows = Vec::new();
 
+    // Index symbols → asset (used to dispatch pulses to the right book in R5).
+    let symbol_to_idx: HashMap<String, usize> = config
+        .assets
+        .iter()
+        .enumerate()
+        .map(|(i, a)| (a.symbol().to_string(), i))
+        .collect();
+
     for tick in 0..config.ticks_per_day {
         let timestamp = (tick as i32) * TIMESTAMP_STEP;
-        for asset in &config.assets {
-            let symbol = asset.symbol();
-            let fv = fv_per_asset[symbol][tick];
-            let mut book = asset.make_book(fv, &mut rng);
-            apply_quote_fraction(&mut book, config.quote_fraction, &mut rng);
-            price_rows.push(book_to_price_row(day, timestamp, symbol, &book));
-            let count = trade_counts_per_asset[symbol][tick];
-            for _ in 0..count {
-                trade_rows.extend(sample_trade_rows(
-                    timestamp,
-                    asset.as_ref(),
-                    &book,
-                    &mut rng,
-                ));
+        if r5 {
+            // R5 path: build all books first so pulses can dispatch to any of
+            // them. Per-asset base-rate sampling is no-op here (counts = 0).
+            let mut books: Vec<Book> = Vec::with_capacity(config.assets.len());
+            for asset in &config.assets {
+                let symbol = asset.symbol();
+                let fv = fv_per_asset[symbol][tick];
+                let mut book = asset.make_book(fv, &mut rng);
+                apply_quote_fraction(&mut book, config.quote_fraction, &mut rng);
+                price_rows.push(book_to_price_row(day, timestamp, symbol, &book));
+                books.push(book);
+            }
+            if let Some(pidx) = pulses_idx.as_ref() {
+                for pulse in &pidx[tick] {
+                    for member in &pulse.members {
+                        let Some(asset_idx) = symbol_to_idx.get(member) else {
+                            continue;
+                        };
+                        let book = &mut books[*asset_idx];
+                        let market_buy = matches!(pulse.direction, scenario::PulseDir::Buy);
+                        trade_rows.extend(pulse_to_trade_rows(
+                            timestamp,
+                            member,
+                            book,
+                            market_buy,
+                            pulse.quantity,
+                        ));
+                    }
+                }
+            }
+        } else {
+            // Legacy R1/R2/R3/R4 path — preserves the original interleaved
+            // make_book / trade-sample order so the rng stream is unchanged.
+            for asset in &config.assets {
+                let symbol = asset.symbol();
+                let fv = fv_per_asset[symbol][tick];
+                let mut book = asset.make_book(fv, &mut rng);
+                apply_quote_fraction(&mut book, config.quote_fraction, &mut rng);
+                price_rows.push(book_to_price_row(day, timestamp, symbol, &book));
+                let count = trade_counts_per_asset[symbol][tick];
+                for _ in 0..count {
+                    trade_rows.extend(sample_trade_rows(
+                        timestamp,
+                        asset.as_ref(),
+                        &book,
+                        &mut rng,
+                    ));
+                }
             }
         }
     }
@@ -602,6 +716,50 @@ fn generate_day(day: i32, config: &Config, replay: &ReplayData) -> Result<DayOut
         trade_rows,
         trace_rows: Vec::new(),
     })
+}
+
+/// Apply a pulse-driven taker trade against `book` (mutating asks/bids), and
+/// return the resulting TradeRows. Mirrors `sample_trade_rows` but takes a
+/// fixed quantity and side instead of sampling.
+fn pulse_to_trade_rows(
+    timestamp: i32,
+    symbol: &str,
+    book: &mut Book,
+    market_buy: bool,
+    quantity: i32,
+) -> Vec<TradeRow> {
+    let mut rows = Vec::new();
+    let mut remaining = quantity;
+    let levels: &mut Vec<(i32, i32)> = if market_buy {
+        &mut book.asks
+    } else {
+        &mut book.bids
+    };
+    while remaining > 0 {
+        let Some((price, available)) = levels.first().copied() else {
+            break;
+        };
+        let take = remaining.min(available);
+        if take <= 0 {
+            break;
+        }
+        rows.push(TradeRow {
+            timestamp,
+            buyer: None,
+            seller: None,
+            symbol: symbol.to_string(),
+            currency: "XIRECS".to_string(),
+            price: price as f64,
+            quantity: take,
+        });
+        remaining -= take;
+        if take == available {
+            levels.remove(0);
+        } else {
+            levels[0] = (price, available - take);
+        }
+    }
+    rows
 }
 
 fn write_outputs(config: &Config, outputs: &[DayOutput]) -> Result<()> {
@@ -739,8 +897,9 @@ fn run_backtests(config: &Config, replay: &ReplayData) -> Result<Vec<SessionOutp
     Ok(outputs)
 }
 
-fn monte_carlo_session_day(session_id: usize) -> i32 {
-    DAYS[session_id % DAYS.len()]
+fn monte_carlo_session_day(session_id: usize, config: &Config) -> i32 {
+    let days = effective_days(config);
+    days[session_id % days.len()]
 }
 
 fn run_backtest_session(
@@ -768,8 +927,10 @@ fn run_backtest_session(
     let mut day_outputs = Vec::with_capacity(1);
     let mut run_summaries = Vec::with_capacity(1);
     let mut global_step = 0usize;
-    let session_day = monte_carlo_session_day(session_id);
+    let session_day = monte_carlo_session_day(session_id, config);
 
+    let r5 = r5_active(config);
+    let active_days = effective_days(config);
     for day in [session_day] {
         worker.reset()?;
         let mut rng = ChaCha8Rng::seed_from_u64(seed_for_session_day(
@@ -777,7 +938,16 @@ fn run_backtest_session(
             session_id,
             day,
         ));
-        let day_index = DAYS.iter().position(|&d| d == day).unwrap_or(0);
+        let day_index = active_days.iter().position(|&d| d == day).unwrap_or(0);
+
+        // R5: generate joint FVs + pulses up-front. Per-asset simulate_fv is
+        // skipped for R5 symbols.
+        let r5_data = if r5 {
+            let scenario = scenarios::r5::R5Scenario::load()?;
+            Some(scenario.generate_day_data(day, config.ticks_per_day, &mut rng)?)
+        } else {
+            None
+        };
 
         // Resolve per-asset FV for the day. CRITICAL: this must happen in a fixed
         // asset order (config.assets order) so the RNG stream stays deterministic.
@@ -790,18 +960,37 @@ fn run_backtest_session(
                     .get(&(symbol.clone(), day))
                     .cloned()
                     .with_context(|| format!("missing replay FV for {}", symbol))?
+            } else if r5 && assets::is_r5_symbol(&symbol) {
+                r5_data
+                    .as_ref()
+                    .unwrap()
+                    .fv_paths
+                    .get(&symbol)
+                    .cloned()
+                    .with_context(|| format!("R5 scenario missing FV for {}", symbol))?
             } else {
                 asset.simulate_fv(day_index, config.ticks_per_day, &mut rng)?
             };
             fv_per_asset.insert(symbol, fv);
         }
 
-        // Per-asset trade counts.
+        // Per-asset trade counts. R5 assets emit zero base-rate counts (pulses
+        // replace per-asset Bernoulli sampling — see r5_pulses below).
         let mut trade_counts: HashMap<String, Vec<usize>> = HashMap::new();
         for asset in &config.assets {
-            let counts = trade_counts_for(asset.as_ref(), day, config, replay, &mut rng)?;
-            trade_counts.insert(asset.symbol().to_string(), counts);
+            let symbol = asset.symbol().to_string();
+            let counts = if r5 && assets::is_r5_symbol(&symbol) {
+                vec![0usize; config.ticks_per_day]
+            } else {
+                trade_counts_for(asset.as_ref(), day, config, replay, &mut rng)?
+            };
+            trade_counts.insert(symbol, counts);
         }
+
+        // Pulse lookup (R5 only). Empty for non-R5 runs.
+        let r5_pulses_idx: Option<Vec<Vec<scenario::Pulse>>> = r5_data
+            .as_ref()
+            .map(|d| pulses_by_tick(&d.pulses, config.ticks_per_day));
 
         // Ledgers + prev-trade tracking per asset.
         let mut ledgers: HashMap<String, ProductLedger> = symbols
@@ -854,6 +1043,7 @@ fn run_backtest_session(
             let mut market_trades_this_tick = empty_trade_map(&symbols);
 
             // Step 2: base-rate takers act on the pre-existing bot book.
+            // (R5: trade_counts are all zero here — pulses replace this.)
             for asset in &config.assets {
                 let symbol = asset.symbol().to_string();
                 let count = trade_counts[&symbol][tick];
@@ -887,6 +1077,7 @@ fn run_backtest_session(
             }
 
             // Step 3: strategy sees post-take book.
+            // (R5 pulses moved to step 4b — see below — so strategy quotes can absorb takers.)
             let order_depths: HashMap<String, WorkerOrderDepth> = config
                 .assets
                 .iter()
@@ -928,6 +1119,46 @@ fn run_backtest_session(
                     trade_rows.extend(fills.iter().map(fill_to_trade_row));
                 }
                 own_trades_this_tick.insert(symbol, fills);
+            }
+
+            // Step 4b: R5 pulse takers. Fire after strategy orders so pulses can
+            // hit our passive quotes when penny-jumped (best price wins).
+            if let Some(pidx) = r5_pulses_idx.as_ref() {
+                for pulse in &pidx[tick] {
+                    let market_buy = matches!(pulse.direction, scenario::PulseDir::Buy);
+                    for member in &pulse.members {
+                        if !live_books.contains_key(member) {
+                            continue;
+                        }
+                        let book = live_books.get_mut(member).unwrap();
+                        let ledger = ledgers.get_mut(member).context("missing ledger for pulse")?;
+                        let fills = execute_taker_trade_fixed_qty(
+                            member,
+                            timestamp,
+                            book,
+                            ledger,
+                            market_buy,
+                            pulse.quantity,
+                        );
+                        for fill in fills {
+                            let row = fill_to_trade_row(&fill);
+                            if fill_involves_strategy(&fill) {
+                                own_trades_this_tick
+                                    .entry(member.to_string())
+                                    .or_default()
+                                    .push(fill);
+                            } else {
+                                market_trades_this_tick
+                                    .entry(member.to_string())
+                                    .or_default()
+                                    .push(fill);
+                            }
+                            if capture_outputs {
+                                trade_rows.push(row);
+                            }
+                        }
+                    }
+                }
             }
 
             // Step 5: elastic takers (conditional on strategy quoting).
@@ -1471,6 +1702,98 @@ fn execute_strategy_orders(
             },
             false,
         );
+    }
+    fills
+}
+
+/// Like `execute_taker_trade` but with a caller-specified quantity (no rng
+/// sampling). Used by R5 pulses: the pulse process picks the qty from its
+/// observed empirical distribution upstream, then dispatches that qty to every
+/// member of the pulse group.
+fn execute_taker_trade_fixed_qty(
+    symbol: &str,
+    timestamp: i32,
+    book: &mut SimBook,
+    ledger: &mut ProductLedger,
+    market_buy: bool,
+    quantity: i32,
+) -> Vec<Fill> {
+    let mut fills = Vec::new();
+    let mut remaining = quantity;
+    while remaining > 0 {
+        let (price, owner, fill_qty) = if market_buy {
+            let Some(best_ask) = book.asks.first_mut() else {
+                break;
+            };
+            let fill_qty = remaining.min(best_ask.quantity);
+            let price = best_ask.price;
+            let owner = best_ask.owner;
+            best_ask.quantity -= fill_qty;
+            if best_ask.quantity == 0 {
+                book.asks.remove(0);
+            }
+            (price, owner, fill_qty)
+        } else {
+            let Some(best_bid) = book.bids.first_mut() else {
+                break;
+            };
+            let fill_qty = remaining.min(best_bid.quantity);
+            let price = best_bid.price;
+            let owner = best_bid.owner;
+            best_bid.quantity -= fill_qty;
+            if best_bid.quantity == 0 {
+                book.bids.remove(0);
+            }
+            (price, owner, fill_qty)
+        };
+        if fill_qty <= 0 {
+            break;
+        }
+        let symbol_owned = symbol.to_string();
+        let fill = match (market_buy, owner) {
+            (true, LevelOwner::Bot) => Fill {
+                symbol: symbol_owned,
+                price,
+                quantity: fill_qty,
+                buyer: Some("BOT_TAKER".to_string()),
+                seller: Some("BOT_MAKER".to_string()),
+                timestamp,
+            },
+            (true, LevelOwner::Strategy) => {
+                ledger.position -= fill_qty;
+                ledger.cash += price as f64 * fill_qty as f64;
+                Fill {
+                    symbol: symbol_owned,
+                    price,
+                    quantity: fill_qty,
+                    buyer: Some("BOT_TAKER".to_string()),
+                    seller: Some("SUBMISSION".to_string()),
+                    timestamp,
+                }
+            }
+            (false, LevelOwner::Bot) => Fill {
+                symbol: symbol_owned,
+                price,
+                quantity: fill_qty,
+                buyer: Some("BOT_MAKER".to_string()),
+                seller: Some("BOT_TAKER".to_string()),
+                timestamp,
+            },
+            (false, LevelOwner::Strategy) => {
+                ledger.position += fill_qty;
+                ledger.cash -= price as f64 * fill_qty as f64;
+                Fill {
+                    symbol: symbol_owned,
+                    price,
+                    quantity: fill_qty,
+                    buyer: Some("SUBMISSION".to_string()),
+                    seller: Some("BOT_TAKER".to_string()),
+                    timestamp,
+                }
+            }
+        };
+        fills.push(fill);
+        remaining -= fill_qty;
     }
     fills
 }
