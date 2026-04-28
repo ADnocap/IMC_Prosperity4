@@ -26,6 +26,8 @@ pub mod vev_5400;
 pub mod vev_5500;
 pub mod vev_6000;
 pub mod vev_6500;
+// R5 products: one shared impl, 50 instances built from calibration/r5/scenario_params.json.
+pub mod r5_asset;
 
 /// One registry entry per known asset.
 #[allow(dead_code)]
@@ -70,8 +72,17 @@ const REGISTRY: &[Entry] = &[
     Entry { symbol: vev_6500::SYMBOL, flag_specs: vev_6500::flag_specs, build: vev_6500::build },
 ];
 
+/// True if `symbol` is one of the 50 R5 products (best-effort: returns false
+/// if the R5 calibration JSON can't be loaded; callers use this for routing,
+/// not validation).
+pub fn is_r5_symbol(symbol: &str) -> bool {
+    crate::scenarios::r5::params()
+        .map(|p| p.assets.contains_key(symbol))
+        .unwrap_or(false)
+}
+
 pub fn is_known_symbol(symbol: &str) -> bool {
-    REGISTRY.iter().any(|e| e.symbol == symbol)
+    REGISTRY.iter().any(|e| e.symbol == symbol) || is_r5_symbol(symbol)
 }
 
 #[allow(dead_code)]
@@ -80,6 +91,9 @@ pub fn flag_specs_for(symbol: &str) -> Result<Vec<FlagSpec>> {
         if entry.symbol == symbol {
             return Ok((entry.flag_specs)());
         }
+    }
+    if is_r5_symbol(symbol) {
+        return Ok(r5_asset::flag_specs());
     }
     bail!("unknown asset: {}", symbol);
 }
@@ -90,10 +104,22 @@ pub fn build_asset(symbol: &str, flags: &HashMap<String, String>) -> Result<Box<
             return (entry.build)(flags);
         }
     }
+    if is_r5_symbol(symbol) {
+        return r5_asset::build_for_symbol(symbol, flags);
+    }
     bail!("unknown asset: {}", symbol);
 }
 
-/// All known symbols (for diagnostics + help text).
-pub fn known_symbols() -> Vec<&'static str> {
-    REGISTRY.iter().map(|e| e.symbol).collect()
+/// All known symbols (for diagnostics + help text). Includes R5 if calibration
+/// can be loaded; falls back to just the static registry if it can't.
+pub fn known_symbols() -> Vec<String> {
+    let mut out: Vec<String> = REGISTRY.iter().map(|e| e.symbol.to_string()).collect();
+    if let Ok(syms) = crate::scenarios::r5::symbols() {
+        for s in syms {
+            if !out.contains(&s) {
+                out.push(s);
+            }
+        }
+    }
+    out
 }
