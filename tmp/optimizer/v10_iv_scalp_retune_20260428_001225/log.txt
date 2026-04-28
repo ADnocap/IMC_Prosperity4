@@ -1,1 +1,0 @@
-trial   0: total=  30293  train=  17558  hold=  12735  (44.4s) <-- best
