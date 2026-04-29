@@ -11,7 +11,7 @@ This is our workspace for **IMC Prosperity 4** (2026), a multi-round algorithmic
 
 ## Current Round
 
-**Round 5** (active from 2026-04-28, "The Final Stretch"). R1, R2, R3, R4 all passed. R5 is the final round and **wipes the slate clean** — all R3/R4 products (HYDROGEL/VELVETFRUIT/VEV_*) are no longer tradeable. **50 brand-new products** are introduced, evenly distributed across 10 categories of 5 (Galaxy Sounds, Sleep Pods, Microchips, Pebbles, Robots, UV-Visors, Translators, Panels, Oxygen Shakes, Snackpacks). **Position limit is 10 for every product.** Some categories embed strong patterns waiting to be discovered; others will need vanilla MM. The shipped submissions live at `traders/round{1,2,3,4}/submission.py` (portal subs 269599 / 360419 / 485183 / **542976**). The **active submission file** for R5 is `traders/round5/submission.py` (currently a no-op scaffold — calibration is the next step). Manual challenge ("Extra! Extra!") happens on the Ignith exchange via Ashflow Alpha news — out of scope for the algo file.
+**Round 5** (active from 2026-04-28, "The Final Stretch"). R1, R2, R3, R4 all passed. R5 is the final round and **wipes the slate clean** — all R3/R4 products (HYDROGEL/VELVETFRUIT/VEV_*) are no longer tradeable. **50 brand-new products** are introduced, evenly distributed across 10 categories of 5 (Galaxy Sounds, Sleep Pods, Microchips, Pebbles, Robots, UV-Visors, Translators, Panels, Oxygen Shakes, Snackpacks). **Position limit is 10 for every product.** Some categories embed strong patterns waiting to be discovered; others will need vanilla MM. The shipped submissions live at `traders/round{1,2,3,4}/submission.py` (portal subs 269599 / 360419 / 485183 / **542976**). The **active submission file** for R5 is `traders/round5/submission.py` (still a no-op scaffold — sim calibration is done; strategy work is the next step). Manual challenge ("Extra! Extra!") happens on the Ignith exchange via Ashflow Alpha news — out of scope for the algo file.
 
 ## Directory Structure
 
@@ -203,7 +203,7 @@ R4 final shipped trader = portal sub **542976** ("marco_rubio_v2" — Hagrid_v1 
 
 ### Round 5 — ACTIVE (2026-04-28 →, "The Final Stretch")
 
-**Total product reset.** R3/R4 products are gone from the portal. R5 ships **50 brand-new products** across 10 categories of 5, with a **uniform position limit of 10** for every product. Some categories embed strong patterns ("Cherry Picking Winners" — find the inefficient ones); others will need vanilla MM. Calibration has not started yet — `traders/round5/submission.py` is currently a no-op scaffold that just declares the symbol universe.
+**Total product reset.** R3/R4 products are gone from the portal. R5 ships **50 brand-new products** across 10 categories of 5, with a **uniform position limit of 10** for every product. Some categories embed strong patterns ("Cherry Picking Winners" — find the inefficient ones); others will need vanilla MM. Sim calibration is done (see "R5 simulator: 2-layer architecture" below); `traders/round5/submission.py` is still a no-op scaffold that just declares the symbol universe — strategy work is the next step.
 
 | Category | 5 Products | Position Limit (each) |
 | --- | --- | --- |
@@ -238,8 +238,6 @@ R4 final shipped trader = portal sub **542976** ("marco_rubio_v2" — Hagrid_v1 
 ## Round-to-round product carry-over
 
 P4 breaks the P3 "all-prior-products-stay-tradeable" pattern: at each new round, only the products listed for that round appear on the portal. R1 and R2 traded only OSMIUM + PEPPER_ROOT. R3 dropped both and added the HYDROGEL / VELVETFRUIT / VEV book. R4 kept the R3 book and added counterparty IDs. R5 wipes the slate again — none of the R3/R4 products survive, and 50 new ones replace them with a uniform position limit of 10.
-
-**R3 sim calibration (2026-04-24, portal sub 366383):** the auto-generated `_trade_rates` in `scripts/generate_r3_asset_rs.py` had a 10× bug — it divided trade-event ticks by `3 * n_fv_ticks` (3000) instead of `3 * 10000`. Fix: use the actual CSV horizon (3 days × 10K ticks). Plus the raw trade CSVs under-represent ELASTIC (post-strategy taker) demand because the recordings come from a market with no aggressive MM — so once a real penny-jumping trader shows up with improved quotes, real takers fire much more often. Resolved by adding per-asset `R3_ELASTIC_OVERRIDES` in the generator, back-fitted from portal sub 366383. Post-fix MC matches portal within 0.1σ on every R3 asset (sim total 1146 vs portal 1273 at 1K ticks).
 
 ## Strategy Framework
 
@@ -306,9 +304,7 @@ Output defaults to `tmp/backtests/<timestamp>_monte_carlo/dashboard.json` — on
 The sim parses CLI flags into two categories:
 
 - **Global** (`--sessions`, `--ticks-per-day`, `--seed`, `--fv-mode`, `--trade-mode`, `--quote-fraction`, `--maf-bid`, `--strategy`, `--output`, …) apply to the whole run.
-- **Per-asset** flags are prefixed by the asset's lowercased-kebab symbol: `--<asset-kebab>-<flag>`. Example: PEPPER's starting-FV override is `--intarian-pepper-root-start-fv 13000`. Passing a flag for an asset the trader doesn't declare is a hard error.
-
-The Python CLI accepts `--ipr-start-fv` as a legacy alias and translates it. Every other per-asset flag must use the full form.
+- **Per-asset** flags are prefixed by the asset's lowercased-kebab symbol: `--<asset-kebab>-<flag>`. Passing a flag for an asset the trader doesn't declare is a hard error.
 
 ```bash
 # R5 dev iteration (calibrated 2026-04-28). The MC sim auto-detects R5 from
@@ -368,9 +364,7 @@ R1, R2, R3, and R4 all cleared the advancement threshold. Post-round-close snaps
 - Strategy: Hagrid_v1 voucher stack (3-regime gating + flow signal + 3-level passive layers on VEV_5000–5500) merged with Pete Hegseth v3 VELVETFRUIT execution (continuous z-target + OBI-tilted 2-level). HYDROGEL + VEV_4000/4500 traded via OBI MM. CS spread MR and Mark-counterparty layers both confirmed unrecoverable in replay (see verdicts above).
 - Replay context (prosperity3bt `--merge-pnl` on the 3-day R4 dataset, prior to ship): the IV-scalp baseline at `traders/round4/submission_v30.py` produced **+27,444** (D1 14,961 / D2 582 / D3 11,901) vs stratton baseline +20,954. The shipped marco_rubio_v2 was selected over that line for VELVETFRUIT execution improvements.
 
-**R3 → R4 sim recalibration sanity check (2026-04-26):** R4 days 1–2 reproduce R3 days 1–2 exactly, so the Rust AssetSim modules generated under `rust_simulator/src/assets/` from `calibration/<asset>/params.json` remain valid against day-1/2 of R4. Day 3 is fresh — refit the FV start price and bot trade rates if you see divergence.
-
-**R4 → R5 sim status (2026-04-28, calibrated):** R5 introduces 50 new products with no carry-over from R3/R4. **Calibration is in** — the simulator now uses a 2-layer architecture (see "R5 simulator: 2-layer architecture" below). `prosperity4mcbt traders/round5/submission.py --quick` works end-to-end against the R5 universe; CSV replay (`prosperity3bt traders/round5/submission.py 5` against `data/prosperity4/round5/`) still works for sanity checks.
+**R4 → R5 sim status (2026-04-28, calibrated):** R5 introduces 50 new products with no carry-over from R3/R4. **Calibration is in** — the simulator now uses a 2-layer architecture (see "R5 simulator: 2-layer architecture" below). `prosperity4mcbt traders/round5/submission.py --quick` works end-to-end against the R5 universe; CSV replay (`prosperity3bt traders/round5/submission.py 5` against `data/prosperity4/round5/`) still works for sanity checks. R1–R4 sim calibration is preserved per-asset under `calibration/<asset>/` and `rust_simulator/src/assets/<asset>.rs` for reference but is not exercised in R5 runs.
 
 ### R5 simulator: 2-layer architecture (calibrated 2026-04-28)
 
@@ -424,52 +418,9 @@ prosperity3bt traders/round5/submission.py 5
 
 The Python prototype lives at `analysis/round5/r5_scenario_v2.py` and produced `analysis/round5/scenario_v2_validation.csv` (per-asset within-day std synthetic-vs-historical) before the Rust port. Keep it as a regression check whenever the calibration is regenerated.
 
-End-to-end calibration check on the shipped R3 trader vs portal final:
+**R1–R4 sim calibration archive.** Per-asset audit trails (PEPPER elastic-rate fix, R3 trade-rate generator bug, R3→R4 recalibration sanity, R3 portal-vs-MC z-score check) live alongside the per-asset params under `calibration/<asset>/` and in the relevant `rust_simulator/src/assets/<asset>.rs`. The R1/R2 sim was validated to within 1% of portal on matched FV paths, R3 within 0.1σ, R3-trader-vs-portal-final within 0.06σ. None of those products carry into R5; reach into the per-asset dirs only if you need to revive that work.
 
-| | Portal sub 485183 (final eval) | MC `--quick` (100 sessions × 10K ticks) | z |
-|---|---|---|---|
-| Total PnL | **11,140.94** | mean **10,768.32**, std **6,815** | **+0.055σ** ✓ |
-
-Per-asset portal final breakdown (for future reference): HYDROGEL +4,734.84, VELVETFRUIT +1,326.39, VEV_4000 +2,589.00, VEV_4500 +1,888.01, VEV_5000 +464.93, VEV_5100 +229.69, VEV_5200 −26.28, VEV_5300 −65.64, VEV_5400/5500/6000/6500 = 0.
-
-Sim absolute numbers remain trustworthy on R3/R4 products — no recalibration needed for R4 unless day-3 behavior diverges. The 17,449 number that appears in `analysis/round3/SUBMISSION_PLAN.md` was a portal-UI backtest result (1K ticks/day), not the final eval.
-
-**Sim calibration (R1/R2 audit trail, validated on matched FV paths):**
-
-Three portal submissions drove the calibration:
-
-- **226828** (R1 MM backtest, 1K ticks): total trade-rate observations
-- **274082** (R2 hold-1, 1K ticks): pure base-rate takers (no elastic) — extracted server FV to `calibration/intarian_pepper_root/data/r2_day1_fv.json` for replay
-- **274250 + 274468** (R2 submission identical-code repeats): confirmed portal backtest runs a single fixed FV path (only 80% quote subset is randomized)
-
-**Bugs found and fixed:**
-
-1. **PEPPER elastic rate was 7× too high**. Hold-1 base-rate separated clean: PEPPER elastic is ~0.9%, not 3.5% as in the original sim. Fixed via `IPR_ELASTIC_TRADE_PROB: 0.035 → 0.009`.
-2. **Matching-engine ordering was wrong**. Sim ran base-rate takers AFTER the strategy ran, so they hit our penny-jumped quotes and inflated edge ~2×. Per P4 spec, bot takers act BEFORE the strategy sees the book. Reordered the tick loop — OSMIUM PnL on matched FV paths dropped from 3,443 → 1,957, matching portal 1,752 within 0.6σ.
-3. **R2 PEPPER starting FV**. Drift continues from R1 day 0's end at ~13,000 (not reset to 10,000). Exposed as `--ipr-start-fv 13000` flag.
-
-**Post-fix validation (MC replay on portal's exact FV path, 200 sessions, 1,000 ticks):**
-| Product | MC mean | Portal avg (274250+274468) | z |
-|---|---|---|---|
-| OSMIUM | 1,957 | 1,752 | −0.6σ ✓ |
-| PEPPER | 7,323 | 7,455 | +2.2σ ✓ |
-| **Total** | **9,280** | **9,207** | **−0.2σ** |
-
-Total gap **+73 XIRECs (0.8%)** — sim is now calibrated against portal reality.
-
-**Post-calibration R2 MC (200 sessions × 10,000 ticks, `--ipr-start-fv 13000`):**
-
-| Scenario                                | Mean PnL per final eval   | Std   | vs R1 portal final |
-| --------------------------------------- | ------------------------- | ----- | ------------------ |
-| R2 loser (`--quote-fraction 0.8`)       | **98,642**                | 1,042 | −1% from 99,546 ✓  |
-| R2 MAF winner (`--quote-fraction 1.25`) | **100,116**               | 1,096 | +1% from 99,546    |
-| **MAF uplift (winner − loser)**         | **+1,474 per final eval** |       |                    |
-
-**MAF bid guidance**: uplift is ~1,474 XIRECs per final eval. You only need to beat the median of all teams' bids, not buy the full uplift — shade well below. A first defensible opening is **300-500**; if the field under-bids, much less will do. `MAF_BID = 0` is a fine "do nothing" baseline.
-
-MC absolute numbers are now trustworthy (not just relative deltas) — the sim matches portal reality within 1% on matched FV paths.
-
-Post-round-close logs for R1/R2/R3 are in `results/round{1,2,3}/` (portal sub id as filename). All backtest artifacts — MC dashboards, replay logs, ad-hoc outputs — go under `tmp/`. `tmp/backtests/` is gitignored; `tmp/optimizer/` and `tmp/portal_<id>/` are tracked so the team can browse each other's runs. Default MC output is `tmp/backtests/<timestamp>_monte_carlo/dashboard.json`; default CSV replay log is `tmp/backtests/<timestamp>.log`. Never write backtest output outside `tmp/`.
+Post-round-close logs for R1–R4 are in `results/round{1,2,3,4}/` (portal sub id as filename). All backtest artifacts — MC dashboards, replay logs, ad-hoc outputs — go under `tmp/`. `tmp/backtests/` is gitignored; `tmp/optimizer/` and `tmp/portal_<id>/` are tracked so the team can browse each other's runs. Default MC output is `tmp/backtests/<timestamp>_monte_carlo/dashboard.json`; default CSV replay log is `tmp/backtests/<timestamp>.log`. Never write backtest output outside `tmp/`.
 
 ### Visualization
 
@@ -502,7 +453,7 @@ Trader contract (copy-paste snippet in `OPTIMIZER.md`): every tunable trader rea
 
 ## Coding Conventions
 
-- All trading logic in a single file (currently `traders/round4/submission.py`) — submission constraint
+- All trading logic in a single file (currently `traders/round5/submission.py`) — submission constraint
 - Use `json.dumps()`/`json.loads()` for traderData serialization
 - Keep strategies modular within the single file using helper methods
 - Price is always `int`, quantity is `int` (positive = buy, negative = sell)
