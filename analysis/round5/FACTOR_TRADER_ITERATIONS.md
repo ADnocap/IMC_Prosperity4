@@ -18,6 +18,12 @@ CSV replay: `prosperity3bt traders/round5/<file>.py 5 --no-out`.
 | v8 | factor_v8 | tighter cutoff hl≥1500 (30 disabled) | 132,764 | 37,808 | 3.51 | — |
 | v9 | factor_v9 | v7 + pure MM on the 20 disabled assets | 202,469 | 49,329 | 4.10 | 489,225 |
 | **v10** | **factor_v10** | **also disable MICROCHIP_SQUARE + UV_VISOR_AMBER (still losing on directional)** | **209,528** | **47,730** | **4.39** | **555,540** |
+| v11 | factor_v11 | OBI as position-target (target += OBI_K * obi) | 209,528 | 47,730 | 4.39 | — |
+| **v12** | **factor_v12** | **disable list refinement (idx 24, 26, 27, 31)** | **212,276** | **45,187** | **4.70** | **587,106** |
+| v13 | factor_v13 | v12 + idx 14, 41, 43 enabled at short HL | 212,420 | 46,944 | 4.52 | — |
+| v14 | factor_v14 | v12 + Bollinger range-pos signal | 209,741 | — | — | — |
+| v15 | factor_v15 | v12 + heavy-tail enable (idx 24, 41 → HL=1000) | 211,549 | 46,363 | 4.57 | — |
+| v15-OBI-tilt | (overwritten) | OBI quote-size tilt on MM layer | 212,276 | 45,187 | 4.70 | 579,503 |
 
 ## Findings
 
@@ -39,6 +45,12 @@ CSV replay: `prosperity3bt traders/round5/<file>.py 5 --no-out`.
 4. **Triplet residual signal** (v4). The PCA loadings (−0.395, −0.657, +0.643) are unit eigenvectors on **diffs**, not on **levels**. The naive projection `mid_i - L_i × Σ_j L_j × mid_j` produced residuals with means of 7,000-13,000 — algebraically wrong. Dropped.
 
 5. **Slower per-asset EMA half-lives** (v6). Setting per-asset HL to the calibrated value made slow OU assets WORSE — the slower EMA lags even more behind the daily-mu drift. The fix is to disable the signal entirely (v7), not slow it down.
+
+6. **OBI as position-target signal** (v11). OBI = (bid_vol_1 - ask_vol_1) / (bid_vol_1 + ask_vol_1) correlates +0.06 with next-tick mid return on 15+ products. v11 added OBI_K * obi as a position-target perturbation. Result: byte-identical PnL to v10 — alpha decays in 1-2 ticks but position lasts many. Wrong application.
+
+7. **OBI as MM quote-size tilt** (v15-OBI experiment, overwritten). Suppress one quote side when |OBI| > 0.30 to avoid being filled into adverse drift. MC: byte-identical to v12 (sim's symmetric L1 books rarely cross |OBI|=0.30 threshold; only 6.3% of historical ticks do). CSV replay against R5 historical: -7,603 (-1.3%) vs v12. Suppressing one side drops fill volume by more than the 1.3-tick conditional drift makes up. Math: avg fill 13.2 ticks per pulse without tilt vs 8.9 with tilt.
+
+8. **Heavy-tail enable** (v15 final). Hypothesis: ROBOT_DISHES wins +19K because of kurt=25; if enabled, ROBOT_IRONING (kurt=17.8) and OXYGEN_SHAKE_EVENING_BREATH (kurt=17.2) should also win. Result: -728 vs v12 with variance roughly DOUBLED on both products. Lesson: ROBOT_DISHES's edge isn't kurtosis alone — it's the **combination** of heavy tail AND fast OU half-life (319 ticks). The other two have slow half-lives (1768, 1820); the EMA-MR signal can't catch their snap-backs at HL=1000.
 
 ### Tick-count sensitivity (important)
 
